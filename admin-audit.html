@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سجل التدقيق — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+  /* فاصل رأسي بين كتل الصفحة — .adm-bar تحمل هامشها السفلي أصلاً */
+  .aud-block{margin-block-end:20px}
+  /* سطر يوضّح حدود التصفية: الدالة لا تقبل وسيط نوع كيان */
+  .aud-hint{flex:1 1 100%;font-size:12.5px;line-height:1.7;color:var(--text-secondary)}
+  /* الحمولة الخام في اللوحة الجانبية: لاتينية بالكامل فتبقى بمحاذاة اليسار */
+  .aud-json{
+    margin:0;padding:14px;overflow-x:auto;
+    background:var(--navy-25);border:1px solid var(--border);border-radius:var(--radius-tool);
+    /* الخط العربي في آخر السلسلة: القيم العربية داخل JSON تبقى موصولة الحروف */
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,var(--font-text),monospace;
+    font-size:12.5px;line-height:1.8;color:var(--text-primary);
+    white-space:pre;
+  }
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <div class="notice aud-block" role="note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+        <span>
+          <strong>ما الذي يُسجَّل هنا:</strong>
+          كل إجراء إداري يغيّر بيانات — موافقة أو رفض أو تعديل حساب أو حذف أو سحب شهادة أو نشر إصدار
+          أو تغيير في الطاقم — يُكتب في هذا السجل باسم منفّذه ووقته تلقائياً من داخل القاعدة نفسها،
+          لا من الواجهة. القراءة وحدها لا تُسجَّل هنا، ووصول المهندسين إلى الملفات المحمية له
+          <a class="link" href="admin-access.html">سجل الوصول</a> المستقل.
+        </span>
+      </div>
+
+      <div class="adm-bar">
+        <div class="adm-filters" id="filters" role="group" aria-label="تصفية بنوع الكيان"></div>
+        <span class="spacer"></span>
+        <button class="btn btn-outline btn-sm" id="exportBtn">تصدير Excel</button>
+        <span class="aud-hint" id="scopeHint"></span>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2>سجل الإجراءات الإدارية</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="totalTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>التوقيت</th>
+                <th>المنفِّذ</th>
+                <th>الإجراء</th>
+                <th>نوع الكيان</th>
+                <th>معرّف الكيان</th>
+                <th>التفاصيل</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="6"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="adm-pager" id="pager"></div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  /* ترجمة قيم action كما تكتبها القاعدة — وما ليس في الجدول يُعرض كما هو
+     حتى لا تُخفي الواجهة إجراءً جديداً تضيفه ترحيلات لاحقة */
+  var ACTION = {
+    'status:approved': 'موافقة على حساب',
+    'status:rejected': 'رفض حساب',
+    'status:pending':  'إعادة إلى قيد المراجعة',
+    'edit':            'تعديل بيانات',
+    'delete':          'حذف',
+    'revoke':          'سحب شهادة',
+    'bulk:approved':   'إجراء جماعي',
+    'bulk:rejected':   'إجراء جماعي',
+    'bulk:pending':    'إجراء جماعي',
+    'staff:add':       'إدارة الطاقم',
+    'staff:remove':    'إدارة الطاقم',
+    'release:publish': 'نشر إصدار'
+  };
+
+  var ENTITY = {
+    account:     'حساب',
+    staff:       'عضو طاقم',
+    payment:     'دفعة',
+    attempt:     'محاولة امتحان',
+    certificate: 'شهادة',
+    app_release: 'إصدار تطبيق'
+  };
+
+  /* مفاتيح حمولة detail كما تبنيها دوال القاعدة */
+  var LBL = {
+    from: 'من', to: 'إلى', note: 'الملاحظة', status: 'الحالة',
+    exempt: 'معفى من الرسوم', branch: 'الفرع', count: 'عدد الصفوف', ids: 'المعرّفات',
+    name: 'الاسم', email: 'البريد', role: 'الدور', reason: 'السبب', row: 'السجل المحذوف',
+    version_code: 'رقم البناء', version_name: 'اسم الإصدار', min_supported: 'أدنى إصدار مدعوم',
+    platform: 'المنصة', download_url: 'رابط التنزيل', notes: 'ملاحظات الإصدار',
+    active: 'مفعّل', code: 'الرمز', score: 'الدرجة', amount: 'المبلغ', op_no: 'رقم العملية',
+    account_id: 'معرّف الحساب', holder_name: 'اسم صاحب الشهادة', cert_type: 'نوع الشهادة',
+    id: 'المعرّف', title: 'العنوان', released_at: 'تاريخ النشر', issued_at: 'تاريخ الإصدار',
+    paid_at: 'تاريخ الدفع', taken_at: 'تاريخ المحاولة', created_at: 'تاريخ الإنشاء'
+  };
+
+  var STATUS_AR = { approved: 'موافَق عليه', rejected: 'مرفوض', pending: 'قيد المراجعة' };
+
+  var CAP = 500;                                   /* الحد الأقصى الذي تقبله الدالة */
+
+  var state = { entity: 'all', limit: 50, offset: 0, total: 0 };
+  var rows = [];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody, pagerEl, filtersEl;
+
+  A.boot({
+    page: 'audit',
+    title: 'سجل التدقيق',
+    lead: 'من فعل ماذا ومتى داخل لوحة الإدارة — تُكتب هذه السطور تلقائياً من القاعدة '
+        + 'مع كل إجراء يغيّر بيانات، ولا تُحذف من الواجهة.',
+    crumb: 'سجل التدقيق'
+  }).then(function (st) {
+    if (!st) return;
+    tbody = $('rows'); pagerEl = $('pager'); filtersEl = $('filters');
+    wire();
+    load();
+  });
+
+  function wire() {
+    $('exportBtn').addEventListener('click', exportAll);
+    tbody.addEventListener('click', onRowClick);
+  }
+
+  /* ---------------------------------------------------------------- التحميل */
+  function load() {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    API.admin.audit({ limit: state.limit, offset: state.offset }).then(function (d) {
+      rows = d.rows || [];
+      state.total = d.total | 0;
+      $('totalTag').textContent = A.toAr(state.total) + ' إجراء مسجَّل';
+      paintFilters();
+      paintRows();
+      A.pager(pagerEl, state, function (off) {
+        state.offset = off; state.entity = 'all'; load();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }).catch(function (e) {
+      tbody.innerHTML = '<tr><td colspan="6">' + A.errorState(A.errText(e), 'retry') + '</td></tr>';
+      var r = $('retry'); if (r) r.addEventListener('click', load);
+    });
+  }
+
+  /* التصفية تجري على الصفحة المحمّلة: admin_audit لا تقبل وسيط نوع كيان،
+     فالترقيم يبقى خادمياً والتصفية تُصرَّح حدودها للمستخدم بدل إيهامه */
+  function paintFilters() {
+    var counts = Object.create(null);
+    rows.forEach(function (r) {
+      counts[r.entity] = (counts[r.entity] || 0) + 1;
+    });
+    var keys = Object.keys(counts).sort();
+    var defs = [['all', 'الكل', rows.length]].concat(keys.map(function (k) {
+      return [k, ENTITY[k] || k, counts[k]];
+    }));
+
+    filtersEl.innerHTML = defs.map(function (d) {
+      return '<button class="adm-chip" data-f="' + A.esc(d[0]) + '" aria-pressed="' +
+        (state.entity === d[0]) + '">' + A.esc(d[1]) +
+        '<span class="n">' + A.toAr(d[2]) + '</span></button>';
+    }).join('');
+
+    filtersEl.querySelectorAll('[data-f]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.entity = b.getAttribute('data-f');
+        paintFilters(); paintRows();
+      });
+    });
+
+    $('scopeHint').textContent = state.total > rows.length
+      ? 'تصفية نوع الكيان تعمل على الصفحة المعروضة فقط (' + A.toAr(rows.length) +
+        ' من ' + A.toAr(state.total) + ' سجل) — انتقل بين الصفحات لبقية السجل.'
+      : 'تصفية نوع الكيان تعمل على السجلات المحمّلة، والترقيم يجري على الخادم.';
+  }
+
+  function visible() {
+    return state.entity === 'all'
+      ? rows
+      : rows.filter(function (r) { return r.entity === state.entity; });
+  }
+
+  function paintRows() {
+    var list = visible();
+
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="6">' + (
+        rows.length
+          ? A.emptyState('لا سجلات من هذا النوع في الصفحة المعروضة',
+              'اختر «الكل» أو انتقل إلى صفحة أخرى — التصفية لا تتجاوز السجلات المحمّلة.')
+          : A.emptyState('لا سجلات تدقيق بعد',
+              'يمتلئ هذا السجل تلقائياً مع أول إجراء إداري: موافقة على حساب أو رفضه أو تعديله، '
+            + 'حذف دفعة أو محاولة، سحب شهادة، نشر إصدار، أو إضافة عضو إلى الطاقم.')
+      ) + '</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list.map(function (r) {
+      var act = ACTION[r.action] || r.action || '—';
+      var ent = ENTITY[r.entity] || r.entity || '—';
+      var brief = briefDetail(r.detail);
+      return '<tr data-id="' + A.esc(r.id) + '">' +
+        '<td class="num">' + A.arDateTime(r.at) + '</td>' +
+        '<td class="wrap">' + actorCell(r) + '</td>' +
+        /* رمز الإجراء الخام يبقى ظاهراً تحت الترجمة: به يُطابَق السجل مع كود القاعدة */
+        '<td class="strong">' + A.esc(act) +
+          (ACTION[r.action] ? '<span class="adm-sub adm-mono" dir="ltr" style="text-align:end">' +
+            A.esc(r.action) + '</span>' : '') + '</td>' +
+        '<td><span class="tag">' + A.esc(ent) + '</span></td>' +
+        '<td>' + entityCell(r) + '</td>' +
+        '<td class="wrap">' + (brief ? '<span>' + A.esc(brief) + '</span>' : '<span>—</span>') +
+          (r.detail
+            ? '<span class="adm-sub"><button class="btn btn-outline btn-sm" data-detail>' +
+              'عرض التفاصيل كاملة</button></span>'
+            : '') + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function actorCell(r) {
+    if (r.actor_name) {
+      return '<span class="strong">' + A.esc(r.actor_name) + '</span>';
+    }
+    /* منفِّذ بلا اسم: إجراء جرى قبل ربط الحساب بالطاقم أو من محرّر SQL مباشرة */
+    return '<span>—</span>' + (r.actor
+      ? '<span class="adm-sub adm-mono" dir="ltr" style="text-align:end" title="' +
+        A.esc(r.actor) + '">' + A.esc(short(r.actor)) + '</span>'
+      : '<span class="adm-sub">بلا جلسة طاقم</span>');
+  }
+
+  function entityCell(r) {
+    if (!r.entity_id) return '<span>—</span>';
+    if (r.entity === 'account') {
+      return '<a class="link adm-mono" dir="ltr" href="admin-user-detail.html?id=' +
+        A.esc(r.entity_id) + '" title="' + A.esc(r.entity_id) + '">' +
+        A.esc(short(r.entity_id)) + '</a>';
+    }
+    return '<span class="adm-mono" dir="ltr" title="' + A.esc(r.entity_id) + '">' +
+      A.esc(short(r.entity_id)) + '</span>';
+  }
+
+  function short(s) {
+    s = String(s == null ? '' : s);
+    return s.length > 12 ? s.slice(0, 8) + '…' : s;
+  }
+
+  /* ---------------------------------------------------------------- التفاصيل */
+  function fmtVal(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    if (typeof v === 'boolean') return v ? 'نعم' : 'لا';
+    if (Array.isArray(v)) return A.toAr(v.length) + ' عنصر';
+    if (typeof v === 'object') return '{…}';
+    var s = String(v);
+    if (STATUS_AR[s]) return STATUS_AR[s];
+    if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return A.arDateTime(s);
+    if (/^\d+(\.\d+)?$/.test(s)) return A.toAr(s);
+    return s;
+  }
+
+  function pairs(detail) {
+    if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return [];
+    return Object.keys(detail).map(function (k) {
+      return [LBL[k] || k, fmtVal(detail[k])];
+    });
+  }
+
+  function briefDetail(detail) {
+    if (!detail) return '';
+    if (typeof detail !== 'object') return String(detail).slice(0, 90);
+    var p = pairs(detail);
+    if (!p.length) return '';
+    var s = p.slice(0, 3).map(function (x) { return x[0] + ': ' + x[1]; }).join(' · ');
+    return s.length > 90 ? s.slice(0, 88) + '…' : s;
+  }
+
+  function onRowClick(e) {
+    var btn = e.target.closest('[data-detail]');
+    if (!btn) return;
+    var id = btn.closest('tr').getAttribute('data-id');
+    var r = rows.filter(function (x) { return String(x.id) === String(id); })[0];
+    if (!r) return;
+    openDetail(r);
+  }
+
+  function openDetail(r) {
+    var kv = pairs(r.detail).map(function (x) {
+      return '<dt>' + A.esc(x[0]) + '</dt><dd>' + A.esc(x[1]) + '</dd>';
+    }).join('');
+
+    var raw = '';
+    try { raw = JSON.stringify(r.detail, null, 2); } catch (err) { raw = String(r.detail); }
+
+    var s = A.sheet({
+      title: 'تفاصيل الإجراء',
+      hideOk: true,
+      body:
+        '<dl class="adm-kv">' +
+          '<dt>التوقيت</dt><dd>' + A.arDateTime(r.at) + '</dd>' +
+          '<dt>المنفِّذ</dt><dd>' + A.esc(r.actor_name || '—') + '</dd>' +
+          '<dt>الإجراء</dt><dd>' + A.esc(ACTION[r.action] || r.action || '—') + '</dd>' +
+          '<dt>نوع الكيان</dt><dd>' + A.esc(ENTITY[r.entity] || r.entity || '—') + '</dd>' +
+          '<dt>معرّف الكيان</dt><dd class="adm-mono" dir="ltr" style="text-align:start">' +
+            A.esc(r.entity_id || '—') + '</dd>' +
+        '</dl>' +
+        (kv ? '<div><h3 style="font-size:14px;margin-block-end:10px">حمولة الإجراء</h3>' +
+              '<dl class="adm-kv">' + kv + '</dl></div>' : '') +
+        '<div><h3 style="font-size:14px;margin-block-end:10px">النص الخام كما في القاعدة</h3>' +
+          '<pre class="aud-json" dir="ltr">' + A.esc(raw || '—') + '</pre></div>'
+    });
+
+    /* لوحة قراءة لا حفظ فيها: زر الإلغاء يصير «إغلاق» بدل إيهام المستخدم بتراجع */
+    var cancel = s.el.querySelector('.adm-sheet-foot [data-close]');
+    if (cancel) { cancel.textContent = 'إغلاق'; }
+  }
+
+  /* ---------------------------------------------------------------- التصدير */
+  function exportAll() {
+    var btn = $('exportBtn');
+    btn.disabled = true; btn.textContent = 'جارٍ التجهيز…';
+    /* التصدير يجلب أقصى ما تسمح به الدالة لا الصفحة المعروضة فقط */
+    API.admin.audit({ limit: CAP, offset: 0 }).then(function (d) {
+      var all = (d.rows || []).filter(function (r) {
+        return state.entity === 'all' || r.entity === state.entity;
+      });
+      A.exportCsv('osea-audit.csv',
+        ['التوقيت', 'المنفِّذ', 'الإجراء', 'رمز الإجراء', 'نوع الكيان', 'معرّف الكيان', 'التفاصيل'],
+        all.map(function (r) {
+          var raw = '';
+          try { raw = r.detail ? JSON.stringify(r.detail) : ''; } catch (e) { raw = ''; }
+          return [r.at || '', r.actor_name || '', ACTION[r.action] || r.action || '',
+                  r.action || '', ENTITY[r.entity] || r.entity || '', r.entity_id || '', raw];
+        }));
+      A.toast('صُدّر ' + A.toAr(all.length) + ' سجلاً.' +
+        ((d.total | 0) > (d.rows || []).length
+          ? ' (أحدث ' + A.toAr((d.rows || []).length) + ' من ' + A.toAr(d.total) + ')' : ''), 'ok');
+    }).catch(function (e) { A.toast(A.errText(e), 'bad'); })
+      .then(function () { btn.disabled = false; btn.textContent = 'تصدير Excel'; });
+  }
+})();
+</script>
+</body>
+</html>

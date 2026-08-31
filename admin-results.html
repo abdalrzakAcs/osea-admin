@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>النتائج والشهادات — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* أنماط خاصة بهذه الصفحة فقط — بتوكنات الهوية، بلا ألوان مباشرة.
+   السبب: ستّ بطاقات مؤشرات لا أربع، وتسميات شرائح الدرجات أعرض من
+   العمود الافتراضي للرسم فتُقتطع بالنقاط الثلاث لو تُركت كما هي. */
+@media (min-width: 1081px) { .adm-kpis { grid-template-columns: repeat(3, 1fr); } }
+
+.res-chart-body { padding: 18px 20px 20px; }
+.res-chart-body .adm-chart-row { grid-template-columns: 128px 1fr 64px; }
+.res-chart-foot {
+  margin-block-start: 16px;
+  padding-block-start: 14px;
+  border-block-start: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--text-secondary);
+}
+.res-acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <!-- المؤشرات: من admin_overview لا من الصفوف المجلوبة، لأن الجلب مسقوف بمئة صف -->
+      <div class="adm-kpis" id="kpis"></div>
+
+      <!-- توزيع الدرجات: يُحسب فعلياً من صفوف المحاولات المجلوبة -->
+      <div class="adm-table-card" style="margin-block-start:24px">
+        <div class="adm-table-head">
+          <h2>توزيع الدرجات على الشرائح</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="distTag">—</span>
+        </div>
+        <div class="res-chart-body" id="distBody">
+          <div class="adm-state"><p>جارٍ التحميل…</p></div>
+        </div>
+      </div>
+
+      <!-- ------------------------------------------------ المحاولات -->
+      <div class="adm-bar" style="margin-block-start:24px">
+        <div class="adm-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="input" id="q" type="search" autocomplete="off"
+                 placeholder="بحث في المحاولات بالاسم أو الفرع أو الدرجة">
+        </div>
+        <span class="spacer"></span>
+        <button class="btn btn-outline btn-sm" id="expAtt">تصدير المحاولات CSV</button>
+      </div>
+
+      <!-- شريط التصفية مخفيّ حتى تصل الصفوف: شريط فارغ قبلها يبدو عطلاً -->
+      <div class="adm-bar" id="attFiltersBar" hidden style="margin-block-start:-8px">
+        <div class="adm-filters" id="attFilters" role="group" aria-label="تصفية بالحكم"></div>
+      </div>
+
+      <div class="notice" id="attCap" hidden style="margin-block-end:12px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span id="attCapText"></span>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2 id="attTitle">المحاولات المسجّلة</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="attTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>الاسم</th>
+                <th>الفرع</th>
+                <th>الدرجة</th>
+                <th>الحكم</th>
+                <th>المدة (دق:ث)</th>
+                <th>التوقيت</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="attRows">
+              <tr><td colspan="7"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ------------------------------------------------ الشهادات -->
+      <div class="adm-bar" style="margin-block-start:32px">
+        <div class="adm-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="input" id="qc" type="search" autocomplete="off"
+                 placeholder="بحث في الشهادات بالرمز أو الاسم أو الفرع">
+        </div>
+        <span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" id="issueBtn" data-write>إصدار شهادة</button>
+        <button class="btn btn-outline btn-sm" id="expCert">تصدير الشهادات CSV</button>
+      </div>
+
+      <div class="notice" id="certCap" hidden style="margin-block-end:12px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span id="certCapText"></span>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2 id="certTitle">الشهادات الصادرة</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="certTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>رمز الشهادة</th>
+                <th>صاحبها</th>
+                <th>الفرع</th>
+                <th>النوع</th>
+                <th>النسبة</th>
+                <th>تاريخ الإصدار</th>
+                <th>التحقق</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="certRows">
+              <tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  /* سقف الجلب في طبقة البيانات: attempts() و certs() كلتاهما limit(100).
+     نحفظه هنا لنقول للمستخدم صراحةً حين نبلغه بدل ادّعاء أن هذا كل السجل. */
+  var CAP = 100;
+
+  /* شرائح الرسم — الحد الأعلى داخلٌ في الشريحة، و80 فأعلى هي عتبة الشهادة */
+  /* شرائح متنافية — الذهبي = نطاق النجاح (80 فأعلى) */
+  var BANDS = [
+    { label: '90–100', min: 90,  max: 100, gold: true },
+    { label: '80–89',  min: 80,  max: 89, gold: true },
+    { label: '70–79',  min: 70,  max: 79 },
+    { label: '60–69',  min: 60,  max: 69 },
+    { label: 'أقل من 60', min: -1, max: 59 }
+  ];
+
+  var attAll = [], certAll = [];
+  var attFilter = 'all';
+  var attCapped = false, certCapped = false;
+  var totals = { attempts: null, certs: null };   /* من المؤشرات — للصدق في الترويسة */
+
+  /* «مبتور» لا يساوي «بلغ السقف»: لو كان العدد الكلي مئةً بالضبط فما نُقص شيء.
+     ندّعي البتر فقط حين نعلم أن الكلي أكبر، أو حين نجهل الكلي فنتحفّظ. */
+  function attTrunc() { return attCapped && (totals.attempts == null || totals.attempts > CAP); }
+  function certTrunc() { return certCapped && (totals.certs == null || totals.certs > CAP); }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var kpisEl, distBody, distTag, attRows, certRows, attFiltersEl;
+
+  A.boot({
+    page: 'results',
+    title: 'النتائج والشهادات',
+    lead: 'كل محاولة امتحان صُحّحت وحُفظت، وتوزيع الدرجات على الشرائح، وسجل الشهادات الصادرة '
+        + 'برموز التحقق — مع إصدار شهادة لحساب موافَق عليه، وسحب شهادة صادرة، وحذف محاولة خاطئة.',
+    crumb: 'النتائج والشهادات'
+  }).then(function (st) {
+    if (!st) return;
+    kpisEl = $('kpis'); distBody = $('distBody'); distTag = $('distTag');
+    attRows = $('attRows'); certRows = $('certRows'); attFiltersEl = $('attFilters');
+    wire();
+    loadOverview();
+    loadAttempts();
+    loadCerts();
+  });
+
+  function wire() {
+    $('q').addEventListener('input', A.debounce(paintAttempts, 250));
+    $('qc').addEventListener('input', A.debounce(paintCerts, 250));
+    $('expAtt').addEventListener('click', exportAttempts);
+    $('expCert').addEventListener('click', exportCerts);
+    $('issueBtn').addEventListener('click', openIssue);
+    attRows.addEventListener('click', onAttClick);
+    certRows.addEventListener('click', onCertClick);
+  }
+
+  /* ---------------------------------------------------------------- المؤشرات */
+  function loadOverview() {
+    kpisEl.innerHTML = kpi('جارٍ التحميل…', '—', '');
+    API.admin.overview(30).then(function (d) {
+      var at = d.attempts || {}, ce = d.certificates || {};
+      var n = at.count | 0, passed = at.passed | 0;
+      var rate = n ? Math.round(passed * 100 / n) : 0;
+      totals.attempts = n;
+      totals.certs = ce.count | 0;
+
+      kpisEl.innerHTML =
+        kpi('المحاولات', A.toAr(n), 'كل محاولة صُحّحت وحُفظت في القاعدة.') +
+        kpi('المحاولات الناجحة', A.toAr(passed),
+            'نسبة النجاح ' + A.toAr(rate) + '٪ — حدّ النجاح 80٪.') +
+        kpi('متوسط الدرجة', A.toAr(at.avg_score | 0) + '٪', 'وسطي درجات كل المحاولات.') +
+        kpi('الشهادات الصادرة', A.toAr(ce.count | 0), 'لكل شهادة رمز تحقق فريد.') +
+        kpi('شهادات التميّز', A.toAr(ce.distinctions | 0), 'الدرجة الكاملة 100٪.', 'adm-kpi--gold') +
+        kpi('جلسات متروكة', A.toAr(at.abandoned | 0),
+            'ورقة امتحان صدرت ولم تُسلَّم — من أصل ' + A.toAr(at.sessions | 0) + ' جلسة.',
+            'adm-kpi--warm');
+
+      paintCaps();
+    }).catch(function (e) {
+      kpisEl.innerHTML = '<div class="adm-kpi" style="grid-column:1/-1">' +
+        A.errorState(A.errText(e), 'retryKpis') + '</div>';
+      var r = $('retryKpis'); if (r) r.addEventListener('click', loadOverview);
+    });
+  }
+
+  function kpi(label, num, hint, cls) {
+    return '<div class="adm-kpi' + (cls ? ' ' + cls : '') + '">' +
+      '<span class="adm-kpi-label">' + A.esc(label) + '</span>' +
+      '<b class="adm-kpi-num">' + A.esc(num) + '</b>' +
+      (hint ? '<span class="adm-kpi-hint">' + A.esc(hint) + '</span>' : '') +
+    '</div>';
+  }
+
+  /* ---------------------------------------------------------------- المحاولات */
+  function loadAttempts() {
+    attRows.innerHTML = '<tr><td colspan="7"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    API.attempts().then(function (rows) {
+      attAll = rows || [];
+      attCapped = attAll.length >= CAP;
+      paintFilters();
+      paintAttempts();
+      paintChart();
+      paintCaps();
+    }).catch(function (e) {
+      attAll = [];
+      paintFilters();
+      attRows.innerHTML = '<tr><td colspan="7">' + A.errorState(A.errText(e), 'retryAtt') + '</td></tr>';
+      var r = $('retryAtt'); if (r) r.addEventListener('click', loadAttempts);
+      distBody.innerHTML = A.emptyState('تعذّر حساب التوزيع',
+        'الرسم يُحسب من صفوف المحاولات نفسها، وهي لم تُجلب بعد.');
+      distTag.textContent = '—';
+    });
+  }
+
+  function paintFilters() {
+    $('attFiltersBar').hidden = !attAll.length;
+    if (!attAll.length) return;
+    var pass = attAll.filter(function (r) { return !!r.passed; }).length;
+    var defs = [['all', 'الكل', attAll.length],
+                ['pass', 'ناجحة', pass],
+                ['fail', 'راسبة', attAll.length - pass]];
+    attFiltersEl.innerHTML = defs.map(function (d) {
+      return '<button class="adm-chip" data-f="' + d[0] + '" aria-pressed="' +
+        (attFilter === d[0]) + '">' + A.esc(d[1]) +
+        '<span class="n">' + A.toAr(d[2]) + '</span></button>';
+    }).join('');
+    attFiltersEl.querySelectorAll('[data-f]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        attFilter = b.getAttribute('data-f');
+        paintFilters();
+        paintAttempts();
+      });
+    });
+  }
+
+  /* التصفية والبحث في المتصفح: الصفوف مجلوبة كاملةً أصلاً فلا داعي لرحلة خادم */
+  function attView() {
+    var q = A.norm($('q').value);
+    return attAll.filter(function (r) {
+      if (attFilter === 'pass' && !r.passed) return false;
+      if (attFilter === 'fail' && r.passed) return false;
+      if (!q) return true;
+      var a = r.accounts || {};
+      return A.norm([a.name || '', a.branch || '', r.score].join(' ')).indexOf(q) !== -1;
+    });
+  }
+
+  function paintAttempts() {
+    var rows = attView();
+    $('attTag').textContent = A.toAr(rows.length) + ' محاولة';
+    $('attTitle').textContent = attTrunc()
+      ? ('أحدث ' + A.toAr(CAP) + ' محاولة (سقف الجلب)')
+      : 'المحاولات المسجّلة';
+
+    if (!rows.length) {
+      var filtered = $('q').value.trim() || attFilter !== 'all';
+      attRows.innerHTML = '<tr><td colspan="7">' + A.emptyState(
+        filtered ? 'لا نتائج مطابقة' : 'لا محاولات مسجّلة بعد',
+        filtered
+          ? 'جرّب توسيع البحث أو إلغاء التصفية.'
+          : 'تُسجَّل المحاولة تلقائياً لحظة تسليم المهندس ورقة الامتحان في التطبيق.'
+      ) + '</td></tr>';
+      return;
+    }
+
+    attRows.innerHTML = rows.map(function (r) {
+      var a = r.accounts || {};
+      var name = a.name || '—';
+      var who = r.account_id
+        ? '<a class="link" href="admin-user-detail.html?id=' +
+            A.esc(encodeURIComponent(r.account_id)) + '">' + A.esc(name) + '</a>'
+        : A.esc(name);
+      var verdict = r.passed
+        ? '<span class="tag tag--success">ناجح</span>'
+        : '<span class="tag tag--error">لم يجتز</span>';
+      if (r.distinction) { verdict += ' <span class="tag tag--gold">تميّز</span>'; }
+      return '<tr data-id="' + A.esc(r.id) + '">' +
+        '<td class="wrap">' + who + '</td>' +
+        '<td>' + A.esc(a.branch || '—') + '</td>' +
+        '<td class="num strong">' + A.toAr(r.score) + '٪</td>' +
+        '<td>' + verdict + '</td>' +
+        '<td class="num adm-mono">' + (r.duration_s ? A.secDur(r.duration_s) : '—') + '</td>' +
+        '<td>' + A.arDateTime(r.taken_at) + '</td>' +
+        '<td><span class="res-acts">' +
+          '<button class="btn btn-outline btn-sm" data-act="delAtt" data-write>حذف المحاولة</button>' +
+        '</span></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function onAttClick(e) {
+    var btn = e.target.closest('[data-act="delAtt"]');
+    if (!btn) return;
+    var id = btn.closest('tr').getAttribute('data-id');
+    var r = attAll.filter(function (x) { return String(x.id) === String(id); })[0];
+    if (!r) return;
+    var name = (r.accounts && r.accounts.name) || 'مجهول';
+    A.confirm({
+      title: 'حذف المحاولة',
+      danger: true,
+      okLabel: 'حذف المحاولة',
+      text: 'ستُحذف محاولة «' + name + '» بدرجة ' + A.toAr(r.score) + '٪ نهائياً، '
+          + 'وتُخصم من المؤشرات ومن توزيع الدرجات. الشهادة الصادرة عنها — إن وُجدت — لا تُسحب تلقائياً. '
+          + 'يُسجَّل الحذف في سجل التدقيق باسمك.'
+    }).then(function (ok) {
+      if (!ok) return;
+      return API.admin.deleteAttempt(id).then(function () {
+        A.toast('حُذفت محاولة «' + name + '».', 'ok');
+        loadAttempts();
+        loadOverview();
+      }).catch(function (e2) { A.toast(A.errText(e2), 'bad'); });
+    });
+  }
+
+  /* ---------------------------------------------------------------- الرسم */
+  function paintChart() {
+    if (!attAll.length) {
+      distTag.textContent = '—';
+      distBody.innerHTML = A.emptyState('لا درجات لرسمها بعد',
+        'يُحسب التوزيع من درجات المحاولات المسجّلة، وأول محاولة تملأ الرسم.');
+      return;
+    }
+
+    var counts = BANDS.map(function (b) {
+      return attAll.filter(function (r) {
+        var s = r.score | 0;
+        return s >= b.min && s <= b.max;
+      }).length;
+    });
+    var top = Math.max.apply(null, counts) || 1;
+    var n = attAll.length;
+    var passed = counts[0];
+
+    distTag.textContent = A.toAr(n) + ' محاولة';
+    distBody.innerHTML =
+      '<div class="adm-chart">' + BANDS.map(function (b, i) {
+        var c = counts[i];
+        var w = c ? Math.max(3, Math.round(c * 100 / top)) : 0;
+        return '<div class="adm-chart-row">' +
+          '<span class="lbl">' + A.esc(b.label) + '</span>' +
+          '<span class="bar' + (b.gold ? ' bar--gold' : '') + '" style="width:' + w + '%"></span>' +
+          '<span class="val">' + A.toAr(c) + '</span>' +
+        '</div>';
+      }).join('') + '</div>' +
+      '<p class="res-chart-foot">' +
+        'محسوب من ' + A.toAr(n) + ' محاولة مجلوبة' +
+        (attTrunc()
+          ? ' (سقف الجلب ' + A.toAr(CAP) + ' صفاً' +
+            (totals.attempts != null && totals.attempts > n
+              ? ' من أصل ' + A.toAr(totals.attempts) + ' — الأقدم غير داخل في الرسم' : '') + ')'
+          : '') +
+        ' — منها ' + A.toAr(passed) + ' بدرجة 80٪ فأعلى، وهي وحدها ما يستحق شهادة.' +
+      '</p>';
+  }
+
+  /* ---------------------------------------------------------------- الشهادات */
+  function loadCerts() {
+    certRows.innerHTML = '<tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    API.certs().then(function (rows) {
+      certAll = rows || [];
+      certCapped = certAll.length >= CAP;
+      paintCerts();
+      paintCaps();
+    }).catch(function (e) {
+      certAll = [];
+      certRows.innerHTML = '<tr><td colspan="8">' + A.errorState(A.errText(e), 'retryCert') + '</td></tr>';
+      var r = $('retryCert'); if (r) r.addEventListener('click', loadCerts);
+    });
+  }
+
+  function certView() {
+    var q = A.norm($('qc').value);
+    if (!q) return certAll;
+    return certAll.filter(function (c) {
+      return A.norm([c.code || '', c.holder_name || '', c.branch || '',
+                     c.cert_type || ''].join(' ')).indexOf(q) !== -1;
+    });
+  }
+
+  function paintCerts() {
+    var rows = certView();
+    $('certTag').textContent = A.toAr(rows.length) + ' شهادة';
+    $('certTitle').textContent = certTrunc()
+      ? ('أحدث ' + A.toAr(CAP) + ' شهادة (سقف الجلب)')
+      : 'الشهادات الصادرة';
+
+    if (!rows.length) {
+      var filtered = !!$('qc').value.trim();
+      certRows.innerHTML = '<tr><td colspan="8">' + A.emptyState(
+        filtered ? 'لا نتائج مطابقة' : 'لا شهادات صادرة بعد',
+        filtered
+          ? 'جرّب البحث برمز الشهادة أو باسم صاحبها.'
+          : 'تظهر الشهادة هنا فور إصدارها من زر «إصدار شهادة» لحساب موافَق عليه بدرجة 80٪ فأعلى.'
+      ) + '</td></tr>';
+      return;
+    }
+
+    /* تنبيه: API.certs() تُعيد score نصاً عربياً بعلامة ٪ و issued_at_ar جاهزاً،
+       فتمريرهما على toAr أو arDate ثانيةً يفسدهما — يُعرضان بالتهريب فقط. */
+    certRows.innerHTML = rows.map(function (c) {
+      var who = c.account_id
+        ? '<a class="link" href="admin-user-detail.html?id=' +
+            A.esc(encodeURIComponent(c.account_id)) + '">' + A.esc(c.holder_name) + '</a>'
+        : A.esc(c.holder_name);
+      var type = c.cert_type === 'تميّز'
+        ? '<span class="tag tag--gold">تميّز</span>'
+        : '<span class="tag tag--success">' + A.esc(c.cert_type) + '</span>';
+      return '<tr data-id="' + A.esc(c.id) + '">' +
+        '<td class="num strong adm-mono" dir="ltr" style="text-align:start">' + A.esc(c.code) + '</td>' +
+        '<td class="wrap">' + who + '</td>' +
+        '<td>' + A.esc(c.branch) + '</td>' +
+        '<td>' + type + '</td>' +
+        '<td class="num">' + A.esc(c.score) + '</td>' +
+        '<td>' + A.esc(c.issued_at_ar) + '</td>' +
+        '<td><a class="link" href="' +
+          A.esc((window.OSEA_VERIFY_BASE || 'verify.html') + '?code=' + encodeURIComponent(c.code)) +
+          '" target="_blank" rel="noopener">صفحة التحقق</a></td>' +
+        '<td><span class="res-acts">' +
+          '<button class="btn btn-outline btn-sm" data-act="revoke" data-write>سحب الشهادة</button>' +
+        '</span></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function onCertClick(e) {
+    var btn = e.target.closest('[data-act="revoke"]');
+    if (!btn) return;
+    var id = btn.closest('tr').getAttribute('data-id');
+    var c = certAll.filter(function (x) { return String(x.id) === String(id); })[0];
+    if (c) { askRevoke(c); }
+  }
+
+  /* السحب حذف نهائي في القاعدة يبطل رمز التحقق، فالسبب إلزامي عملياً:
+     إن تُرك فارغاً يُعاد طلبه بدل تمرير سحب بلا مبرّر إلى سجل التدقيق. */
+  function askRevoke(c) {
+    A.confirm({
+      title: 'سحب الشهادة',
+      danger: true,
+      okLabel: 'سحب الشهادة',
+      text: 'ستُسحب الشهادة ' + c.code + ' الصادرة باسم «' + c.holder_name + '» نهائياً، '
+          + 'ويصبح رمزها غير صالح في صفحة التحقق العلنية. يُحفظ السبب في سجل التدقيق باسمك.',
+      reason: 'سبب السحب (إلزامي)'
+    }).then(function (reason) {
+      if (reason === null) return;                       /* أُلغي */
+      if (typeof reason !== 'string' || !reason.trim()) {
+        A.toast('سبب السحب إلزامي — اكتب مبرّراً يُحفظ في سجل التدقيق.', 'bad');
+        askRevoke(c);
+        return;
+      }
+      API.admin.revokeCert(c.id, reason.trim()).then(function () {
+        A.toast('سُحبت الشهادة ' + c.code + '.', 'ok');
+        loadCerts();
+        loadOverview();
+      }).catch(function (e) { A.toast(A.errText(e), 'bad'); });
+    });
+  }
+
+  /* ---------------------------------------------------------------- الإصدار */
+  function openIssue() {
+    var btn = $('issueBtn');
+    btn.disabled = true; btn.textContent = 'جارٍ التحميل…';
+    /* قائمة الحسابات تُجلب عند فتح النموذج لا مع الصفحة: الإصدار عملية نادرة
+       ولا داعي لتحميل خمسمئة حساب في كل زيارة. */
+    API.admin.accounts({ status: 'approved', sort: 'name_asc', limit: 500, offset: 0 })
+      .then(function (d) {
+        var accs = (d && d.rows) || [];
+        if (!accs.length) {
+          A.sheet({
+            title: 'إصدار شهادة',
+            hideOk: true,
+            body: A.emptyState('لا حسابات موافَق عليها بعد',
+              'الشهادة لا تصدر إلا لحساب وافقت عليه الإدارة في صفحة الحسابات.')
+          });
+          return;
+        }
+        A.sheet({
+          title: 'إصدار شهادة',
+          okLabel: 'إصدار الشهادة',
+          body:
+            '<div class="notice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+              'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+              '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>' +
+              '<span><strong>شروط الإصدار</strong> — الحساب موافَق عليه، والدرجة لا تقل عن 80. ' +
+              'الدرجة 100 تصدر شهادة تميّز وما دونها حتى 80 تصدر شهادة نجاح. ' +
+              'رمز الشهادة يُولَّد تسلسلياً في الخادم ولا يُدخل يدوياً.</span></div>' +
+            '<div class="field"><label for="icAcc">الحساب</label>' +
+              '<select class="input" id="icAcc">' +
+                '<option value="">اختر حساباً موافَقاً عليه…</option>' +
+                accs.map(function (a) {
+                  return '<option value="' + A.esc(a.id) + '">' + A.esc(a.name) +
+                    ' — ' + A.esc(a.branch) + '</option>';
+                }).join('') +
+              '</select>' +
+              '<span class="hint">' + A.toAr(accs.length) + ' حساباً موافَقاً عليه.</span></div>' +
+            '<div class="field"><label for="icScore">الدرجة النهائية</label>' +
+              '<input class="input" id="icScore" type="number" dir="ltr" inputmode="numeric" ' +
+                'min="80" max="100" step="1" placeholder="95">' +
+              '<span class="hint">عدد صحيح بين 80 و100.</span></div>',
+          onOk: function (host) {
+            var acc = host.querySelector('#icAcc').value;
+            var score = parseInt(host.querySelector('#icScore').value, 10);
+            if (!acc) { return Promise.reject(new Error('اختر حساباً موافَقاً عليه أولاً.')); }
+            if (isNaN(score) || score < 80 || score > 100) {
+              return Promise.reject(new Error('الدرجة يجب أن تكون عدداً صحيحاً بين 80 و100.'));
+            }
+            return API.issueCert(acc, score).then(function (cert) {
+              A.toast('صدرت الشهادة ' + ((cert && cert.code) || '') +
+                ' باسم «' + ((cert && cert.holder_name) || '') + '».', 'ok');
+              loadCerts();
+              loadOverview();
+            }, function (e) { throw new Error(issueErr(e)); });
+          }
+        });
+      })
+      .catch(function (e) { A.toast(A.errText(e), 'bad'); })
+      .then(function () { btn.disabled = false; btn.textContent = 'إصدار شهادة'; });
+  }
+
+  /* رسائل issue_certificate إنكليزية في القاعدة — تُترجَم هنا لتصل المستخدم عربية */
+  function issueErr(e) {
+    var m = String((e && e.message) || '');
+    if (m.indexOf('not approved') !== -1) return 'الحساب غير موافَق عليه — لا تصدر شهادة قبل الموافقة الإدارية.';
+    if (m.indexOf('below pass') !== -1 || m.indexOf('دون حد النجاح') !== -1) return 'الدرجة أدنى من حدّ النجاح 80٪ — لا تصدر عنها شهادة.';
+    if (m.indexOf('not found') !== -1) return 'الحساب غير موجود — حدّث الصفحة ثم أعد المحاولة.';
+    if (m.indexOf('staff only') !== -1) return 'صلاحية الطاقم مطلوبة لإصدار الشهادات.';
+    return A.errText(e, 'تعذّر إصدار الشهادة');
+  }
+
+  /* ---------------------------------------------------------------- الصدق في السقف */
+  function paintCaps() {
+    /* العناوين تُحدَّث هنا أيضاً لأن المؤشرات قد تصل بعد الجدولين، فيتبيّن
+       حينها أن المئة المعروضة هي كل السجل ولا بتر أصلاً */
+    if (attAll.length) {
+      $('attTitle').textContent = attTrunc()
+        ? ('أحدث ' + A.toAr(CAP) + ' محاولة (سقف الجلب)') : 'المحاولات المسجّلة';
+      paintChart();                      /* سطر الرسم يذكر السقف والعدد الكلي معاً */
+    }
+    if (certAll.length) {
+      $('certTitle').textContent = certTrunc()
+        ? ('أحدث ' + A.toAr(CAP) + ' شهادة (سقف الجلب)') : 'الشهادات الصادرة';
+    }
+    $('attCap').hidden = !attTrunc();
+    if (attTrunc()) {
+      $('attCapText').innerHTML = '<strong>الجلب مسقوف</strong> — تُعرض أحدث ' + A.toAr(CAP) +
+        ' محاولة فقط' +
+        (totals.attempts != null
+          ? ' من أصل ' + A.toAr(totals.attempts) + ' محاولة مسجّلة، والأقدم غير معروضة ولا داخلة في الرسم.'
+          : '، وقد تكون هناك محاولات أقدم غير معروضة ولا داخلة في الرسم.');
+    }
+    $('certCap').hidden = !certTrunc();
+    if (certTrunc()) {
+      $('certCapText').innerHTML = '<strong>الجلب مسقوف</strong> — تُعرض أحدث ' + A.toAr(CAP) +
+        ' شهادة فقط' +
+        (totals.certs != null
+          ? ' من أصل ' + A.toAr(totals.certs) + ' شهادة صادرة.'
+          : '، وقد تكون هناك شهادات أقدم غير معروضة.');
+    }
+  }
+
+  /* ---------------------------------------------------------------- التصدير */
+  function exportAttempts() {
+    var rows = attView();
+    if (!rows.length) { A.toast('لا صفوف لتصديرها.', 'bad'); return; }
+    A.exportCsv('osea-attempts.csv',
+      ['الاسم', 'الفرع', 'الدرجة', 'الحكم', 'تميّز', 'المدة (ثانية)', 'التوقيت'],
+      rows.map(function (r) {
+        var a = r.accounts || {};
+        return [a.name || '', a.branch || '', r.score,
+                r.passed ? 'ناجح' : 'لم يجتز', r.distinction ? 'نعم' : 'لا',
+                r.duration_s == null ? '' : r.duration_s, r.taken_at || ''];
+      }));
+    A.toast('صُدّرت ' + A.toAr(rows.length) + ' محاولة.', 'ok');
+  }
+
+  function exportCerts() {
+    var rows = certView();
+    if (!rows.length) { A.toast('لا صفوف لتصديرها.', 'bad'); return; }
+    /* score وصل نصاً عربياً «92٪»: يُعاد إلى رقم لاتيني ليُحسب في الجداول */
+    A.exportCsv('osea-certificates.csv',
+      ['الرمز', 'صاحبها', 'الفرع', 'النوع', 'الدرجة', 'تاريخ الإصدار'],
+      rows.map(function (c) {
+        return [c.code || '', c.holder_name || '', c.branch || '', c.cert_type || '',
+                Number(A.norm(c.score).replace(/[^0-9]/g, '')) || 0, c.issued_at || ''];
+      }));
+    A.toast('صُدّرت ' + A.toAr(rows.length) + ' شهادة.', 'ok');
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>التقارير — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* أنماط الصفحة — بتوكنات الهوية حصراً */
+.rp-range{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px}
+.rp-range .field{margin:0}
+.rp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-block-start:18px}
+@media (max-width:1100px){.rp-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:560px){.rp-grid{grid-template-columns:1fr}}
+.rp-sec{margin-block-start:26px}
+.rp-sec h2{font-size:16.5px;display:flex;align-items:center;gap:10px}
+.rp-sec h2::after{content:'';flex:1;height:1px;background:var(--border)}
+.rp-table{width:100%;border-collapse:collapse;margin-block-start:12px;font-size:13.5px}
+.rp-table th,.rp-table td{padding:10px 12px;border:1px solid var(--border);text-align:start}
+.rp-table th{background:var(--navy-25);font-weight:700;color:var(--navy-800)}
+.rp-table td.num{font-family:var(--font-display);font-weight:700;color:var(--navy-800)}
+
+/* رأس الطباعة الرسمي — لا يظهر على الشاشة */
+.rp-print-head{display:none}
+@media print{
+  .masthead,.statebar,.navbar,.adm-nav,.rp-range,.rp-actions,.notice,footer{display:none !important}
+  .rp-print-head{display:flex;align-items:center;gap:16px;border-bottom:3px solid #D3A518;
+    padding-bottom:14px;margin-bottom:20px}
+  .rp-print-head img{width:64px;height:64px}
+  .rp-print-head b{font-size:18px}
+  .rp-print-head small{display:block;color:#555;margin-top:4px}
+  body{background:#fff}
+  .adm-kpi{border:1px solid #ccc !important;box-shadow:none !important}
+}
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <!-- رأس النسخة المطبوعة فقط -->
+      <div class="rp-print-head">
+        <img src="assets/img/logo-mark-192.png" alt="">
+        <span>
+          <b>نقابة المهندسين السوريين — المنصة الرسمية</b>
+          <small id="printMeta">تقرير المدة</small>
+        </span>
+      </div>
+
+      <div class="card rp-range">
+        <div class="field">
+          <span>من تاريخ</span>
+          <input class="input" id="rFrom" type="date">
+        </div>
+        <div class="field">
+          <span>إلى تاريخ</span>
+          <input class="input" id="rTo" type="date">
+        </div>
+        <button class="btn btn-primary" id="runBtn">إعداد التقرير</button>
+        <span class="spacer"></span>
+        <span class="rp-actions" style="display:flex;gap:10px">
+          <button class="btn btn-outline" id="printBtn" disabled>طباعة</button>
+          <button class="btn btn-outline" id="csvBtn" disabled>تصدير Excel</button>
+        </span>
+      </div>
+
+      <div id="body">
+        <div class="adm-state" style="margin-block-start:30px">
+          <p>اختر المدة ثم «إعداد التقرير» — افتراضياً الشهر الحالي.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+  var $ = function (id) { return document.getElementById(id); };
+  var last = null;   /* آخر تقرير — للطباعة والتصدير */
+  var seq = 0;       /* يهمل الردود المتقاطعة عند تغيير المدة السريع */
+
+  var SVC = {
+    'exam': 'امتحان — محاولة أولى', 'exam-re': 'إعادة امتحان',
+    'book-m': 'اشتراك شهري بكتاب', 'book-y': 'اشتراك سنوي بكتاب'
+  };
+  function amt(n) {
+    return A.toAr(String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+  }
+
+  A.boot({
+    page: 'reports',
+    title: 'التقارير',
+    lead: 'أرقام المدة جاهزة للوزارة والمجلس: التسجيلات والامتحانات والشهادات '
+        + 'والإيراد والأكواد — بضغطة، وبنسخة مطبوعة بترويسة النقابة.',
+    crumb: 'التقارير'
+  }).then(function (st) {
+    if (!st) { return; }
+    /* افتراضياً: الشهر الحالي حتى اليوم */
+    var now = new Date();
+    var first = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+    /* اليوم بالتوقيت المحلي — toISOString تعتمد UTC فتنقص يوماً بعد منتصف الليل */
+    var today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') +
+                '-' + String(now.getDate()).padStart(2, '0');
+    $('rFrom').value = first;
+    $('rTo').value = today;
+    $('runBtn').addEventListener('click', run);
+    /* تصفية فورية عند تغيير المدة — كبقية مرشّحات اللوحة، والزر يبقى تحديثاً صريحاً */
+    $('rFrom').addEventListener('change', run);
+    $('rTo').addEventListener('change', run);
+    $('printBtn').addEventListener('click', function () { window.print(); });
+    $('csvBtn').addEventListener('click', exportCsv);
+    run();
+  });
+
+  function kpi(label, num, hint, cls) {
+    return '<div class="adm-kpi' + (cls ? ' ' + cls : '') + '">' +
+      '<span class="adm-kpi-label">' + A.esc(label) + '</span>' +
+      '<b class="adm-kpi-num">' + num + '</b>' +
+      '<span class="adm-kpi-hint">' + A.esc(hint) + '</span></div>';
+  }
+
+  function run() {
+    var from = $('rFrom').value, to = $('rTo').value;
+    /* رفع العدّاد قبل فحص الصلاحية: مدة غير صالحة تُبطل أيضاً أي رد قديم في الطريق */
+    if (!from || !to) { seq++; A.toast('حدّد طرفي المدة.', 'bad'); return; }
+    if (to < from) { seq++; A.toast('نهاية المدة قبل بدايتها.', 'bad'); return; }
+    var my = ++seq;
+    $('body').innerHTML = '<div class="adm-state"><p>جارٍ إعداد التقرير…</p></div>';
+
+    API.admin.report(from, to).then(function (d) {
+      if (my !== seq) { return; }
+      last = d;
+      $('printBtn').disabled = false;
+      $('csvBtn').disabled = false;
+      $('printMeta').textContent = 'تقرير المدة من ' + A.arDate(from) + ' إلى ' + A.arDate(to)
+        + ' — أُعدّ في ' + A.arDateTime(new Date().toISOString());
+      render(d);
+    }).catch(function (e) {
+      if (my !== seq) { return; }
+      /* errorState تعيد adm-state كاملة — لفّها بأخرى كان يضاعف الإطار */
+      $('body').innerHTML = A.errorState(A.errText(e), 'rpRetry');
+      var rb = $('rpRetry');
+      if (rb) { rb.addEventListener('click', run); }
+    });
+  }
+
+  function render(d) {
+    var a = d.accounts || {}, x = d.exams || {}, c = d.certificates || {},
+        r = d.revenue || {}, k = d.codes || {};
+
+    var bySvc = (r.by_service || []).map(function (s) {
+      return '<tr><td>' + A.esc(SVC[s.service] || s.service || 'غير محدد') + '</td>' +
+        '<td class="num">' + A.toAr(s.count) + '</td>' +
+        '<td class="num">' + amt(s.amount) + ' ل.س</td></tr>';
+    }).join('') || '<tr><td colspan="3">لا إيراد مدقَّقاً في هذه المدة.</td></tr>';
+
+    $('body').innerHTML =
+      /* المدة المطبَّقة فعلاً كما ردّدها الخادم — كانت تظهر في الطباعة فقط
+         فبدا المرشّح معطّلاً على الشاشة */
+      '<p style="margin-block-start:16px;font-size:13.5px;color:var(--text-secondary)">' +
+        'تقرير المدة من <b>' + A.arDate(d.range && d.range.from) + '</b> إلى <b>' +
+        A.arDate(d.range && d.range.to) + '</b></p>' +
+      '<div class="rp-grid">' +
+        kpi('انتسابات جديدة', A.toAr(a.new_in_range | 0), 'طلبات وصلت خلال المدة', '') +
+        kpi('محاولات الامتحان', A.toAr(x.attempts | 0),
+            'نجح ' + A.toAr(x.passed | 0) + ' — نسبة ' + A.toAr(x.pass_rate | 0) + '٪', '') +
+        kpi('شهادات صادرة', A.toAr(c.issued | 0),
+            'منها ' + A.toAr(c.distinction | 0) + ' تميّز', 'adm-kpi--gold') +
+        kpi('إيراد مدقَّق', amt(r.verified_amount | 0) + ' <span class="pay-unit">ل.س</span>',
+            A.toAr(r.verified_count | 0) + ' دفعة مقبولة', 'adm-kpi--gold') +
+      '</div>' +
+
+      '<div class="rp-sec"><h2>الحسابات <span style="font-size:12.5px;font-weight:400;' +
+        'color:var(--text-secondary)">— إجمالي تراكمي لا يتبع المدة</span></h2>' +
+        '<table class="rp-table"><tr>' +
+          '<th>إجمالي الحسابات</th><th>مفعّلة</th><th>قيد المراجعة</th><th>مرفوضة</th></tr>' +
+        '<tr><td class="num">' + A.toAr(a.total | 0) + '</td>' +
+        '<td class="num">' + A.toAr(a.approved | 0) + '</td>' +
+        '<td class="num">' + A.toAr(a.pending | 0) + '</td>' +
+        '<td class="num">' + A.toAr(a.rejected | 0) + '</td></tr></table></div>' +
+
+      '<div class="rp-sec"><h2>الامتحانات خلال المدة</h2>' +
+        '<table class="rp-table"><tr>' +
+          '<th>المحاولات</th><th>الناجحون (80٪+)</th><th>نسبة النجاح</th>' +
+          '<th>متوسط الدرجات</th><th>علامة كاملة</th></tr>' +
+        '<tr><td class="num">' + A.toAr(x.attempts | 0) + '</td>' +
+        '<td class="num">' + A.toAr(x.passed | 0) + '</td>' +
+        '<td class="num">' + A.toAr(x.pass_rate | 0) + '٪</td>' +
+        '<td class="num">' + A.toAr(x.avg_score | 0) + '٪</td>' +
+        '<td class="num">' + A.toAr(x.distinction | 0) + '</td></tr></table></div>' +
+
+      '<div class="rp-sec"><h2>الإيراد بحسب الخدمة</h2>' +
+        '<table class="rp-table"><tr><th>الخدمة</th><th>عدد الدفعات</th><th>المبلغ</th></tr>' +
+        bySvc + '</table>' +
+        '<p style="font-size:12px;color:var(--text-secondary);margin-block-start:8px">' +
+          'قيد التدقيق: ' + A.toAr(r.pending_count | 0) +
+          ' · مرفوضة: ' + A.toAr(r.rejected_count | 0) + '</p></div>' +
+
+      '<div class="rp-sec"><h2>الأكواد والمحتوى</h2>' +
+        '<table class="rp-table"><tr>' +
+          '<th>أكواد صادرة</th><th>أكواد مستردَّة</th>' +
+          '<th>أخبار منشورة</th><th>دروس أُتمّت</th></tr>' +
+        '<tr><td class="num">' + A.toAr(k.issued | 0) + '</td>' +
+        '<td class="num">' + A.toAr(k.redeemed | 0) + '</td>' +
+        '<td class="num">' + A.toAr(d.news_published | 0) + '</td>' +
+        '<td class="num">' + A.toAr(d.lessons_completed | 0) + '</td></tr></table></div>';
+  }
+
+  function exportCsv(  ) {
+    if (!last) { return; }
+    var a = last.accounts || {}, x = last.exams || {}, c = last.certificates || {},
+        r = last.revenue || {}, k = last.codes || {};
+    var rows = [
+      ['من', last.range.from], ['إلى', last.range.to],
+      ['انتسابات جديدة', a.new_in_range], ['إجمالي الحسابات', a.total],
+      ['حسابات مفعلة', a.approved], ['قيد المراجعة', a.pending], ['مرفوضة', a.rejected],
+      ['محاولات الامتحان', x.attempts], ['الناجحون', x.passed],
+      ['نسبة النجاح ٪', x.pass_rate], ['متوسط الدرجات', x.avg_score],
+      ['شهادات صادرة', c.issued], ['شهادات تميز', c.distinction],
+      ['دفعات مدققة', r.verified_count], ['الإيراد المدقق ل.س', r.verified_amount],
+      ['دفعات قيد التدقيق', r.pending_count], ['دفعات مرفوضة', r.rejected_count],
+      ['أكواد صادرة', k.issued], ['أكواد مستردة', k.redeemed],
+      ['أخبار منشورة', last.news_published], ['دروس أتمت', last.lessons_completed]
+    ];
+    (last.revenue.by_service || []).forEach(function (s) {
+      rows.push(['إيراد: ' + (SVC[s.service] || s.service), s.amount]);
+    });
+    A.exportCsv('osea-report-' + last.range.from + '-' + last.range.to + '.csv', ['البند', 'القيمة'], rows);
+  }
+})();
+</script>
+</body>
+</html>

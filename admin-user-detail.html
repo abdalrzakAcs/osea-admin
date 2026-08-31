@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ملف العضو — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* أنماط خاصة بالصفحة — بتوكنز الهوية حصراً */
+
+/* اسم العضو ترويسةُ بطاقةِ الهوية، فيكبر قليلاً عن عناوين الجداول */
+#idCard .adm-table-head h2{font-size:18px}
+.prof-tags{display:flex;flex-wrap:wrap;gap:7px}
+.prof-body{padding:18px}
+.prof-acts{display:flex;flex-wrap:wrap;gap:8px}
+
+/* صف الإجمالي في جدول المدفوعات: يُقرأ كخلاصة لا كعملية */
+.adm-table tr.tot td{
+  font-weight:700;color:var(--navy-800);background:var(--navy-25);
+  border-block-start:2px solid var(--border);
+}
+.adm-table tr.tot td:first-child{color:var(--text-secondary);font-weight:600}
+
+/* ‎.adm-stack‎ تفرض display:grid فتتغلّب على [hidden] — والإخفاء هنا شرط
+   ألّا يومض الهيكل الفارغ قبل وصول البيانات أو مع حالة الخطأ */
+#wrap[hidden]{display:none}
+
+/* رقم تسلسلي صغير للمحاولات والدروس */
+.seq{
+  display:inline-grid;place-items:center;width:26px;height:26px;
+  background:var(--cream-100);color:var(--navy-700);border-radius:var(--radius-tool,8px);
+  font-weight:700;font-size:13px;
+}
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <!-- حالة الصفحة: التحميل، أو غياب المعرّف، أو تعذّر الجلب -->
+      <div id="pageState" role="status" aria-live="polite"></div>
+
+      <div id="wrap" hidden class="adm-stack">
+
+        <!-- شريط الإجراءات: يُبنى بعد معرفة الحالة فالموافقة لا تُعرض لموافَق عليه -->
+        <div class="adm-bar" style="margin:0">
+          <a class="btn btn-outline btn-sm" href="admin-users.html">العودة إلى جدول الحسابات</a>
+          <span class="spacer"></span>
+          <span class="prof-acts" id="actBtns"></span>
+        </div>
+
+        <!-- تنبيه الإيقاف المؤقت: يظهر فقط ما دام locked_until مستقبلاً -->
+        <div class="notice notice--error" id="lockNotice" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span id="lockText"></span>
+        </div>
+
+        <!-- بطاقة الهوية -->
+        <div class="adm-table-card" id="idCard">
+          <div class="adm-table-head">
+            <h2 id="pName">—</h2>
+            <span class="prof-tags" id="pTags"></span>
+            <span class="spacer"></span>
+            <span class="tag" id="pIdTag"></span>
+          </div>
+          <div class="prof-body">
+            <dl class="adm-kv" id="pKv"></dl>
+          </div>
+        </div>
+
+        <!-- بطاقات الملخّص الأربع -->
+        <div class="adm-kpis">
+          <div class="adm-kpi">
+            <span class="adm-kpi-label">الدروس المكتملة</span>
+            <b class="adm-kpi-num" id="kLessons">—</b>
+            <span class="adm-kpi-hint" id="kLessonsHint">—</span>
+          </div>
+          <div class="adm-kpi adm-kpi--gold">
+            <span class="adm-kpi-label">محاولات الامتحان</span>
+            <b class="adm-kpi-num" id="kAttempts">—</b>
+            <span class="adm-kpi-hint" id="kAttemptsHint">—</span>
+          </div>
+          <div class="adm-kpi adm-kpi--warm">
+            <span class="adm-kpi-label">إجمالي المدفوع (ل.س)</span>
+            <b class="adm-kpi-num" id="kPaid">—</b>
+            <span class="adm-kpi-hint" id="kPaidHint">—</span>
+          </div>
+          <div class="adm-kpi">
+            <span class="adm-kpi-label">الشهادات</span>
+            <b class="adm-kpi-num" id="kCerts">—</b>
+            <span class="adm-kpi-hint" id="kCertsHint">—</span>
+          </div>
+        </div>
+
+        <!-- الدروس: الكتالوج الحيّ هو المرجع لا قائمة مكتوبة في الملفات -->
+        <div class="adm-table-card">
+          <div class="adm-table-head">
+            <h2>سجل الدروس التدريبية</h2>
+            <span class="spacer"></span>
+            <span class="tag" id="lessonsTag">—</span>
+          </div>
+          <div class="adm-scroll">
+            <table class="adm-table">
+              <thead>
+                <tr>
+                  <th>الدرس</th>
+                  <th>المدة المشاهَدة</th>
+                  <th>الحالة</th>
+                  <th>آخر تحديث</th>
+                </tr>
+              </thead>
+              <tbody id="lessonRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- المحاولات -->
+        <div class="adm-table-card">
+          <div class="adm-table-head">
+            <h2>محاولات الامتحان</h2>
+            <span class="spacer"></span>
+            <span class="tag" id="attemptsTag">—</span>
+          </div>
+          <div class="adm-scroll">
+            <table class="adm-table">
+              <thead>
+                <tr>
+                  <th style="width:56px">#</th>
+                  <th>الدرجة</th>
+                  <th>الحكم</th>
+                  <th>مدة الجلسة</th>
+                  <th>التوقيت</th>
+                  <th>إجراء</th>
+                </tr>
+              </thead>
+              <tbody id="attemptRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- المدفوعات -->
+        <div class="adm-table-card">
+          <div class="adm-table-head">
+            <h2>عمليات الدفع</h2>
+            <span class="spacer"></span>
+            <span class="tag" id="paymentsTag">—</span>
+          </div>
+          <div class="adm-scroll">
+            <table class="adm-table">
+              <thead>
+                <tr>
+                  <th>رقم العملية</th>
+                  <th>النوع</th>
+                  <th>المبلغ</th>
+                  <th>التوقيت</th>
+                  <th>إجراء</th>
+                </tr>
+              </thead>
+              <tbody id="paymentRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- الشهادات -->
+        <div class="adm-table-card">
+          <div class="adm-table-head">
+            <h2>الشهادات الصادرة</h2>
+            <span class="spacer"></span>
+            <span class="tag" id="certsTag">—</span>
+          </div>
+          <div class="adm-scroll">
+            <table class="adm-table">
+              <thead>
+                <tr>
+                  <th>رمز الشهادة</th>
+                  <th>النوع</th>
+                  <th>النسبة</th>
+                  <th>تاريخ الإصدار</th>
+                  <th>التحقق</th>
+                  <th>إجراء</th>
+                </tr>
+              </thead>
+              <tbody id="certRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- سجل وصول المحتوى وسجل التدقيق -->
+        <div class="adm-grid-2">
+          <div class="adm-table-card">
+            <div class="adm-table-head">
+              <h2>آخر ما فتحه من محتوى</h2>
+              <span class="spacer"></span>
+              <span class="tag" id="accessTag">—</span>
+            </div>
+            <div class="adm-scroll">
+              <table class="adm-table">
+                <thead>
+                  <tr>
+                    <th>التوقيت</th>
+                    <th>المادة</th>
+                  </tr>
+                </thead>
+                <tbody id="accessRows"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="adm-table-card">
+            <div class="adm-table-head">
+              <h2>سجل التدقيق على الحساب</h2>
+              <span class="spacer"></span>
+              <span class="tag" id="auditTag">—</span>
+            </div>
+            <div class="adm-scroll">
+              <table class="adm-table">
+                <thead>
+                  <tr>
+                    <th>التوقيت</th>
+                    <th>الإجراء</th>
+                    <th>المنفّذ</th>
+                    <th>التفصيل</th>
+                  </tr>
+                </thead>
+                <tbody id="auditRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  var STATUS = {
+    pending:  { label: 'بانتظار الموافقة', cls: 'tag--gold' },
+    approved: { label: 'موافَق عليه',       cls: 'tag--success' },
+    rejected: { label: 'مرفوض',             cls: 'tag--error' }
+  };
+
+  /* فروع النقابة كما في استمارة التسجيل. الملف نداء واحد بحكم التصميم فلا
+     يجلب قائمة الفروع من الخادم — وفرع الحساب يُضاف إن كان خارجها كي لا
+     يُبدَّل صامتاً عند الحفظ. */
+  var BRANCHES = ['دمشق', 'ريف دمشق', 'حلب', 'حمص', 'حماة', 'اللاذقية', 'طرطوس',
+                  'دير الزور', 'الرقة', 'الحسكة', 'درعا', 'السويداء', 'القنيطرة', 'إدلب'];
+
+  /* أفعال سجل التدقيق كما تكتبها القاعدة → عربية مقروءة */
+  var ACTIONS = {
+    'edit': 'تعديل بيانات', 'delete': 'حذف', 'revoke': 'سحب شهادة',
+    'bulk:approved': 'موافقة', 'bulk:rejected': 'رفض', 'bulk:pending': 'إعادة نظر'
+  };
+
+  var id = new URLSearchParams(window.location.search).get('id') || '';
+  var P = null;                                  /* آخر ملف مُحمَّل */
+  var $ = function (x) { return document.getElementById(x); };
+  var stateEl, wrap;
+
+  A.boot({
+    page: 'users',
+    title: 'ملف العضو',
+    lead: 'السجل الكامل لحساب واحد: بياناته وقرار الإدارة عليه، ودروسه ومحاولاته '
+        + 'ومدفوعاته وشهاداته، مع كل إجراء إداري يمكن اتخاذه عليه من هنا مباشرة.',
+    crumb: 'ملف العضو'
+  }).then(function (st) {
+    if (!st) return;
+    stateEl = $('pageState'); wrap = $('wrap');
+    /* غياب المعرّف ليس خطأ تحميل بل فتحٌ خاطئ للصفحة — رسالة مختلفة وطريق عودة */
+    if (!id) { return noId(); }
+    wire();
+    load();
+  });
+
+  function wire() {
+    $('actBtns').addEventListener('click', onAction);
+    $('attemptRows').addEventListener('click', onAttemptClick);
+    $('paymentRows').addEventListener('click', onPaymentClick);
+    $('certRows').addEventListener('click', onCertClick);
+  }
+
+  /* ---------------------------------------------------------------- الحالات */
+  function noId() {
+    wrap.hidden = true;
+    stateEl.innerHTML =
+      '<div class="adm-table-card"><div class="adm-state">' + A.ICONS.bad +
+        '<h3>لم يُحدَّد أي عضو</h3>' +
+        '<p>يُفتح هذا الملف بمعرّف الحساب في العنوان <span dir="ltr">?id=</span> — ' +
+        'افتحه من جدول الحسابات بالنقر على اسم العضو.</p>' +
+        '<a class="btn btn-outline btn-sm" href="admin-users.html">الذهاب إلى جدول الحسابات</a>' +
+      '</div></div>';
+  }
+
+  function load() {
+    stateEl.innerHTML = '<div class="adm-table-card"><div class="adm-state"><p>جارٍ تحميل الملف…</p></div></div>';
+    wrap.hidden = true;
+    API.admin.profile(id).then(function (d) {
+      P = d || {};
+      if (!P.account) { throw new Error('لا حساب بهذا المعرّف — ربما حُذف السجل.'); }
+      stateEl.innerHTML = '';
+      wrap.hidden = false;
+      paintHead();
+      paintActions();
+      paintKpis();
+      paintLessons();
+      paintAttempts();
+      paintPayments();
+      paintCerts();
+      paintAccess();
+      paintAudit();
+    }).catch(function (e) {
+      wrap.hidden = true;
+      stateEl.innerHTML = '<div class="adm-table-card">' + A.errorState(A.errText(e), 'retry') +
+        '<div class="adm-pager"><span class="spacer"></span>' +
+        '<a class="btn btn-outline btn-sm" href="admin-users.html">العودة إلى جدول الحسابات</a></div></div>';
+      var r = $('retry'); if (r) { r.addEventListener('click', load); }
+    });
+  }
+
+  /* تمييز العدد العربي: المفرد والمثنى بلا رقم، و3–10 جمعٌ، وما فوقها مفرد منصوب.
+     بدونه تُكتب «1 محاولات» و«11 محاولات» وكلاهما خطأ في نص رسمي. */
+  function count(n, one, two, few, many) {
+    if (n === 1) { return one; }
+    if (n === 2) { return two; }
+    return A.toAr(n) + ' ' + (n >= 3 && n <= 10 ? few : many);
+  }
+
+  /* ---------------------------------------------------------------- الهوية */
+  function kv(dt, dd, sub) {
+    return '<dt>' + A.esc(dt) + '</dt><dd>' + dd +
+      (sub ? '<span class="adm-sub">' + sub + '</span>' : '') + '</dd>';
+  }
+  function ltr(v) {
+    return v ? '<span class="adm-mono" dir="ltr">' + A.esc(v) + '</span>' : '—';
+  }
+
+  function paintHead() {
+    var a = P.account;
+    var s = STATUS[a.status] || { label: a.status, cls: '' };
+
+    document.title = a.name + ' — ملف العضو | لوحة الإدارة | نقابة المهندسين السوريين';
+    $('pName').textContent = a.name;
+    /* اسم العضو في مسار التنقل: القشرة تكتب «ملف العضو» قبل وصول البيانات */
+    var crumb = document.querySelector('.breadcrumb [aria-current="page"]');
+    if (crumb) { crumb.textContent = a.name; }
+
+    $('pTags').innerHTML =
+      '<span class="tag ' + s.cls + '">' + A.esc(s.label) + '</span>' +
+      (a.exempt ? '<span class="tag tag--gold">معفى من الرسوم</span>' : '') +
+      (a.has_password ? '' : '<span class="tag tag--error">بلا كلمة مرور</span>');
+    /* أول ثماني خانات من المعرّف تكفي للمطابقة مع السجلات بلا سطر طويل */
+    $('pIdTag').innerHTML = 'معرّف الحساب <span dir="ltr">' +
+      A.esc(String(a.id || '').slice(0, 8)) + '</span>';
+
+    var contact = a.contact_method === 'email' ? a.email : a.phone;
+    var parts = [
+      kv('الرقم النقابي', ltr(a.synd_no)),
+      kv('رقم الهوية الوطنية', ltr(a.national_id)),
+      kv('الفرع النقابي', A.esc(a.branch || '—')),
+      kv('وسيلة التواصل', ltr(contact),
+         a.contact_method === 'email' ? 'وسيلة التأكيد: البريد الإلكتروني' : 'وسيلة التأكيد: الموبايل'),
+      kv('تاريخ التسجيل', A.arDateTime(a.created_at)),
+      kv('آخر دخول', a.last_login_at ? A.arDateTime(a.last_login_at) : 'لم يسجّل دخولاً بعد'),
+      kv('كلمة المرور', a.has_password
+        ? 'مضبوطة'
+        : '<span class="adm-danger">غير مضبوطة</span>',
+        a.has_password ? null : 'يتعذّر على العضو الدخول حتى تُعيَّن له كلمة مرور.'),
+      kv('الإعفاء من الرسوم', a.exempt ? 'معفى' : 'غير معفى',
+         a.exempt ? 'لا تُحتسب مدفوعاته ضمن الإيرادات.' : null),
+      kv('قرار الإدارة الأخير',
+         a.decided_at ? A.arDateTime(a.decided_at) : 'لا قرار مسجّل بعد',
+         a.decided_by ? 'بمعرّف الموظف <span dir="ltr">' + A.esc(String(a.decided_by).slice(0, 8)) + '</span>' : null)
+    ];
+    if (a.note) {
+      parts.push(kv(a.status === 'rejected' ? 'سبب الرفض' : 'ملاحظة إدارية', A.esc(a.note)));
+    }
+    if ((a.failed_logins | 0) > 0) {
+      parts.push(kv('محاولات دخول فاشلة', A.toAr(a.failed_logins | 0),
+        'تُصفَّر تلقائياً عند أول دخول ناجح أو عند إعادة تعيين كلمة المرور.'));
+    }
+    $('pKv').innerHTML = parts.join('');
+
+    /* الإيقاف مؤقت بطبيعته: التنبيه يُقاس على الآن لا على وجود القيمة */
+    var locked = a.locked_until && new Date(a.locked_until) > new Date();
+    $('lockNotice').hidden = !locked;
+    if (locked) {
+      $('lockText').textContent =
+        'الدخول موقوف مؤقتاً حتى ' + A.arDateTime(a.locked_until) + ' بعد ' +
+        A.toAr(a.failed_logins | 0) + ' محاولة دخول فاشلة. ' +
+        'إعادة تعيين كلمة المرور تُلغي الإيقاف فوراً.';
+    }
+  }
+
+  /* ---------------------------------------------------------------- الإجراءات */
+  function paintActions() {
+    var a = P.account, b = [];
+    if (a.status !== 'approved') {
+      b.push('<button class="btn btn-primary btn-sm" data-act="approve" data-write>موافقة</button>');
+    }
+    if (a.status !== 'rejected') {
+      b.push('<button class="btn btn-outline btn-sm" data-act="reject" data-write>رفض بسبب</button>');
+    }
+    if (a.status !== 'pending') {
+      b.push('<button class="btn btn-outline btn-sm" data-act="reconsider" data-write>إعادة النظر</button>');
+    }
+    b.push('<button class="btn btn-outline btn-sm" data-act="edit" data-write>تعديل البيانات</button>');
+    b.push('<button class="btn btn-outline btn-sm" data-act="pw" data-write>إعادة تعيين كلمة المرور</button>');
+    b.push('<button class="btn btn-danger btn-sm" data-act="del" data-write>حذف الحساب</button>');
+    $('actBtns').innerHTML = b.join('');
+  }
+
+  /* كل إجراء ناجح ينتهي بإعادة تحميل الملف: الأرقام والسجلات تتغيّر معاً */
+  function act(promise, okMsg) {
+    return promise.then(function () { A.toast(okMsg, 'ok'); load(); })
+                  .catch(function (e) { A.toast(A.errText(e), 'bad'); });
+  }
+
+  function onAction(e) {
+    var btn = e.target.closest('[data-act]');
+    if (!btn || !P) return;
+    var a = P.account, act_ = btn.getAttribute('data-act');
+
+    if (act_ === 'approve') {
+      return act(API.admin.bulkStatus([id], 'approved', null), 'تمت الموافقة على «' + a.name + '».');
+    }
+    if (act_ === 'reconsider') {
+      return act(API.admin.bulkStatus([id], 'pending', null), 'أُعيد «' + a.name + '» إلى الانتظار.');
+    }
+    if (act_ === 'reject') {
+      return A.confirm({
+        title: 'رفض الطلب', danger: true, okLabel: 'رفض الطلب',
+        text: 'سيُرفض طلب «' + a.name + '». يظهر السبب للعضو داخل التطبيق.',
+        reason: 'سبب الرفض (اختياري)'
+      }).then(function (reason) {
+        if (reason === null) return;
+        act(API.admin.bulkStatus([id], 'rejected', reason || null), 'رُفض طلب «' + a.name + '».');
+      });
+    }
+    if (act_ === 'edit') { return openEdit(); }
+    if (act_ === 'pw')   { return openPassword(); }
+    if (act_ === 'del')  { return askDelete(); }
+  }
+
+  function openEdit() {
+    var a = P.account;
+    var list = BRANCHES.slice();
+    if (a.branch && list.indexOf(a.branch) === -1) { list.unshift(a.branch); }
+    var branches = list.map(function (b) {
+      return '<option value="' + A.esc(b) + '"' + (b === a.branch ? ' selected' : '') +
+        '>' + A.esc(b) + '</option>';
+    }).join('');
+
+    A.sheet({
+      title: 'تعديل بيانات الحساب',
+      okLabel: 'حفظ التعديلات',
+      body:
+        '<div class="field"><label for="eName">الاسم الثلاثي</label>' +
+          '<input class="input" id="eName" value="' + A.esc(a.name) + '" maxlength="120"></div>' +
+        '<div class="field"><label for="eSynd">الرقم النقابي</label>' +
+          '<input class="input" id="eSynd" dir="ltr" value="' + A.esc(a.synd_no || '') + '"></div>' +
+        '<div class="field"><label for="eNid">رقم الهوية الوطنية</label>' +
+          '<input class="input" id="eNid" dir="ltr" value="' + A.esc(a.national_id || '') + '"></div>' +
+        '<div class="field"><label for="eBranch">الفرع النقابي</label>' +
+          '<select class="input" id="eBranch">' + branches + '</select></div>' +
+        '<div class="field"><label for="ePhone">رقم الموبايل</label>' +
+          '<input class="input" id="ePhone" dir="ltr" value="' + A.esc(a.phone || '') + '"></div>' +
+        '<div class="field"><label for="eEmail">البريد الإلكتروني</label>' +
+          '<input class="input" id="eEmail" dir="ltr" value="' + A.esc(a.email || '') + '"></div>' +
+        '<div class="field"><label style="display:flex;align-items:center;gap:9px;cursor:pointer">' +
+          '<input class="adm-check" type="checkbox" id="eExempt"' + (a.exempt ? ' checked' : '') + '>' +
+          'معفى من الرسوم</label>' +
+          '<span class="adm-sub">الإعفاء يستثني الحساب من احتساب الإيرادات.</span></div>' +
+        '<div class="field"><label for="eNote">ملاحظة إدارية</label>' +
+          '<input class="input" id="eNote" value="' + A.esc(a.note || '') + '" maxlength="200"></div>' +
+        '<div class="notice"><span>تغيير هذه الحقول يُسجَّل في سجل التدقيق باسمك، ويظهر أسفل هذه الصفحة.</span></div>',
+      onOk: function (host) {
+        var g = function (x) { return host.querySelector('#' + x).value.trim(); };
+        return API.admin.updateAccount(id, {
+          name: g('eName'), synd_no: g('eSynd'), national_id: g('eNid'),
+          branch: host.querySelector('#eBranch').value,
+          phone: g('ePhone'), email: g('eEmail'),
+          exempt: host.querySelector('#eExempt').checked,
+          note: g('eNote')
+        }).then(function () {
+          A.toast('حُفظت تعديلات «' + g('eName') + '».', 'ok');
+          load();
+        });
+      }
+    });
+  }
+
+  function openPassword() {
+    A.sheet({
+      title: 'إعادة تعيين كلمة مرور العضو',
+      okLabel: 'تعيين كلمة المرور',
+      body:
+        '<div class="field"><label for="pw1">كلمة المرور الجديدة</label>' +
+          '<input class="input" id="pw1" type="password" dir="ltr" autocomplete="new-password">' +
+          '<span class="hint">ثماني خانات على الأقل.</span></div>' +
+        '<div class="field"><label for="pw2">تأكيد كلمة المرور</label>' +
+          '<input class="input" id="pw2" type="password" dir="ltr" autocomplete="new-password"></div>' +
+        '<div class="notice"><span>لا تُعرض كلمة المرور بعد الحفظ ولا تُخزَّن نصاً — سلّمها للعضو ' +
+          'بوسيلة موثوقة. يُصفَّر معها عدّاد المحاولات الفاشلة ويُلغى أي إيقاف مؤقت.</span></div>',
+      onOk: function (host) {
+        var p1 = host.querySelector('#pw1').value;
+        var p2 = host.querySelector('#pw2').value;
+        /* التحقق هنا وفي القاعدة معاً: هذا للراحة، والقاعدة هي الحارس */
+        if (p1.length < 8) { return Promise.reject(new Error('كلمة المرور ثماني خانات على الأقل.')); }
+        if (p1 !== p2) { return Promise.reject(new Error('الحقلان غير متطابقين.')); }
+        return API.admin.resetPassword(id, p1).then(function () {
+          A.toast('عُيّنت كلمة مرور جديدة لـ«' + P.account.name + '».', 'ok');
+          load();
+        });
+      }
+    });
+  }
+
+  function askDelete() {
+    var a = P.account;
+    A.confirm({
+      title: 'حذف الحساب نهائياً', danger: true, okLabel: 'حذف الحساب',
+      text: 'سيُحذف حساب «' + a.name + '» ومعه كل ما ارتبط به: محاولات الامتحان ' +
+            'وعمليات الدفع وتقدّم الدروس وسجل وصوله للمحتوى. الشهادات الصادرة تبقى في ' +
+            'سجل التحقق العام لكنها تفقد ارتباطها بالحساب. لا يمكن التراجع عن هذا الإجراء.'
+    }).then(function (r) {
+      if (r === null) return;
+      API.admin.deleteAccount(id).then(function () {
+        A.toast('حُذف حساب «' + a.name + '».', 'ok');
+        /* لا ملف بعد الحذف: العودة إلى الجدول بعد لحظة تكفي لقراءة التنبيه */
+        setTimeout(function () { window.location.replace('admin-users.html'); }, 900);
+      }).catch(function (e) { A.toast(A.errText(e), 'bad'); });
+    });
+  }
+
+  /* ---------------------------------------------------------------- الملخّص */
+  function paintKpis() {
+    var cat = P.catalog_lessons || [], les = P.lessons || [];
+    var att = P.attempts || [], pays = P.payments || [], certs = P.certs || [];
+
+    /* البسط من الكتالوج وحده وإلا صار «2 من 3» لمن أتمّ درساً محذوفاً منه */
+    var inCat = Object.create(null);
+    cat.forEach(function (c) { inCat[c.id] = 1; });
+    var doneCat = les.filter(function (l) { return l.done && inCat[l.lesson_id]; }).length;
+    var doneOut = les.filter(function (l) { return l.done && !inCat[l.lesson_id]; }).length;
+    $('kLessons').textContent = A.toAr(doneCat) + ' / ' + A.toAr(cat.length);
+    $('kLessonsHint').textContent = (cat.length
+      ? 'من أصل ' + count(cat.length, 'درس واحد', 'درسين', 'دروس', 'درساً') +
+        ' في كتالوج المحتوى المفعّل'
+      : 'لا دروس مفعّلة في كتالوج المحتوى') +
+      (doneOut ? '، وله ' + count(doneOut, 'درس مكتمل خارجه', 'درسان مكتملان خارجه',
+                                  'دروس مكتملة خارجه', 'درساً مكتملاً خارجه') : '');
+
+    var best = att.reduce(function (m, r) { return Math.max(m, r.score | 0); }, 0);
+    $('kAttempts').textContent = A.toAr(att.length);
+    $('kAttemptsHint').textContent = att.length
+      ? 'أفضل نتيجة ' + A.toAr(best) + '٪ — عتبة النجاح 80٪'
+      : 'لا محاولات مسجّلة بعد';
+
+    var billed = pays.filter(function (p) { return !p.exempt; });
+    var total = billed.reduce(function (s, p) { return s + (+p.amount || 0); }, 0);
+    $('kPaid').textContent = A.toAr(total);
+    var exempted = pays.length - billed.length;
+    $('kPaidHint').textContent = billed.length
+      ? 'من ' + count(billed.length, 'عملية واحدة مدفوعة', 'عمليتين مدفوعتين',
+                      'عمليات مدفوعة', 'عملية مدفوعة') +
+        (exempted ? ' و' + count(exempted, 'عملية معفاة', 'عمليتين معفاتين',
+                                 'عمليات معفاة', 'عملية معفاة') : '')
+      : (pays.length ? 'كل عمليات الحساب معفاة' : 'لا عمليات دفع مسجّلة');
+
+    var dist = certs.filter(function (c) { return c.cert_type === 'تميّز'; }).length;
+    $('kCerts').textContent = A.toAr(certs.length);
+    $('kCertsHint').textContent = certs.length
+      ? (dist ? 'بينها ' + count(dist, 'شهادة تميّز', 'شهادتا تميّز',
+                                 'شهادات تميّز', 'شهادة تميّز')
+              : 'شهادات نجاح في سجل التحقق')
+      : 'تصدر عند تجاوز عتبة النجاح 80٪';
+  }
+
+  /* ---------------------------------------------------------------- الدروس */
+  function paintLessons() {
+    var cat = P.catalog_lessons || [], les = P.lessons || [];
+    var by = Object.create(null);
+    les.forEach(function (l) { by[l.lesson_id] = l; });
+
+    var done = 0;
+    var html = cat.map(function (c, i) {
+      var p = by[c.id];
+      if (p) { delete by[c.id]; }
+      if (p && p.done) { done += 1; }
+      return lessonRow(i + 1, c.title, c.duration_s, p, null);
+    });
+
+    /* ما بقي في by صفوفٌ حيّة لدروس خارج الكتالوج (عُطّلت أو حُذفت من المحتوى):
+       الجدول القديم كان يسقطها صامتاً لأنه يبني على قائمة مكتوبة يدوياً */
+    var orphan = Object.keys(by);
+    orphan.forEach(function (k, i) {
+      var p = by[k];
+      if (p.done) { done += 1; }
+      html.push(lessonRow(cat.length + i + 1, p.title || p.lesson_id, p.total_s, p,
+        'درس خارج كتالوج المحتوى الحالي'));
+    });
+
+    $('lessonRows').innerHTML = html.length ? html.join('') :
+      '<tr><td colspan="4">' + A.emptyState('لا دروس معرّفة',
+        'يُبنى هذا الجدول من مواد المحتوى من نوع «درس» المفعّلة — أضفها من صفحة المحتوى.') + '</td></tr>';
+
+    $('lessonsTag').textContent = A.toAr(done) + ' من ' + A.toAr(cat.length + orphan.length);
+  }
+
+  function lessonRow(n, title, totalS, p, note) {
+    var total = (p && p.total_s) || totalS || 0;
+    var watched = p ? (p.watched_s | 0) : 0;
+    var state = !p
+      ? '<span class="tag">لم يبدأ</span>'
+      : (p.done ? '<span class="tag tag--success">مكتمل</span>'
+                : '<span class="tag tag--gold">جزئي</span>');
+    var when = p ? A.arDateTime(p.updated_at || p.at) : '—';
+    return '<tr>' +
+      '<td class="wrap"><span class="seq">' + A.toAr(n) + '</span>&nbsp;&nbsp;' + A.esc(title) +
+        (note ? '<span class="adm-sub">' + A.esc(note) + '</span>' : '') + '</td>' +
+      '<td class="num">' + A.secDur(watched) + ' من ' + A.secDur(total) + '</td>' +
+      '<td>' + state + '</td>' +
+      '<td>' + when + '</td>' +
+    '</tr>';
+  }
+
+  /* ---------------------------------------------------------------- المحاولات */
+  function paintAttempts() {
+    var rows = P.attempts || [];
+    if (!rows.length) {
+      $('attemptRows').innerHTML = '<tr><td colspan="6">' + A.emptyState(
+        'لا محاولات امتحان',
+        'يظهر هنا صف لكل محاولة يخوضها العضو من التطبيق، بدرجتها ومدة جلستها.') + '</td></tr>';
+      $('attemptsTag').textContent = 'لا محاولات';
+      return;
+    }
+    $('attemptRows').innerHTML = rows.map(function (r, i) {
+      var verdict = r.distinction ? '<span class="tag tag--gold">تميّز</span>'
+        : (r.passed ? '<span class="tag tag--success">ناجح</span>'
+                    : '<span class="tag tag--error">راسب</span>');
+      return '<tr data-id="' + A.esc(r.id) + '" data-n="' + A.esc(i + 1) + '">' +
+        '<td><span class="seq">' + A.toAr(i + 1) + '</span></td>' +
+        '<td class="num strong">' + A.toAr(r.score | 0) + '٪</td>' +
+        '<td>' + verdict + '</td>' +
+        '<td class="num">' + (r.duration_s ? A.secDur(r.duration_s) : '—') + '</td>' +
+        '<td>' + A.arDateTime(r.taken_at) + '</td>' +
+        '<td><button class="btn btn-outline btn-sm" data-del data-write>حذف</button></td>' +
+      '</tr>';
+    }).join('');
+    var best = rows.reduce(function (m, r) { return Math.max(m, r.score | 0); }, 0);
+    $('attemptsTag').textContent =
+      count(rows.length, 'محاولة واحدة', 'محاولتان', 'محاولات', 'محاولة') +
+      ' — أفضلها ' + A.toAr(best) + '٪';
+  }
+
+  function onAttemptClick(e) {
+    var btn = e.target.closest('[data-del]');
+    if (!btn) return;
+    var tr = btn.closest('tr');
+    var rid = tr.getAttribute('data-id'), n = tr.getAttribute('data-n');
+    A.confirm({
+      title: 'حذف محاولة امتحان', danger: true, okLabel: 'حذف المحاولة',
+      text: 'ستُحذف المحاولة رقم ' + A.toAr(n) + ' نهائياً ولن تُحتسب بعدها في أفضل نتيجة. ' +
+            'يُسجَّل الحذف في سجل التدقيق باسمك.'
+    }).then(function (r) {
+      if (r === null) return;
+      act(API.admin.deleteAttempt(rid), 'حُذفت المحاولة رقم ' + A.toAr(n) + '.');
+    });
+  }
+
+  /* ---------------------------------------------------------------- المدفوعات */
+  function paintPayments() {
+    var rows = P.payments || [];
+    if (!rows.length) {
+      $('paymentRows').innerHTML = '<tr><td colspan="5">' + A.emptyState(
+        'لا عمليات دفع',
+        'تظهر هنا كل عملية تُسجَّل لهذا الحساب من صفحة المدفوعات، والمعفاة منها بمبلغ صفر.') + '</td></tr>';
+      $('paymentsTag').textContent = 'لا عمليات';
+      return;
+    }
+    var total = 0, billed = 0;
+    var html = rows.map(function (r) {
+      if (!r.exempt) { total += (+r.amount || 0); billed += 1; }
+      return '<tr data-id="' + A.esc(r.id) + '" data-op="' + A.esc(r.op_no) + '">' +
+        '<td class="num" dir="ltr" style="text-align:start">' + A.esc(r.op_no) + '</td>' +
+        '<td>' + (r.exempt ? '<span class="tag tag--gold">معفى</span>'
+                           : '<span class="tag">مدفوع</span>') + '</td>' +
+        '<td class="num strong">' + (r.exempt ? '—' : A.toAr(r.amount | 0) + ' ل.س') + '</td>' +
+        '<td>' + A.arDateTime(r.paid_at) + '</td>' +
+        '<td><button class="btn btn-outline btn-sm" data-del data-write>حذف</button></td>' +
+      '</tr>';
+    }).join('');
+    /* صف الإجمالي داخل tbody: الإجمالي خلاصة الصفوف لا سطر منفصل عنها */
+    html += '<tr class="tot"><td colspan="2">إجمالي المدفوع (غير المعفى)</td>' +
+      '<td class="num">' + A.toAr(total) + ' ل.س</td>' +
+      '<td colspan="2">' + A.toAr(billed) + ' من ' + A.toAr(rows.length) + ' عملية</td></tr>';
+    $('paymentRows').innerHTML = html;
+    $('paymentsTag').textContent =
+      count(rows.length, 'عملية واحدة', 'عمليتان', 'عمليات', 'عملية');
+  }
+
+  function onPaymentClick(e) {
+    var btn = e.target.closest('[data-del]');
+    if (!btn) return;
+    var tr = btn.closest('tr');
+    var rid = tr.getAttribute('data-id'), op = tr.getAttribute('data-op');
+    A.confirm({
+      title: 'حذف عملية دفع', danger: true, okLabel: 'حذف العملية',
+      text: 'ستُحذف العملية ' + op + ' نهائياً وتُطرح من إيرادات المنصة. ' +
+            'يُسجَّل الحذف في سجل التدقيق باسمك.'
+    }).then(function (r) {
+      if (r === null) return;
+      act(API.admin.deletePayment(rid), 'حُذفت العملية ' + op + '.');
+    });
+  }
+
+  /* ---------------------------------------------------------------- الشهادات */
+  function paintCerts() {
+    var rows = P.certs || [];
+    if (!rows.length) {
+      $('certRows').innerHTML = '<tr><td colspan="6">' + A.emptyState(
+        'لا شهادات صادرة',
+        'تصدر الشهادة عند اجتياز الامتحان بعتبة 80٪، وتُقيَّد فوراً في سجل التحقق العام.') + '</td></tr>';
+      $('certsTag').textContent = 'لا شهادات';
+      return;
+    }
+    $('certRows').innerHTML = rows.map(function (c) {
+      return '<tr data-id="' + A.esc(c.id) + '" data-code="' + A.esc(c.code) + '">' +
+        '<td class="num strong" dir="ltr" style="text-align:start">' + A.esc(c.code) + '</td>' +
+        '<td>' + (c.cert_type === 'تميّز' ? '<span class="tag tag--gold">تميّز</span>'
+                                          : '<span class="tag tag--success">نجاح</span>') + '</td>' +
+        '<td class="num">' + A.toAr(c.score | 0) + '٪</td>' +
+        '<td>' + A.arDate(c.issued_at) + '</td>' +
+        '<td><a class="link" href="' +
+          A.esc((window.OSEA_VERIFY_BASE || 'verify.html') + '?code=' + encodeURIComponent(c.code)) + '" ' +
+          'target="_blank" rel="noopener">سجل التحقق</a></td>' +
+        '<td><button class="btn btn-outline btn-sm" data-revoke data-write>سحب</button></td>' +
+      '</tr>';
+    }).join('');
+    var dist = rows.filter(function (c) { return c.cert_type === 'تميّز'; }).length;
+    $('certsTag').textContent =
+      count(rows.length, 'شهادة واحدة', 'شهادتان', 'شهادات', 'شهادة') +
+      (dist ? ' — منها ' + count(dist, 'شهادة تميّز', 'شهادتا تميّز',
+                                 'شهادات تميّز', 'شهادة تميّز') : '');
+  }
+
+  function onCertClick(e) {
+    var btn = e.target.closest('[data-revoke]');
+    if (!btn) return;
+    var tr = btn.closest('tr');
+    var rid = tr.getAttribute('data-id'), code = tr.getAttribute('data-code');
+    A.confirm({
+      title: 'سحب الشهادة', danger: true, okLabel: 'سحب الشهادة',
+      text: 'ستُرفع الشهادة ' + code + ' من سجل التحقق العام، فيصبح رمزها غير صالح لأي جهة ' +
+            'تتحقق منه. يُحفظ السبب في سجل التدقيق.',
+      /* القاعدة ترفض سحباً بلا سبب — يُشترط هنا فلا تُغلق اللوحة على خطأ */
+      reason: 'سبب السحب (إلزامي)',
+      reasonRequired: true
+    }).then(function (reason) {
+      if (reason === null) return;
+      act(API.admin.revokeCert(rid, reason), 'سُحبت الشهادة ' + code + '.');
+    });
+  }
+
+  /* ---------------------------------------------------------------- السجلات */
+  function paintAccess() {
+    var rows = P.access || [];
+    if (!rows.length) {
+      $('accessRows').innerHTML = '<tr><td colspan="2">' + A.emptyState(
+        'لا وصول مسجّل',
+        'يُسجَّل صف كلما فتح العضو كتاباً أو استمارة أو درساً من داخل التطبيق.') + '</td></tr>';
+      $('accessTag').textContent = 'لا سجلات';
+      return;
+    }
+    $('accessRows').innerHTML = rows.map(function (r) {
+      return '<tr>' +
+        '<td>' + A.arDateTime(r.at) + '</td>' +
+        '<td class="wrap">' + A.esc(r.title || r.item_id) +
+          (r.title ? '<span class="adm-sub" dir="ltr">' + A.esc(r.item_id) + '</span>' : '') + '</td>' +
+      '</tr>';
+    }).join('');
+    $('accessTag').textContent = 'آخر ' +
+      count(rows.length, 'فتحة واحدة', 'فتحتين', 'فتحات', 'فتحة');
+  }
+
+  function paintAudit() {
+    var rows = P.audit || [];
+    if (!rows.length) {
+      $('auditRows').innerHTML = '<tr><td colspan="4">' + A.emptyState(
+        'لا إجراءات مسجّلة',
+        'يظهر هنا كل تعديل أو حذف يمسّ هذا الحساب باسم منفّذه. القرارات الجماعية ' +
+        'تُقيَّد بلا معرّف حساب فلا تُدرج في هذا الجدول.') + '</td></tr>';
+      $('auditTag').textContent = 'لا سجلات';
+      return;
+    }
+    $('auditRows').innerHTML = rows.map(function (r) {
+      /* التفصيل jsonb يُقرأ لاتينياً: بلا dir=ltr تُبعثر الأقواس والفواصل بين العربية */
+      var isJson = r.detail != null && typeof r.detail !== 'string';
+      return '<tr>' +
+        '<td>' + A.arDateTime(r.at) + '</td>' +
+        '<td class="strong">' + A.esc(ACTIONS[r.action] || r.action) + '</td>' +
+        '<td>' + A.esc(r.actor_name || '—') + '</td>' +
+        '<td class="wrap"><span class="adm-sub" style="margin:0"' +
+          (isJson ? ' dir="ltr"' : '') + '>' + A.esc(detailText(r.detail)) + '</span></td>' +
+      '</tr>';
+    }).join('');
+    $('auditTag').textContent =
+      count(rows.length, 'إجراء واحد', 'إجراءان', 'إجراءات', 'إجراءً');
+  }
+
+  /* تفصيل التدقيق jsonb: يُعرض مختصراً — الصورة الكاملة في صفحة سجل التدقيق */
+  function detailText(d) {
+    if (d == null) return '—';
+    if (typeof d === 'string') return d;
+    var s;
+    try { s = JSON.stringify(d); } catch (err) { return '—'; }
+    return s.length > 160 ? s.slice(0, 160) + '…' : s;
+  }
+})();
+</script>
+</body>
+</html>

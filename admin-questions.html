@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بنك الأسئلة — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+  /* نص السؤال طويل بطبعه (سطران إلى أربعة): يُقصّ في الجدول ويُقرأ كاملاً
+     في اللوحة الجانبية — وإلا صار كل صف بارتفاع فقرة وضاع مسح الجدول بالعين */
+  .q-clamp{
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+    overflow:hidden;line-height:1.7;max-width:440px;
+  }
+  .adm-table td.q-cell{min-width:300px}
+  .adm-table td.q-ans{min-width:200px;white-space:normal}
+  /* أزرار الصف في سطر واحد: تكديسها عمودياً يرفع الصف إلى أربعة أسطر
+     ويُفقد الجدول قابلية المسح بالعين — والعرض الزائد يعالجه .adm-scroll */
+  .q-acts{display:flex;gap:6px;flex-wrap:nowrap}
+
+  /* صف الخيار في لوحة التحرير: مفتاح الإجابة بجانب نصه لا فوقه،
+     فاختيار الصحيح وقراءة نصه فعل واحد */
+  .q-opt{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center}
+  .q-opt + .q-opt{margin-block-start:10px}
+  .q-opt-key{
+    display:inline-flex;align-items:center;gap:7px;min-width:54px;cursor:pointer;
+    font-weight:700;color:var(--navy-700);
+  }
+  .q-opt-key input{width:18px;height:18px;accent-color:var(--navy-700);cursor:pointer}
+  .q-opt-key span{font-family:var(--font-display);font-size:16px}
+  textarea.input{min-height:104px;padding-block:12px;line-height:1.85;resize:vertical}
+
+  /* تجاوز العتبة خلل يُصلَح لا زينة — فالأحمر هنا وظيفي */
+  .adm-chart-row .bar--alert{background:var(--error-600)}
+  .q-legend{font-size:13px;line-height:1.95;color:var(--text-secondary);margin-block-start:16px}
+  .q-legend strong{color:var(--navy-800)}
+
+  .q-inline{
+    display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+    font-size:13.5px;font-weight:600;color:var(--text-display);
+  }
+  .q-card-h{font-size:16px;line-height:1.5;margin:0 0 4px}
+  .q-card-sub{font-size:13px;line-height:1.8;color:var(--text-secondary)}
+  .q-ro{
+    font-size:14px;line-height:1.9;background:var(--navy-25);
+    border:1px solid var(--border);border-radius:var(--radius-tool);padding:12px 14px;
+  }
+  .q-ro--pick{background:var(--success-50);border-color:#c6e9d2}
+
+  /* ---- الصعوبة: رقاقات هادئة من ثياب .tag القائمة (سهل/متوسط/صعب) ---- */
+  .q-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+  .q-dot--easy{background:var(--success-600)}
+  .q-dot--medium{background:var(--navy-500)}
+  .q-dot--hard{background:var(--gold-600)}
+
+  /* select يلبس ثوب الرقاقة — تغيير الصعوبة من الصف مباشرة بلا لوحة */
+  .q-diff{
+    appearance:none;-webkit-appearance:none;
+    font:inherit;font-size:12.5px;font-weight:700;line-height:1.6;
+    padding:4px 10px;padding-inline-end:24px;
+    border-radius:var(--radius-pill);cursor:pointer;
+    background-repeat:no-repeat;background-position:left 8px center;background-size:10px;
+    background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667a90' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+  .q-diff:disabled{opacity:.55;cursor:progress}
+  .q-diff--easy{background-color:var(--success-50);color:var(--success-600);border:1px solid #c6e9d2}
+  .q-diff--medium{background-color:var(--navy-50);color:var(--navy-700);border:1px solid var(--navy-100)}
+  .q-diff--hard{background-color:var(--cream-100);color:var(--gold-700);border:1px solid #F2DFB6}
+
+  /* حساب الاطّلاع يرى الصعوبة وسماً ثابتاً — الـselect أداة كتابة تُخفى عنه */
+  .q-diff-ro{display:none}
+  html[data-role="viewer"] .q-diff-ro{display:inline-flex}
+
+  /* فاصل بصري بين تصفيتي المجموعة والصعوبة في الشريط الواحد */
+  .q-sep{width:1px;align-self:stretch;background:var(--border)}
+
+  /* ---- لوح تركيبة الامتحان ---- */
+  .q-mix-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+  .q-mix-head .grow{flex:1;min-width:220px}
+  .q-mix-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-block-start:16px;
+    transition:opacity var(--t-micro) var(--ease-std);
+  }
+  .q-mix-grid--off{opacity:.45}
+  .q-mix-cell{
+    border:1px solid var(--border);border-radius:var(--radius-tool);
+    padding:12px 14px;display:grid;gap:8px;align-content:start;
+  }
+  .q-mix-cell > label{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;color:var(--navy-800)}
+  .q-mix-in{display:flex;align-items:center;gap:8px}
+  .q-mix-in .input{max-width:96px;text-align:center;font-variant-numeric:tabular-nums}
+  .q-mix-in b{color:var(--text-secondary)}
+  .q-mix-pool{font-size:12.5px;line-height:1.7;color:var(--text-secondary)}
+  /* نقص الحوض ليس خللاً — الورقة تستكمل من بقية البنك، فالتحذير هادئ لا أحمر */
+  .q-mix-warn{font-size:12.5px;line-height:1.7;color:var(--warm-600)}
+  .q-mix-foot{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-block-start:14px}
+  .q-mix-foot .spacer{flex:1}
+  .q-mix-sum{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--success-600)}
+  .q-mix-sum--bad{color:var(--error-600)}   /* مجموع ≠ 100 يمنع الحفظ — الأحمر وظيفي */
+  @media (max-width:640px){ .q-mix-grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <div class="adm-stack" style="margin-block-end:24px">
+
+        <!-- مؤشرات البنك: تُحسب من question_sets فتصف البنك كله لا الصفحة المعروضة -->
+        <div class="adm-kpis">
+          <div class="adm-kpi">
+            <span class="adm-kpi-label">إجمالي الأسئلة</span>
+            <span class="adm-kpi-num" id="kTotal">—</span>
+            <span class="adm-kpi-hint">كل ما في بنك الأسئلة</span>
+          </div>
+          <div class="adm-kpi">
+            <span class="adm-kpi-label">الأسئلة النشطة</span>
+            <span class="adm-kpi-num" id="kActive">—</span>
+            <span class="adm-kpi-hint">وحدها تُسحب في أوراق الامتحان</span>
+          </div>
+          <div class="adm-kpi adm-kpi--warm">
+            <span class="adm-kpi-label">الأسئلة المعطّلة</span>
+            <span class="adm-kpi-num" id="kOff">—</span>
+            <span class="adm-kpi-hint">مستبعدة من السحب حتى تُراجَع</span>
+          </div>
+          <div class="adm-kpi adm-kpi--gold">
+            <span class="adm-kpi-label">عدد المجموعات</span>
+            <span class="adm-kpi-num" id="kSets">—</span>
+            <span class="adm-kpi-hint" id="kSetsHint">—</span>
+          </div>
+        </div>
+
+        <!-- تركيبة الامتحان: نسب سحب الورقة من مستويات الصعوبة الثلاثة (exam_mix).
+             الضوابط تبدأ معطّلة وتُفعَّل بعد قراءة ناجحة من القاعدة — نمط revealKeys -->
+        <div class="card">
+          <div class="q-mix-head">
+            <div class="grow">
+              <h2 class="q-card-h">تركيبة الامتحان حسب الصعوبة</h2>
+              <p class="q-card-sub">نسبة أسئلة كل مستوى في الورقة المسحوبة، والمجموع 100٪ حكماً.
+              الأحواض تعدّ الأسئلة النشطة وحدها، وأي حوض ناقص يُستكمل من بقية البنك
+              فلا يفشل الامتحان أبداً.</p>
+            </div>
+            <label class="q-inline" for="mixOn">
+              <input class="adm-check" type="checkbox" id="mixOn" data-write disabled>
+              تفعيل التركيبة
+            </label>
+            <span class="tag" id="mixState">جارٍ القراءة…</span>
+          </div>
+          <div class="q-mix-grid" id="mixGrid">
+            <div class="q-mix-cell">
+              <label for="mixEasy"><i class="q-dot q-dot--easy"></i> سهل</label>
+              <div class="q-mix-in">
+                <input class="input" id="mixEasy" type="number" min="0" max="100" inputmode="numeric" disabled>
+                <b>٪</b>
+              </div>
+              <span class="q-mix-pool" id="poolEasy">حجم الحوض: —</span>
+              <span class="q-mix-warn" id="warnEasy" hidden></span>
+            </div>
+            <div class="q-mix-cell">
+              <label for="mixMedium"><i class="q-dot q-dot--medium"></i> متوسط</label>
+              <div class="q-mix-in">
+                <input class="input" id="mixMedium" type="number" min="0" max="100" inputmode="numeric" disabled>
+                <b>٪</b>
+              </div>
+              <span class="q-mix-pool" id="poolMedium">حجم الحوض: —</span>
+              <span class="q-mix-warn" id="warnMedium" hidden></span>
+            </div>
+            <div class="q-mix-cell">
+              <label for="mixHard"><i class="q-dot q-dot--hard"></i> صعب</label>
+              <div class="q-mix-in">
+                <input class="input" id="mixHard" type="number" min="0" max="100" inputmode="numeric" disabled>
+                <b>٪</b>
+              </div>
+              <span class="q-mix-pool" id="poolHard">حجم الحوض: —</span>
+              <span class="q-mix-warn" id="warnHard" hidden></span>
+            </div>
+          </div>
+          <p class="q-card-sub" id="mixOffNote" hidden style="margin-block-start:12px">
+            التركيبة مطفأة — تُسحب أسئلة الورقة من كامل البنك النشط عشوائياً دون تمييز بالصعوبة.</p>
+          <div class="q-mix-foot">
+            <span class="q-mix-sum" id="mixSum">المجموع: —</span>
+            <span class="spacer"></span>
+            <button class="btn btn-primary btn-sm" id="mixSave" data-write disabled>حفظ التركيبة</button>
+          </div>
+        </div>
+
+        <div class="adm-grid-2">
+
+          <!-- توزيع مفاتيح الإجابات: مؤشر سلامة الامتحان لا زينة إحصائية -->
+          <div class="card">
+            <h2 class="q-card-h">توزيع مفاتيح الإجابات</h2>
+            <p class="q-card-sub">نسبة كل خيار من مفاتيح الأسئلة النشطة في البنك كله.</p>
+            <div class="adm-chart" id="spread">
+              <div class="adm-chart-row"><span class="lbl">جارٍ التحميل…</span><span class="bar" style="width:2px"></span><span class="val">—</span></div>
+            </div>
+            <div class="notice notice--error" id="biasAlert" hidden style="margin-block-start:16px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+              <span id="biasText"></span>
+            </div>
+            <p class="q-legend">
+              <strong>لماذا يُراقَب هذا:</strong> في المصدر الأصلي كان 83٪ من الإجابات الخيار «ب»،
+              فكان اختيار «ب» في كل سؤال ينجح في الامتحان بلا قراءة. صُحّح الخلل بخلط
+              الخيارات بمولّد عشوائي ثابت البذرة يتتبّع الإجابة الصحيحة إلى موضعها الجديد.
+              أي خيار تتجاوز نسبته 40٪ يُعيد الثغرة، فيُنبَّه عليه هنا بالأحمر.
+            </p>
+          </div>
+
+          <div class="adm-stack">
+            <div class="card">
+              <h2 class="q-card-h">تكوين البنك</h2>
+              <p class="q-card-sub">المجموعات كما هي في القاعدة الآن.</p>
+              <dl class="adm-kv" id="setList" style="margin-block-start:14px">
+                <dt>—</dt><dd>جارٍ التحميل…</dd>
+              </dl>
+            </div>
+            <div class="notice">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+              <span><strong>96 سؤالاً إضافياً خارج القاعدة.</strong>
+                ملف <span class="adm-mono" dir="ltr">_mat/questions-pending-answers.json</span>
+                يحوي 96 سؤالاً مستخرجاً بلا مفاتيح إجابات — تنتظر مهندساً مختصاً يحدّد الإجابة
+                الصحيحة لكل سؤال. لم تُرفع إلى بنك الأسئلة ولا تظهر في أي ورقة امتحان قبل اعتماد
+                مفاتيحها، ويمكن إدخالها هنا واحداً واحداً بزر «إضافة سؤال».</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- شريط الأدوات: بحث خادمي + تصدير محكوم + إضافة -->
+      <div class="adm-bar">
+        <div class="adm-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="input" id="q" type="search" autocomplete="off"
+                 placeholder="بحث في نص السؤال أو في معرّفه">
+        </div>
+        <span class="spacer"></span>
+        <label class="q-inline" for="withKeys">
+          <input class="adm-check" type="checkbox" id="withKeys">
+          تضمين مفاتيح الإجابات في الملف المُصدَّر
+        </label>
+        <span class="tag tag--error" id="keysWarn" hidden>الملف يصير سرّياً</span>
+        <button class="btn btn-outline btn-sm" id="exportBtn">تصدير Excel</button>
+        <button class="btn btn-primary btn-sm" id="addBtn" data-write>إضافة سؤال</button>
+      </div>
+
+      <!-- إعداد منصة حي: عرض مراجعة الإجابات للممتحَن بعد تسليم الامتحان الرسمي -->
+      <div class="adm-bar" style="margin-block-start:-8px">
+        <label class="q-inline" for="revealKeys" style="gap:10px">
+          <input class="adm-check" type="checkbox" id="revealKeys" data-write disabled>
+          <span><b>عرض الإجابات الصحيحة للممتحَن بعد تسليم الامتحان الرسمي</b>
+            <span class="adm-sub">إعداد عام يسري فوراً على كل الأعضاء في الامتحان الرسمي وحده —
+            النموذج التجريبي تدريبي تظهر إجاباته دائماً.
+            تنبيه: البنك محدود والإعادة مفتوحة — إبقاؤه مطفأً يصون سرّية الأسئلة.</span></span>
+        </label>
+        <span class="tag" id="revealState">جارٍ القراءة…</span>
+      </div>
+
+      <div class="adm-bar" style="margin-block-start:-8px">
+        <div class="adm-filters" id="sets" role="group" aria-label="تصفية بالمجموعة"></div>
+        <span class="q-sep" id="diffSep" aria-hidden="true" hidden></span>
+        <div class="adm-filters" id="diffs" role="group" aria-label="تصفية بالصعوبة"></div>
+      </div>
+
+      <!-- شريط الإجراء الجماعي: تعيين الصعوبة للأسئلة المحدَّدة -->
+      <div class="adm-bar" id="bulkBar" hidden style="border-color:var(--gold-400);background:var(--cream-50)">
+        <strong id="bulkCount" style="font-size:14px"></strong>
+        <span class="spacer"></span>
+        <span style="font-size:13.5px;font-weight:600">تعيين الصعوبة للمحدَّد:</span>
+        <button class="btn btn-outline btn-sm" data-bulk="easy" data-write>سهل</button>
+        <button class="btn btn-outline btn-sm" data-bulk="medium" data-write>متوسط</button>
+        <button class="btn btn-outline btn-sm" data-bulk="hard" data-write>صعب</button>
+        <button class="btn btn-outline btn-sm" id="bulkClear">إلغاء التحديد</button>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2 id="tableTitle">أسئلة البنك</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="totalTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th style="width:40px"><input class="adm-check" type="checkbox" id="selAll" aria-label="تحديد الكل" data-write></th>
+                <th>المعرّف</th>
+                <th>نص السؤال</th>
+                <th>المجموعة</th>
+                <th>الصعوبة</th>
+                <th>الإجابة الصحيحة</th>
+                <th>تعليق علمي</th>
+                <th>مرات الظهور</th>
+                <th>الحالة</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="10"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="adm-pager" id="pager"></div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  var LET = ['أ', 'ب', 'ج', 'د'];      /* ترتيب الخيارات كما في الاستمارات الورقية */
+  var BIAS_PCT = 40;                   /* عتبة التحيّز: فوقها يصير التخمين مجدياً */
+  var MAX_EXPORT = 300;                /* سقف admin_questions الخادمي */
+  var PAPER_N = 20;                    /* حجم الورقة الرسمية (COUNT في exam-run) — به تُقدَّر حصة كل حوض */
+
+  /* مستويات الصعوبة الثلاثة — ألوان هادئة من ثياب .tag القائمة */
+  var DIFF = {
+    easy:   { label: 'سهل',   cls: 'q-diff--easy',   tag: 'tag--success' },
+    medium: { label: 'متوسط', cls: 'q-diff--medium', tag: '' },
+    hard:   { label: 'صعب',   cls: 'q-diff--hard',   tag: 'tag--gold' }
+  };
+  var DIFF_KEYS = ['easy', 'medium', 'hard'];
+  var DIFF_ID = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };  /* لواحق معرّفات اللوح */
+
+  var state = { search: '', set: 'all', difficulty: 'all', limit: 50, offset: 0, total: 0 };
+  var rows = [];
+  var sets = [];                       /* [{set_id,set_label,total,active}] */
+  var picked = Object.create(null);    /* الأسئلة المحدَّدة للإجراء الجماعي */
+  var counts = null;                   /* {easy,medium,hard} من admin_questions */
+  var diffReady = false;               /* القاعدة تعرف الصعوبة؟ قبل الترحيل: لا رقاقات ولا تحرير */
+  var mix = null;                      /* آخر حالة محفوظة لتركيبة الامتحان من الخادم */
+
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody, pagerEl, chipsEl, diffsEl, bulkBar, bulkCount;
+
+  /* تمييز العدد في العربية: «3 أسئلة» لا «3 سؤالاً» — الأرقام تُقرأ في نص
+     رسمي فلا تُترك بصيغة واحدة لكل الأعداد */
+  function qWord(n) {
+    n = n | 0;
+    if (!n) return 'لا أسئلة';
+    if (n === 1) return 'سؤال واحد';
+    if (n === 2) return 'سؤالان';
+    if (n <= 10) return A.toAr(n) + ' أسئلة';
+    return A.toAr(n) + ' سؤالاً';
+  }
+  function papers(n) {
+    n = n | 0;
+    if (!n) return 'لم يظهر في أي ورقة امتحان بعد';
+    if (n === 1) return 'ورقة امتحان واحدة';
+    if (n === 2) return 'ورقتي امتحان';
+    if (n <= 10) return A.toAr(n) + ' أوراق امتحان';
+    return A.toAr(n) + ' ورقة امتحان';
+  }
+
+  A.boot({
+    page: 'questions',
+    title: 'بنك الأسئلة',
+    lead: 'أسئلة الامتحان الوطني ومفاتيح إجاباتها — بحث وتصفية بالمجموعة على الخادم، '
+        + 'وتحرير وإضافة وتعطيل، ومراقبة توزيع مفاتيح الإجابات كي لا ينجح التخمين.',
+    crumb: 'بنك الأسئلة'
+  }).then(function (st) {
+    if (!st) return;
+    tbody = $('rows'); pagerEl = $('pager'); chipsEl = $('sets');
+    diffsEl = $('diffs'); bulkBar = $('bulkBar'); bulkCount = $('bulkCount');
+    wire();
+    loadSets();
+    load();
+    loadReveal();
+    loadMix();
+  });
+
+  function wire() {
+    $('q').addEventListener('input', A.debounce(function () {
+      state.search = $('q').value.trim(); state.offset = 0; load();
+    }, 300));
+    $('withKeys').addEventListener('change', function () {
+      $('keysWarn').hidden = !this.checked;
+    });
+    $('exportBtn').addEventListener('click', exportAsk);
+    $('addBtn').addEventListener('click', function () { openForm(null); });
+    tbody.addEventListener('click', onRowClick);
+    tbody.addEventListener('change', onRowChange);
+    $('revealKeys').addEventListener('change', onRevealChange);
+
+    /* التحديد الجماعي وشريط إجرائه */
+    $('selAll').addEventListener('change', function () {
+      var on = this.checked;
+      rows.forEach(function (r) { if (on) { picked[r.id] = r; } else { delete picked[r.id]; } });
+      paintRows(); paintBulk();
+    });
+    $('bulkClear').addEventListener('click', function () {
+      picked = Object.create(null); paintRows(); paintBulk();
+    });
+    bulkBar.querySelectorAll('[data-bulk]').forEach(function (b) {
+      b.addEventListener('click', function () { bulkDiff(b.getAttribute('data-bulk')); });
+    });
+
+    /* لوح التركيبة: كل تغيير يعيد حساب المجموع والتعتيم وأهلية الحفظ */
+    $('mixOn').addEventListener('change', paintMixState);
+    ['mixEasy', 'mixMedium', 'mixHard'].forEach(function (id) {
+      $(id).addEventListener('input', paintMixState);
+    });
+    $('mixSave').addEventListener('click', saveMix);
+  }
+
+  /* ------------------------------------------------- إعداد عرض الإجابات
+     إعداد خادمي (app_settings) يقرأه grade_exam: عند تفعيله يعيد التصحيح
+     مصفوفة مراجعة كاملة للممتحَن بعد التسليم — ولا شيء قبله. */
+  function loadReveal() {
+    API.admin.getSettings().then(function (s) {
+      var on = !!(s && s.exam_reveal_keys === true);
+      $('revealKeys').checked = on;
+      $('revealKeys').disabled = false;
+      paintReveal(on);
+    }).catch(function () {
+      $('revealState').textContent = 'تعذّرت القراءة';
+      $('revealState').className = 'tag tag--error';
+    });
+  }
+  function paintReveal(on) {
+    $('revealState').textContent = on ? 'مفعّل' : 'مطفأ';
+    $('revealState').className = on ? 'tag tag--gold' : 'tag';
+  }
+  function onRevealChange() {
+    var box = this, on = box.checked;
+    var save = function () {
+      box.disabled = true;
+      API.admin.setSetting('exam_reveal_keys', on).then(function () {
+        paintReveal(on);
+        A.toast(on ? 'صار الممتحَن يرى مراجعة إجاباته بعد التسليم.'
+                   : 'أُطفئ عرض الإجابات — النتيجة وحدها تظهر بعد التسليم.', 'ok');
+      }).catch(function (e) {
+        box.checked = !on;
+        A.toast(A.errText(e), 'bad');
+      }).then(function () { box.disabled = false; });
+    };
+    if (on) {
+      A.confirm({
+        title: 'تفعيل عرض الإجابات؟',
+        text: 'سيرى كل ممتحَن الأسئلة مع إجاباتها الصحيحة والتعليق العلمي بعد التسليم. ' +
+              'مع بنك محدود وإعادة مفتوحة قد يكشف هذا أسئلة الامتحان تدريجياً.',
+        okLabel: 'تفعيل', danger: true
+      }).then(function (yes) {
+        if (yes === null) { box.checked = false; return; }
+        save();
+      });
+    } else {
+      save();
+    }
+  }
+
+  /* ------------------------------------------------- تركيبة الامتحان
+     صف exam_mix الوحيد: تفعيل ونِسَب المستويات الثلاثة بمجموع 100.
+     القراءة تجلب معها أحجام الأحواض (عدّ النشط لكل مستوى) للعرض
+     والتحذير الهادئ من حوض أصغر من حصته المتوقعة. */
+  function loadMix() {
+    API.admin.getExamMix().then(function (m) {
+      mix = m || {};
+      $('mixOn').checked = !!mix.enabled;
+      $('mixOn').disabled = false;
+      $('mixEasy').value = mix.easy_pct | 0;
+      $('mixMedium').value = mix.medium_pct | 0;
+      $('mixHard').value = mix.hard_pct | 0;
+      paintMixState();
+    }).catch(function () {
+      /* قبل تطبيق الترحيل أو عند عطل شبكي: اللوح يبقى معطّلاً بلا كسر */
+      $('mixState').textContent = 'تعذّرت القراءة';
+      $('mixState').className = 'tag tag--error';
+    });
+  }
+
+  function mixForm() {
+    var g = function (id) {
+      var v = parseInt($(id).value, 10);
+      return isNaN(v) ? -1 : v;            /* الخانة الفارغة نقص لا صفر صامت */
+    };
+    return { enabled: $('mixOn').checked,
+             easy: g('mixEasy'), medium: g('mixMedium'), hard: g('mixHard') };
+  }
+
+  /* حصص ورقة من PAPER_N سؤالاً بطريقة أكبر البواقي — كما يوزّع الخادم تماماً */
+  function mixShares(f) {
+    var raw = DIFF_KEYS.map(function (k) { return PAPER_N * f[k] / 100; });
+    var base = raw.map(function (x) { return Math.floor(x); });
+    var left = PAPER_N - base.reduce(function (a, b) { return a + b; }, 0);
+    var order = [0, 1, 2].sort(function (a, b) {
+      return (raw[b] - base[b]) - (raw[a] - base[a]);
+    });
+    for (var i = 0; i < left; i++) { base[order[i % 3]]++; }
+    return { easy: base[0], medium: base[1], hard: base[2] };
+  }
+
+  function paintMixState() {
+    if (!mix) return;
+    var f = mixForm();
+    var valid = [f.easy, f.medium, f.hard].every(function (v) { return v >= 0 && v <= 100; });
+    var total = f.easy + f.medium + f.hard;
+    var ok = valid && total === 100;
+
+    $('mixSum').textContent = 'المجموع: ' + (valid ? A.toAr(total) + '٪' : '—');
+    $('mixSum').classList.toggle('q-mix-sum--bad', !ok);   /* ≠100 خلل يمنع الحفظ */
+    $('mixSave').disabled = !ok;
+
+    /* التعطيل يعتّم الخانات — الامتحان حينها يسحب من كامل البنك.
+       المطّلع (viewer) يرى النسب ولا يحررها — زرا الحفظ والتفعيل مخفيان عنه
+       بـdata-write أصلاً، وبقاء الخانات قابلة للكتابة عنده يوهم بتعديل لا سبيل لحفظه */
+    var canWrite = document.documentElement.getAttribute('data-role') !== 'viewer';
+    $('mixGrid').classList.toggle('q-mix-grid--off', !f.enabled);
+    ['mixEasy', 'mixMedium', 'mixHard'].forEach(function (id) { $(id).disabled = !f.enabled || !canWrite; });
+    $('mixOffNote').hidden = f.enabled;
+
+    /* الشارة: الحالة المحفوظة فعلاً، أو تنبيه أن في اللوح تعديلات لم تُحفظ */
+    var dirty = (!!mix.enabled !== f.enabled) ||
+      f.easy !== (mix.easy_pct | 0) || f.medium !== (mix.medium_pct | 0) ||
+      f.hard !== (mix.hard_pct | 0);
+    var st = $('mixState');
+    if (dirty)             { st.textContent = 'تعديلات غير محفوظة'; st.className = 'tag tag--gold'; }
+    else if (mix.enabled)  { st.textContent = 'مفعّلة';             st.className = 'tag tag--success'; }
+    else                   { st.textContent = 'مطفأة';              st.className = 'tag'; }
+
+    paintPools(f, ok);
+  }
+
+  function paintPools(f, ok) {
+    var pools = mix.pools || {};
+    var share = (f.enabled && ok) ? mixShares(f) : null;
+    DIFF_KEYS.forEach(function (k) {
+      var n = pools[k], w = $('warn' + DIFF_ID[k]);
+      $('pool' + DIFF_ID[k]).textContent = 'حجم الحوض: ' + (n == null ? '—' : qWord(n | 0));
+      if (share && n != null && (n | 0) < share[k]) {
+        w.hidden = false;
+        w.textContent = 'أقل من حصته المتوقعة (' + A.toAr(share[k]) + ' من ورقة ' +
+          A.toAr(PAPER_N) + ') — سيُستكمل النقص من بقية البنك.';
+      } else {
+        w.hidden = true;
+      }
+    });
+  }
+
+  function saveMix() {
+    var f = mixForm();
+    if (f.easy + f.medium + f.hard !== 100) return;   /* الزر معطّل أصلاً — حزام أمان */
+    var btn = $('mixSave'), t = btn.textContent;
+    btn.disabled = true; btn.textContent = 'جارٍ الحفظ…';
+    API.admin.setExamMix(f).then(function (m) {
+      mix = m || mix;                     /* العرض يُحدَّث من ناتج الخادم لا من الظن */
+      $('mixOn').checked = !!mix.enabled;
+      $('mixEasy').value = mix.easy_pct | 0;
+      $('mixMedium').value = mix.medium_pct | 0;
+      $('mixHard').value = mix.hard_pct | 0;
+      A.toast(mix.enabled
+        ? ('حُفظت التركيبة: ' + A.toAr(mix.easy_pct | 0) + '٪ سهل، ' +
+           A.toAr(mix.medium_pct | 0) + '٪ متوسط، ' + A.toAr(mix.hard_pct | 0) + '٪ صعب.')
+        : 'حُفظت التركيبة وهي مطفأة — الامتحان يسحب من كامل البنك.', 'ok');
+    }).catch(function (e) {
+      A.toast(A.errText(e), 'bad');
+    }).then(function () { btn.textContent = t; paintMixState(); });
+  }
+
+  /* ------------------------------------------------- المجموعات والمؤشرات
+     المجموعات تأتي من admin_content لأن admin_questions يرقّم الصفوف،
+     فعدّها من صفحة واحدة يعطي أرقاماً ناقصة. */
+  function loadSets() {
+    API.admin.content().then(function (d) {
+      sets = (d && d.question_sets) || [];
+      paintKpis();
+      paintChips();
+      paintSetList();
+    }).catch(function (e) {
+      chipsEl.innerHTML = '<button class="adm-chip" data-s="all" aria-pressed="true">الكل</button>';
+      chipsEl.querySelector('[data-s]').addEventListener('click', function () {
+        state.set = 'all'; state.offset = 0; load();
+      });
+      $('setList').innerHTML = '<dt>تعذّر التحميل</dt><dd>' + A.esc(A.errText(e)) + '</dd>';
+      A.toast('تعذّر جلب المجموعات — ' + A.errText(e), 'bad');
+    });
+  }
+
+  function sum(key) {
+    return sets.reduce(function (n, s) { return n + (s[key] | 0); }, 0);
+  }
+
+  function paintKpis() {
+    var total = sum('total'), active = sum('active');
+    $('kTotal').textContent = A.toAr(total);
+    $('kActive').textContent = A.toAr(active);
+    $('kOff').textContent = A.toAr(total - active);
+    $('kSets').textContent = A.toAr(sets.length);
+    $('kSetsHint').textContent = sets.length
+      ? sets.map(function (s) { return s.set_id; }).join(' · ')
+      : 'لا مجموعات بعد';
+  }
+
+  function paintChips() {
+    var defs = [{ id: 'all', label: 'الكل', n: sum('total'), title: 'كل المجموعات' }];
+    sets.forEach(function (s) {
+      defs.push({ id: s.set_id, label: s.set_id, n: s.total | 0, title: s.set_label || s.set_id });
+    });
+    chipsEl.innerHTML = defs.map(function (d) {
+      return '<button class="adm-chip" data-s="' + A.esc(d.id) + '" title="' + A.esc(d.title) +
+        '" aria-pressed="' + (state.set === d.id) + '">' + A.esc(d.label) +
+        '<span class="n">' + A.toAr(d.n) + '</span></button>';
+    }).join('');
+    chipsEl.querySelectorAll('[data-s]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.set = b.getAttribute('data-s'); state.offset = 0;
+        paintChips(); load();
+      });
+    });
+  }
+
+  function paintSetList() {
+    if (!sets.length) {
+      $('setList').innerHTML = '<dt>لا مجموعات</dt><dd>بنك الأسئلة فارغ.</dd>';
+      return;
+    }
+    $('setList').innerHTML = sets.map(function (s) {
+      var off = (s.total | 0) - (s.active | 0);
+      return '<dt dir="ltr" style="text-align:start">' + A.esc(s.set_id) + '</dt>' +
+        '<dd>' + A.esc(s.set_label || '—') +
+        '<span class="adm-sub">' + qWord(s.total | 0) + ' — منها ' +
+        A.toAr(s.active | 0) + ' نشطاً' + (off ? ' و' + A.toAr(off) + ' معطّلاً' : '') +
+        '</span></dd>';
+    }).join('');
+  }
+
+  /* ---------------------------------------------------------------- التحميل */
+  function load() {
+    tbody.innerHTML = '<tr><td colspan="10"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    API.admin.questions({
+      set: state.set, search: state.search,
+      limit: state.limit, offset: state.offset,
+      difficulty: state.difficulty === 'all' ? null : state.difficulty
+    }).then(function (d) {
+      rows = d.rows || [];
+      state.total = d.total | 0;
+      state.limit = d.limit || state.limit;
+      state.offset = (d.offset == null ? state.offset : d.offset);
+      /* counts دليل أن القاعدة تعرف الصعوبة — غيابها (قبل الترحيل) يطوي
+         رقاقاتها وتحريرها كلياً فلا يُستدعى توقيع لا يفهمه الخادم */
+      diffReady = !!d.counts;
+      counts = d.counts || null;
+      $('totalTag').textContent = qWord(state.total);
+      paintSpread(d.answer_spread || {});
+      paintDiffChips();
+      paintRows();
+      A.pager(pagerEl, state, function (off) {
+        state.offset = off; load(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }).catch(function (e) {
+      tbody.innerHTML = '<tr><td colspan="10">' + A.errorState(A.errText(e), 'retry') + '</td></tr>';
+      var r = $('retry'); if (r) r.addEventListener('click', load);
+    });
+  }
+
+  /* رقاقات تصفية الصعوبة — بالأعداد من counts، وتُبنى فقط حين تتوافر */
+  function paintDiffChips() {
+    if (!diffReady) { diffsEl.innerHTML = ''; $('diffSep').hidden = true; return; }
+    $('diffSep').hidden = false;
+    var defs = [{ id: 'all', label: 'كل المستويات', n: null, dot: '' }];
+    DIFF_KEYS.forEach(function (k) {
+      defs.push({ id: k, label: DIFF[k].label, n: counts[k] | 0, dot: 'q-dot--' + k });
+    });
+    diffsEl.innerHTML = defs.map(function (d) {
+      return '<button class="adm-chip" data-d="' + d.id + '" aria-pressed="' +
+        (state.difficulty === d.id) + '">' +
+        (d.dot ? '<i class="q-dot ' + d.dot + '" aria-hidden="true"></i>' : '') + A.esc(d.label) +
+        (d.n == null ? '' : '<span class="n">' + A.toAr(d.n) + '</span>') + '</button>';
+    }).join('');
+    diffsEl.querySelectorAll('[data-d]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.difficulty = b.getAttribute('data-d'); state.offset = 0;
+        paintDiffChips(); load();
+      });
+    });
+  }
+
+  /* توزيع المفاتيح محسوب في القاعدة على الأسئلة النشطة كلها،
+     فلا يتغيّر بتصفية المجموعة ولا بالصفحة المعروضة */
+  function paintSpread(sp) {
+    var counts = [0, 1, 2, 3].map(function (i) { return sp[String(i)] | 0; });
+    var tot = counts.reduce(function (a, b) { return a + b; }, 0);
+    var host = $('spread');
+
+    if (!tot) {
+      host.innerHTML = '<div class="adm-chart-row"><span class="lbl">لا أسئلة نشطة</span>' +
+        '<span class="bar" style="width:2px"></span><span class="val">—</span></div>';
+      $('biasAlert').hidden = true;
+      return;
+    }
+
+    var pcts = counts.map(function (n) { return n * 100 / tot; });
+    var max = Math.max.apply(null, pcts);
+    var over = [];
+
+    host.innerHTML = counts.map(function (n, i) {
+      var p = pcts[i];
+      var hot = p > BIAS_PCT;
+      if (hot) { over.push(i); }
+      var w = max > 0 ? Math.max(2, Math.round(p / max * 100)) : 2;
+      return '<div class="adm-chart-row">' +
+        '<span class="lbl">الخيار ' + LET[i] + ' (' + A.toAr(n) + ')</span>' +
+        '<span class="bar' + (hot ? ' bar--alert' : '') + '" style="width:' + w + '%"></span>' +
+        '<span class="val">' + A.toAr(Math.round(p)) + '٪</span>' +
+      '</div>';
+    }).join('');
+
+    $('biasAlert').hidden = over.length === 0;
+    if (over.length) {
+      $('biasText').innerHTML = '<strong>تحيّز في مفاتيح الإجابات.</strong> ' +
+        over.map(function (i) {
+          return 'الخيار ' + LET[i] + ' يحمل ' + A.toAr(Math.round(pcts[i])) + '٪ من المفاتيح';
+        }).join('، ') +
+        ' — والعتبة ' + A.toAr(BIAS_PCT) + '٪. يمكن اجتياز الامتحان بالتخمين، ' +
+        'فأعد خلط خيارات الأسئلة المتأثرة قبل أي دورة جديدة.';
+    }
+  }
+
+  function paintRows() {
+    if (!rows.length) {
+      var filtered = state.search || state.set !== 'all' || state.difficulty !== 'all';
+      tbody.innerHTML = '<tr><td colspan="10">' + A.emptyState(
+        filtered ? 'لا نتائج مطابقة' : 'بنك الأسئلة فارغ',
+        filtered
+          ? 'جرّب كلمة أخرى من نص السؤال، أو ألغِ تصفية المجموعة أو الصعوبة.'
+          : 'يمتلئ البنك برفع الأسئلة إلى القاعدة، أو بإدخالها واحداً واحداً من زر «إضافة سؤال».'
+      ) + '</td></tr>';
+      $('selAll').checked = false;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(function (r) {
+      var opts = Array.isArray(r.opts) ? r.opts : [];
+      var ai = r.answer | 0;
+      var hasWhy = !!(r.why && String(r.why).trim());
+      return '<tr' + (picked[r.id] ? ' data-sel="1"' : '') + ' data-id="' + A.esc(r.id) + '">' +
+        /* التحديد وسيلة تعيين الصعوبة الجماعي وحده — قبل الترحيل يبقى معطّلاً */
+        '<td><input class="adm-check" type="checkbox" data-pick="' + A.esc(r.id) + '"' +
+          (picked[r.id] ? ' checked' : '') + (diffReady ? '' : ' disabled') +
+          ' aria-label="تحديد" data-write></td>' +
+        '<td class="num strong adm-mono" dir="ltr" style="text-align:start">' + A.esc(r.id) + '</td>' +
+        '<td class="wrap q-cell"><span class="q-clamp">' + A.esc(r.q) + '</span></td>' +
+        '<td><span class="tag tag--navy" dir="ltr">' + A.esc(r.set_id) + '</span></td>' +
+        '<td>' + diffCell(r) + '</td>' +
+        '<td class="q-ans"><strong>' + (LET[ai] || '؟') + '</strong> — ' +
+          A.esc(opts[ai] == null ? '—' : opts[ai]) + '</td>' +
+        '<td>' + (hasWhy ? '<span class="tag">نعم</span>' : '<span class="muted">—</span>') + '</td>' +
+        '<td class="num">' + A.toAr(r.served | 0) + '</td>' +
+        '<td>' + (r.active
+          ? '<span class="tag tag--success">نشط</span>'
+          : '<span class="tag tag--gold">معطّل</span>') + '</td>' +
+        '<td>' + actions(r) + '</td>' +
+      '</tr>';
+    }).join('');
+
+    $('selAll').checked = rows.length > 0 && rows.every(function (r) { return picked[r.id]; });
+    $('selAll').disabled = !diffReady;
+  }
+
+  /* رقاقة الصعوبة في الصف: قائمة صغيرة تُغيَّر مباشرة، وحساب الاطّلاع
+     يرى وسماً ثابتاً بدلها (CSS). قبل الترحيل: شرطة صامتة. */
+  function diffCell(r) {
+    if (!diffReady) { return '<span class="muted">—</span>'; }
+    var lv = DIFF[r.difficulty] ? r.difficulty : 'medium';
+    return '<select class="q-diff ' + DIFF[lv].cls + '" data-diff data-write' +
+      ' aria-label="صعوبة السؤال ' + A.esc(r.id) + '">' +
+      DIFF_KEYS.map(function (k) {
+        return '<option value="' + k + '"' + (k === lv ? ' selected' : '') + '>' +
+          DIFF[k].label + '</option>';
+      }).join('') + '</select>' +
+      '<span class="tag ' + DIFF[lv].tag + ' q-diff-ro">' + DIFF[lv].label + '</span>';
+  }
+
+  function actions(r) {
+    return '<span class="q-acts">' +
+      '<button class="btn btn-outline btn-sm" data-act="view">عرض</button>' +
+      '<button class="btn btn-primary btn-sm" data-act="edit" data-write>تحرير</button>' +
+      '<button class="btn btn-outline btn-sm" data-act="toggle" data-write>' +
+        (r.active ? 'تعطيل' : 'تفعيل') + '</button>' +
+      '<button class="btn btn-outline btn-sm" data-act="del" data-write>حذف</button>' +
+    '</span>';
+  }
+
+  function onRowClick(e) {
+    var btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    var id = btn.closest('tr').getAttribute('data-id');
+    var r = rows.filter(function (x) { return x.id === id; })[0];
+    if (!r) return;
+    var act = btn.getAttribute('data-act');
+    if (act === 'view')   return openView(r);
+    if (act === 'edit')   return openForm(r);
+    if (act === 'toggle') return toggleActive(r);
+    if (act === 'del')    return askDelete(r);
+  }
+
+  /* -------------------------------------------------- الصعوبة والتحديد */
+  function onRowChange(e) {
+    var sel = e.target.closest('[data-diff]');
+    if (sel) { return onDiffChange(sel); }
+    var cb = e.target.closest('[data-pick]');
+    if (!cb) return;
+    var id = cb.getAttribute('data-pick');
+    var row = rows.filter(function (r) { return r.id === id; })[0];
+    if (cb.checked) { picked[id] = row; } else { delete picked[id]; }
+    cb.closest('tr').setAttribute('data-sel', cb.checked ? '1' : '');
+    $('selAll').checked = rows.every(function (r) { return picked[r.id]; });
+    paintBulk();
+  }
+
+  function onDiffChange(sel) {
+    var id = sel.closest('tr').getAttribute('data-id');
+    var r = rows.filter(function (x) { return x.id === id; })[0];
+    if (!r) return;
+    var prev = DIFF[r.difficulty] ? r.difficulty : 'medium';
+    var next = sel.value;
+    if (next === prev) return;
+    sel.disabled = true;
+    API.admin.setQuestionDifficulty([id], next).then(function () {
+      r.difficulty = next;
+      sel.className = 'q-diff ' + DIFF[next].cls;
+      if (counts) {           /* تحديث الأعداد محلياً — التحميل التالي يصحّح أي فرق */
+        counts[prev] = Math.max(0, (counts[prev] | 0) - 1);
+        counts[next] = (counts[next] | 0) + 1;
+        paintDiffChips();
+      }
+      A.toast('صعوبة السؤال «' + r.id + '» صارت: ' + DIFF[next].label + '.', 'ok');
+      loadMix();              /* الأحواض تغيّرت — يُحدَّث اللوح من الخادم */
+      /* بتصفية صعوبة نشطة صار الصف خارج نتيجتها — يُعاد التحميل ليخرج فعلاً */
+      if (state.difficulty !== 'all') { load(); }
+    }).catch(function (e) {
+      sel.value = prev;       /* تراجع بصري: الرقاقة تعود لما كانت عليه */
+      sel.className = 'q-diff ' + DIFF[prev].cls;
+      A.toast(A.errText(e), 'bad');
+    }).then(function () { sel.disabled = false; });
+  }
+
+  function paintBulk() {
+    var n = Object.keys(picked).length;
+    /* قبل ترحيل الصعوبة لا إجراء جماعياً — الشريط يبقى مطوياً فلا يُستدعى RPC غائب */
+    bulkBar.hidden = n === 0 || !diffReady;
+    bulkCount.textContent = 'محدَّد: ' + qWord(n);
+  }
+
+  function bulkDiff(level) {
+    var ids = Object.keys(picked);
+    if (!ids.length || !DIFF[level]) return;
+    var btns = bulkBar.querySelectorAll('[data-bulk]');
+    btns.forEach(function (b) { b.disabled = true; });
+    API.admin.setQuestionDifficulty(ids, level).then(function (n) {
+      A.toast('صارت صعوبة ' + qWord(n | 0) + ': ' + DIFF[level].label + '.', 'ok');
+      picked = Object.create(null);
+      paintBulk();
+      load();
+      loadMix();
+    }).catch(function (e) {
+      A.toast(A.errText(e), 'bad');
+    }).then(function () { btns.forEach(function (b) { b.disabled = false; }); });
+  }
+
+  /* ---------------------------------------------------------------- العرض */
+  function openView(r) {
+    var opts = Array.isArray(r.opts) ? r.opts : [];
+    var ai = r.answer | 0;
+    A.sheet({
+      title: 'السؤال ' + r.id,
+      hideOk: true,
+      body:
+        '<dl class="adm-kv">' +
+          '<dt>المعرّف</dt><dd class="adm-mono" dir="ltr" style="text-align:start">' + A.esc(r.id) + '</dd>' +
+          '<dt>المجموعة</dt><dd>' + A.esc(r.set_id) + ' — ' + A.esc(r.set_label || '—') + '</dd>' +
+          '<dt>الصعوبة</dt><dd>' + (DIFF[r.difficulty] ? DIFF[r.difficulty].label : '—') + '</dd>' +
+          '<dt>الحالة</dt><dd>' + (r.active ? 'نشط' : 'معطّل') + '</dd>' +
+          '<dt>مرات الظهور</dt><dd>' + papers(r.served | 0) + '</dd>' +
+          '<dt>آخر تعديل</dt><dd>' + A.arDateTime(r.updated_at) + '</dd>' +
+        '</dl>' +
+        '<div class="field"><label>نص السؤال</label>' +
+          '<div class="q-ro">' + A.esc(r.q) + '</div></div>' +
+        '<div class="field"><label>الخيارات</label>' +
+          [0, 1, 2, 3].map(function (i) {
+            return '<div class="q-ro' + (i === ai ? ' q-ro--pick' : '') + '"' +
+              (i ? ' style="margin-block-start:8px"' : '') + '><strong>' + LET[i] + '.</strong> ' +
+              A.esc(opts[i] == null ? '—' : opts[i]) +
+              (i === ai ? ' <span class="tag tag--success">الإجابة الصحيحة</span>' : '') + '</div>';
+          }).join('') +
+        '</div>' +
+        '<div class="field"><label>التعليق العلمي</label>' +
+          '<div class="q-ro">' + (r.why && String(r.why).trim()
+            ? A.esc(r.why) : 'لا تعليق مسجّل لهذا السؤال.') + '</div></div>'
+    });
+  }
+
+  /* ------------------------------------------------------- التحرير والإضافة */
+  function optField(i, val, checked) {
+    return '<div class="q-opt">' +
+      '<label class="q-opt-key"><span>' + LET[i] + '</span>' +
+        '<input type="radio" name="qans" value="' + i + '"' + (checked ? ' checked' : '') +
+        ' aria-label="الخيار ' + LET[i] + ' هو الصحيح"></label>' +
+      '<input class="input" id="qo' + i + '" maxlength="400" value="' + A.esc(val || '') +
+        '" placeholder="نص الخيار ' + LET[i] + '"></div>';
+  }
+
+  function openForm(r) {
+    var isNew = !r;
+    var opts = (r && Array.isArray(r.opts)) ? r.opts : ['', '', '', ''];
+    var ai = r ? (r.answer | 0) : -1;
+
+    var head = isNew
+      ? '<div class="field"><label for="qid">معرّف السؤال</label>' +
+          '<input class="input adm-mono" id="qid" dir="ltr" maxlength="40" placeholder="B3-001">' +
+          '<span class="hint">حروف لاتينية وأرقام وشرطات فقط. يصير مفتاحاً ثابتاً بعد الحفظ ' +
+          'وتُخزَّن به أوراق الامتحان، فلا يقبل التعديل لاحقاً.</span></div>' +
+        '<div class="field"><label for="qset">معرّف المجموعة</label>' +
+          '<input class="input adm-mono" id="qset" dir="ltr" maxlength="20" list="qSetList" placeholder="B3">' +
+          '<datalist id="qSetList">' + sets.map(function (s) {
+            return '<option value="' + A.esc(s.set_id) + '"></option>';
+          }).join('') + '</datalist>' +
+          '<span class="hint">اختر مجموعة قائمة ليُملأ اسمها تلقائياً، أو اكتب معرّف مجموعة جديدة.</span></div>' +
+        '<div class="field"><label for="qsetlabel">اسم المجموعة</label>' +
+          '<input class="input" id="qsetlabel" maxlength="160" placeholder="الكتاب الثالث — …"></div>'
+      : '<div class="field"><label for="qidRo">معرّف السؤال</label>' +
+          '<input class="input adm-mono" id="qidRo" dir="ltr" value="' + A.esc(r.id) + '" disabled>' +
+          '<span class="hint">المعرّف مفتاح ثابت تشير إليه جلسات الامتحان المحفوظة — لا يقبل ' +
+          'التعديل. لسؤال بمعرّف آخر أضف سؤالاً جديداً ثم عطّل هذا.</span></div>' +
+        '<div class="field"><label>المجموعة</label>' +
+          '<div class="q-ro">' + A.esc(r.set_id) + ' — ' + A.esc(r.set_label || '—') + '</div></div>';
+
+    var s = A.sheet({
+      title: isNew ? 'إضافة سؤال إلى البنك' : 'تحرير السؤال',
+      okLabel: isNew ? 'إضافة السؤال' : 'حفظ التعديلات',
+      body: head +
+        '<div class="field"><label for="qtext">نص السؤال</label>' +
+          '<textarea class="input" id="qtext" maxlength="1200" placeholder="نص السؤال كما يقرؤه الممتحَن">' +
+          A.esc(r ? r.q : '') + '</textarea></div>' +
+        '<div class="field"><label>الخيارات الأربعة — وحدّد الصحيح منها</label>' +
+          [0, 1, 2, 3].map(function (i) { return optField(i, opts[i], i === ai); }).join('') +
+          '<span class="hint">القاعدة ترفض أي سؤال لا يحمل أربعة خيارات غير فارغة ' +
+          '(قيد questions_opts_len) ولا إجابة خارج المدى 0–3 (قيد questions_answer_check).</span></div>' +
+        '<div class="field"><label for="qwhy">التعليق العلمي</label>' +
+          '<textarea class="input" id="qwhy" maxlength="1200" placeholder="يُعرض للممتحَن بعد التصحيح — اتركه فارغاً إن لم يوجد">' +
+          A.esc(r ? (r.why || '') : '') + '</textarea></div>' +
+        '<div class="field"><label class="q-inline" for="qactive">' +
+          '<input class="adm-check" type="checkbox" id="qactive"' +
+          ((!r || r.active) ? ' checked' : '') + '> سؤال نشط</label>' +
+          '<span class="hint">غير النشط يبقى محفوظاً ولا يُسحب في أوراق الامتحان.</span></div>' +
+        '<div class="notice"><span>يُسجَّل كل حفظ في سجل التدقيق باسمك.</span></div>',
+      onOk: function (host) {
+        var v = readForm(host, isNew, r);
+        if (!v) return;                       /* التحقق فشل: اللوحة تبقى مفتوحة */
+        return save(v, isNew);
+      }
+    });
+
+    /* اسم المجموعة يُملأ تلقائياً من مجموعة قائمة — كتابته يدوياً كل مرة
+       تُنتج تسميات متضاربة لنفس المجموعة */
+    var setInp = s.el.querySelector('#qset');
+    if (setInp) {
+      setInp.addEventListener('input', function () {
+        var hit = sets.filter(function (x) { return x.set_id === setInp.value.trim(); })[0];
+        if (hit) { s.el.querySelector('#qsetlabel').value = hit.set_label || ''; }
+      });
+    }
+  }
+
+  /* التحقق قبل الحفظ: القاعدة ترفض بقيدين، وردّها رسالة قاعدة بيانات
+     مبهمة — فالمنع هنا أوضح للمستخدم */
+  function readForm(host, isNew, r) {
+    var g = function (id) {
+      var el = host.querySelector('#' + id);
+      return el ? (el.value || '').trim() : '';
+    };
+    var opts = [0, 1, 2, 3].map(function (i) { return g('qo' + i); });
+    var picked = host.querySelector('input[name="qans"]:checked');
+    var answer = picked ? parseInt(picked.value, 10) : -1;
+    var q = g('qtext');
+
+    if (isNew) {
+      var id = g('qid');
+      if (!id) { A.toast('معرّف السؤال مطلوب.', 'bad'); return null; }
+      if (!/^[A-Za-z0-9._-]+$/.test(id)) {
+        A.toast('المعرّف يقبل الحروف اللاتينية والأرقام والشرطة والنقطة فقط.', 'bad'); return null;
+      }
+      if (!g('qset')) { A.toast('معرّف المجموعة مطلوب.', 'bad'); return null; }
+      if (!g('qsetlabel')) { A.toast('اسم المجموعة مطلوب.', 'bad'); return null; }
+    }
+    if (!q) { A.toast('نص السؤال مطلوب.', 'bad'); return null; }
+    if (opts.filter(function (o) { return o.length > 0; }).length !== 4) {
+      A.toast('الخيارات الأربعة كلها مطلوبة — القاعدة ترفض أي عدد آخر.', 'bad'); return null;
+    }
+    if (!(answer >= 0 && answer <= 3)) {
+      A.toast('حدّد الإجابة الصحيحة من الخيارات الأربعة.', 'bad'); return null;
+    }
+
+    return {
+      id:        isNew ? g('qid') : r.id,
+      set_id:    isNew ? g('qset') : r.set_id,
+      set_label: isNew ? g('qsetlabel') : r.set_label,
+      q: q,
+      opts: opts,
+      answer: answer,
+      why: g('qwhy') || null,
+      active: host.querySelector('#qactive').checked,
+      updated_at: new Date().toISOString()
+    };
+  }
+
+  function save(row, isNew) {
+    /* saveQuestion يعمل بـupsert: الحفظ بمعرّف موجود يستبدل سؤالاً قائماً
+       بلا إنذار، فيُفحص المعرّف قبل الإضافة */
+    var pre = isNew
+      ? API.admin.questions({ search: row.id, limit: 20, offset: 0 }).then(function (d) {
+          var dup = (d.rows || []).some(function (x) { return x.id === row.id; });
+          if (dup) {
+            throw new Error('المعرّف «' + row.id + '» مستعمل لسؤال آخر — اختر معرّفاً غيره، ' +
+              'فالحفظ عليه يستبدل السؤال القائم.');
+          }
+        })
+      : Promise.resolve();
+
+    return pre.then(function () {
+      return API.admin.saveQuestion(row);
+    }).then(function () {
+      A.toast(isNew ? ('أُضيف السؤال «' + row.id + '» إلى البنك.')
+                    : ('حُفظت تعديلات السؤال «' + row.id + '».'), 'ok');
+      loadSets();
+      load();
+    });
+  }
+
+  function toggleActive(r) {
+    var row = {
+      id: r.id, set_id: r.set_id, set_label: r.set_label, q: r.q,
+      opts: Array.isArray(r.opts) ? r.opts : [], answer: r.answer | 0,
+      why: r.why || null, active: !r.active, updated_at: new Date().toISOString()
+    };
+    API.admin.saveQuestion(row).then(function () {
+      A.toast(row.active ? ('فُعّل السؤال «' + r.id + '».') : ('عُطّل السؤال «' + r.id + '».'), 'ok');
+      loadSets();
+      load();
+    }).catch(function (e) { A.toast(A.errText(e), 'bad'); });
+  }
+
+  function askDelete(r) {
+    A.confirm({
+      title: 'حذف السؤال', danger: true, okLabel: 'حذف نهائياً',
+      text: 'سيُحذف السؤال «' + r.id + '» من البنك نهائياً. ' +
+            (r.served ? ('ظهر في ' + papers(r.served | 0) + ' محفوظة تشير إليه بمعرّفه. ') : '') +
+            'التعطيل يكفي غالباً لإخراجه من أوراق الامتحان مع بقاء سجلّه.'
+    }).then(function (ok) {
+      if (ok === null) return;
+      API.admin.deleteQuestion(r.id).then(function () {
+        A.toast('حُذف السؤال «' + r.id + '».', 'ok');
+        loadSets();
+        load();
+      }).catch(function (e) { A.toast(A.errText(e), 'bad'); });
+    });
+  }
+
+  /* ---------------------------------------------------------------- التصدير */
+  function exportAsk() {
+    if (!$('withKeys').checked) return runExport(false);
+    /* ملف بمفاتيح الإجابات = الامتحان كله مكشوفاً: تأكيد صريح قبل التنزيل */
+    A.confirm({
+      title: 'تصدير مع مفاتيح الإجابات', danger: true, okLabel: 'تصدير مع المفاتيح',
+      text: 'سيحوي الملف الإجابة الصحيحة لكل سؤال والتعليق العلمي. من يحصل عليه يجتاز '
+          + 'الامتحان كاملاً — عامله كوثيقة سرّية، ولا ترسله بالبريد ولا ترفعه إلى مشاركة عامة.'
+    }).then(function (ok) {
+      if (ok === null) return;
+      runExport(true);
+    });
+  }
+
+  function runExport(withKeys) {
+    var btn = $('exportBtn');
+    btn.disabled = true; btn.textContent = 'جارٍ التجهيز…';
+    /* التصدير يجلب كامل نتيجة التصفية من الخادم لا الصفحة المعروضة فقط */
+    API.admin.questions({ set: state.set, search: state.search, limit: MAX_EXPORT, offset: 0,
+                          difficulty: state.difficulty === 'all' ? null : state.difficulty })
+      .then(function (d) {
+        var all = d.rows || [];
+        if (!all.length) { A.toast('لا نتائج للتصدير بالتصفية الحالية.'); return; }
+        var headers = ['المعرّف', 'المجموعة', 'اسم المجموعة', 'الصعوبة', 'نص السؤال',
+                       'الخيار أ', 'الخيار ب', 'الخيار ج', 'الخيار د',
+                       'له تعليق', 'مرات الظهور', 'الحالة'];
+        if (withKeys) {
+          headers = headers.concat(['حرف الإجابة الصحيحة', 'نص الإجابة الصحيحة', 'التعليق العلمي']);
+        }
+        A.exportCsv(withKeys ? 'osea-questions-with-answer-keys-CONFIDENTIAL.csv' : 'osea-questions.csv',
+          headers,
+          all.map(function (r) {
+            var o = Array.isArray(r.opts) ? r.opts : [];
+            var ai = r.answer | 0;
+            var base = [r.id, r.set_id, r.set_label,
+                        DIFF[r.difficulty] ? DIFF[r.difficulty].label : '—', r.q,
+                        o[0] || '', o[1] || '', o[2] || '', o[3] || '',
+                        (r.why && String(r.why).trim()) ? 'نعم' : 'لا',
+                        r.served | 0, r.active ? 'نشط' : 'معطّل'];
+            return withKeys
+              ? base.concat([LET[ai] || '', o[ai] || '', r.why || ''])
+              : base;
+          }));
+        A.toast('صُدّر ' + qWord(all.length) +
+          (withKeys ? ' مع مفاتيح الإجابات — الملف سرّي.' : ' بلا مفاتيح الإجابات.') +
+          ((d.total | 0) > all.length ? ' (أول ' + A.toAr(MAX_EXPORT) + ' من ' +
+            A.toAr(d.total | 0) + ')' : ''), 'ok');
+      })
+      .catch(function (e) { A.toast(A.errText(e), 'bad'); })
+      .then(function () { btn.disabled = false; btn.textContent = 'تصدير Excel'; });
+  }
+})();
+</script>
+</body>
+</html>

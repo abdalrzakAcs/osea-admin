@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظرة عامة — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* أنماط خاصة بصفحة النظرة العامة — بتوكنات الهوية حصراً.
+   كل ما لا يوجد في admin.css: حشوة جسم البطاقة، وحدة الإيراد، وسم نوع المحتوى،
+   وتوسيع عمود التسمية في رسم «أكثر المحتوى فتحاً» لأن العناوين أطول من أسماء الفروع. */
+.ov-body { padding: 18px; }
+.ov-unit { font-family: var(--font-text); font-size: 15px; color: var(--text-secondary);
+           margin-inline-start: 6px; }
+.adm-kpi .link-gold { margin-block-start: 10px; }
+.ov-kind { display: inline-block; font-size: 11px; font-weight: 700; line-height: 18px;
+           padding-inline: 7px; border-radius: var(--radius-pill);
+           background: var(--navy-50); color: var(--navy-700); margin-inline-end: 7px; }
+.ov-top .adm-chart-row { grid-template-columns: minmax(0, 220px) 1fr 52px; }
+.ov-note { display: block; font-size: 12.5px; line-height: 1.8; color: var(--text-secondary);
+           margin-block-start: 14px; }
+.ov-skel-lbl  { width: 58%; }
+.ov-skel-num  { height: 30px; margin-block-start: 12px; }
+.ov-skel-hint { width: 80%; margin-block-start: 12px; }
+@media (max-width: 640px) { .ov-top .adm-chart-row { grid-template-columns: minmax(0, 120px) 1fr 46px; } }
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <!-- مدة التقرير: تُعاد المناداة بـp_days فكل رقم في الصفحة يخص المدة المختارة -->
+      <div class="adm-bar">
+        <strong class="adm-kpi-label">مدة التقرير</strong>
+        <div class="adm-filters" id="daysBar" role="group" aria-label="مدة التقرير"></div>
+        <span class="spacer"></span>
+        <span class="tag" id="rangeTag">—</span>
+        <button class="btn btn-outline btn-sm" id="reload">تحديث</button>
+      </div>
+
+      <!-- خطأ التحميل يحل محل اللوحة كلها لأن كل بطاقاتها من نداء واحد -->
+      <div id="err"></div>
+
+      <div class="adm-stack" id="wrap">
+
+        <!-- ثماني بطاقات على صفّين — تُبنى كلها من admin_overview، لا رقم في الوسم -->
+        <div class="adm-kpis" id="kpis"></div>
+
+        <div class="adm-table-card">
+          <div class="adm-table-head">
+            <h2>السلسلة الزمنية اليومية</h2>
+            <div class="adm-filters" id="metricBar" role="group" aria-label="مؤشر السلسلة"></div>
+            <span class="spacer"></span>
+            <span class="tag" id="seriesTotal">—</span>
+          </div>
+          <div class="ov-body" id="seriesHost"></div>
+        </div>
+
+        <div class="adm-grid-2">
+          <div class="adm-table-card">
+            <div class="adm-table-head">
+              <h2>توزّع الحسابات على الفروع</h2>
+              <span class="spacer"></span>
+              <span class="tag" id="branchTag">—</span>
+            </div>
+            <div class="ov-body" id="branchHost"></div>
+          </div>
+
+          <div class="adm-table-card">
+            <div class="adm-table-head">
+              <h2>أكثر المحتوى فتحاً</h2>
+              <span class="spacer"></span>
+              <span class="tag" id="topTag">—</span>
+            </div>
+            <div class="ov-body ov-top" id="topHost"></div>
+          </div>
+        </div>
+
+        <div class="adm-grid-3">
+          <div class="adm-table-card">
+            <div class="adm-table-head"><h2>حالة المحتوى</h2></div>
+            <div class="ov-body">
+              <dl class="adm-kv" id="contentKv"></dl>
+              <span class="ov-note" id="contentNote" hidden></span>
+            </div>
+          </div>
+
+          <div class="adm-table-card">
+            <div class="adm-table-head"><h2>جلسات الامتحان</h2></div>
+            <div class="ov-body">
+              <dl class="adm-kv" id="sessionsKv"></dl>
+              <span class="ov-note" id="sessionsNote" hidden></span>
+            </div>
+          </div>
+
+          <div class="card card--links">
+            <h3>روابط سريعة</h3>
+            <ul id="links"></ul>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  /* المدد ومؤشرات السلسلة تُبنى أزرارها من هنا — كي لا يُكتب رقم واحد في الوسم */
+  var DAYS = [7, 30, 90];
+  var METRICS = [
+    { key: 'accounts', label: 'التسجيلات', none: 'أي حساب جديد',
+      n: ['تسجيلات', 'تسجيلاً', 'تسجيل واحد', 'تسجيلان'] },
+    { key: 'attempts', label: 'المحاولات', none: 'أي محاولة امتحان',
+      n: ['محاولات', 'محاولة', 'محاولة واحدة', 'محاولتان'] },
+    { key: 'payments', label: 'المدفوعات', none: 'أي دفعة',
+      n: ['دفعات', 'دفعة', 'دفعة واحدة', 'دفعتان'] },
+    { key: 'accesses', label: 'الوصول للمحتوى', none: 'أي فتح لمحتوى',
+      n: ['مرات فتح', 'مرة فتح', 'مرة فتح واحدة', 'مرتا فتح'] }
+  ];
+  var KIND = { book: 'كتاب', form: 'استمارة', lesson: 'درس' };
+
+  /* وصف كل صفحة في بطاقة الروابط — القائمة نفسها من ADMIN.NAV كي لا تتخلّف عنها */
+  var LINK_DESC = {
+    users:     'الموافقة على الطلبات وتعديل الحسابات',
+    payments:  'دفعات شام كاش والإعفاءات',
+    results:   'المحاولات والشهادات وسجل التحقق',
+    content:   'الكتب والاستمارات والدروس',
+    questions: 'بنك الأسئلة وضبط الإجابات',
+    releases:  'إصدارات التطبيق وبوابة التحديث',
+    access:    'سجل فتح المحتوى',
+    staff:     'حسابات الطاقم وصلاحياتها',
+    audit:     'سجل التدقيق لكل إجراء إداري'
+  };
+
+  var ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m7-7-7 7 7 7"/></svg>';
+  var LOADING = '<div class="adm-state"><p>جارٍ التحميل…</p></div>';
+
+  var state = { days: 30, metric: 'accounts' };
+  var data = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  A.boot({
+    page: 'overview',
+    title: 'نظرة عامة',
+    lead: 'قراءة حيّة لحالة المنصة خلال المدة المختارة: الموافقات المعلّقة والتسجيلات '
+        + 'والمحاولات والشهادات والإيرادات، مع سلسلة يومية وتوزّع الفروع وأكثر المحتوى فتحاً — '
+        + 'كل رقم في هذه الصفحة من قاعدة بيانات المنصة مباشرة.',
+    crumb: 'نظرة عامة'
+  }).then(function (st) {
+    if (!st) return;
+    paintDaysBar();
+    paintMetricBar();
+    paintLinks();
+    $('reload').addEventListener('click', load);
+    load();
+  });
+
+  /* ---------------------------------------------------------------- تنسيق الأرقام */
+  /* فاصل الآلاف العربي يُدرَج قبل التحويل للأرقام الهندية لأن الفاصلة تُطبَّق على اللاتينية */
+  function num(v) {
+    return A.toAr(String(Math.round(Number(v) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+  }
+  function pct(part, whole) {
+    whole = Number(whole) || 0;
+    return whole ? Math.round((Number(part) || 0) / whole * 100) : 0;
+  }
+  function arPct(part, whole) { return A.toAr(pct(part, whole)) + '٪'; }
+  /* مطابقة العدد للمعدود: صفر نفي، و1 مفرد، و2 مثنّى، و3–10 جمع، وما فوقها تمييز منصوب.
+     القاعدة الفارغة تعني أن أكثر الأرقام أصفار اليوم، فلا يصح «0 حساباً مرفوضاً». */
+  function cnt(v, forms) {
+    var n = Math.round(Number(v) || 0), m = n % 100;
+    if (n === 0) return 'لا ' + forms[0];
+    if (n === 1) return forms[2];
+    if (n === 2) return forms[3];
+    return num(n) + ' ' + (m >= 3 && m <= 10 ? forms[0] : forms[1]);
+  }
+  function daysLabel(d) { return d === 7 ? A.toAr(d) + ' أيام' : A.toAr(d) + ' يوماً'; }
+  function metricDef(k) {
+    for (var i = 0; i < METRICS.length; i++) { if (METRICS[i].key === k) return METRICS[i]; }
+    return METRICS[0];
+  }
+  function seriesSum(key) {
+    return ((data && data.series) || []).reduce(function (s, r) {
+      return s + (Number(r[key]) || 0);
+    }, 0);
+  }
+  /* مفتاح يوم محلي — لتمييز عمود اليوم الحالي دون انزياح المنطقة الزمنية */
+  function todayKey() {
+    var d = new Date(), p = function (x) { return String(x).padStart(2, '0'); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+
+  /* ---------------------------------------------------------------- أشرطة التبديل */
+  function paintDaysBar() {
+    $('daysBar').innerHTML = DAYS.map(function (d) {
+      return '<button class="adm-chip" data-d="' + d + '" aria-pressed="' +
+        (state.days === d) + '">' + daysLabel(d) + '</button>';
+    }).join('');
+    $('daysBar').querySelectorAll('[data-d]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.days = parseInt(b.getAttribute('data-d'), 10);
+        paintDaysBar();
+        load();
+      });
+    });
+  }
+
+  function paintMetricBar() {
+    $('metricBar').innerHTML = METRICS.map(function (m) {
+      /* العدّاد على الزر مجموع المدة نفسها — يُقرأ المؤشر قبل الضغط عليه */
+      var n = data ? '<span class="n">' + num(seriesSum(m.key)) + '</span>' : '';
+      return '<button class="adm-chip" data-m="' + m.key + '" aria-pressed="' +
+        (state.metric === m.key) + '">' + A.esc(m.label) + n + '</button>';
+    }).join('');
+    $('metricBar').querySelectorAll('[data-m]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.metric = b.getAttribute('data-m');
+        paintMetricBar();
+        paintSeries();
+      });
+    });
+  }
+
+  function paintLinks() {
+    $('links').innerHTML = A.NAV.filter(function (x) { return x.key !== 'overview'; })
+      .map(function (x) {
+        return '<li><a href="' + x.href + '">' + A.esc(x.label) +
+          ' — ' + A.esc(LINK_DESC[x.key] || '') + ARROW + '</a></li>';
+      }).join('');
+  }
+
+  /* ---------------------------------------------------------------- التحميل */
+  function load() {
+    $('err').innerHTML = '';
+    $('wrap').hidden = false;
+    paintLoading();
+    API.admin.overview(state.days).then(function (d) {
+      data = d || {};
+      paintKpis();
+      paintMetricBar();
+      paintSeries();
+      paintBranches();
+      paintTop();
+      paintContent();
+      paintSessions();
+      paintRange();
+    }).catch(function (e) {
+      data = null;
+      $('wrap').hidden = true;
+      $('rangeTag').textContent = '—';
+      $('err').innerHTML = '<div class="adm-table-card">' +
+        A.errorState(A.errText(e, 'تعذّر تحميل الإحصاءات'), 'retry') + '</div>';
+      var r = $('retry'); if (r) r.addEventListener('click', load);
+    });
+  }
+
+  function paintLoading() {
+    var s = '';
+    for (var i = 0; i < 8; i++) {
+      s += '<div class="adm-kpi"><div class="adm-skel ov-skel-lbl"></div>' +
+           '<div class="adm-skel ov-skel-num"></div>' +
+           '<div class="adm-skel ov-skel-hint"></div></div>';
+    }
+    $('kpis').innerHTML = s;
+    $('seriesHost').innerHTML = LOADING;
+    $('branchHost').innerHTML = LOADING;
+    $('topHost').innerHTML = LOADING;
+    $('contentKv').innerHTML = '<dt>جارٍ التحميل…</dt><dd>—</dd>';
+    $('sessionsKv').innerHTML = '<dt>جارٍ التحميل…</dt><dd>—</dd>';
+    $('contentNote').hidden = true;
+    $('sessionsNote').hidden = true;
+  }
+
+  function paintRange() {
+    var s = data.series || [];
+    $('rangeTag').textContent = s.length
+      ? ('من ' + A.arDate(s[0].day) + ' إلى ' + A.arDate(s[s.length - 1].day))
+      : ('آخر ' + daysLabel(state.days));
+  }
+
+  /* ---------------------------------------------------------------- بطاقات المؤشرات */
+  function kpi(o) {
+    return '<div class="adm-kpi' + (o.mod ? ' ' + o.mod : '') + '">' +
+      '<span class="adm-kpi-label">' + A.esc(o.label) + '</span>' +
+      '<b class="adm-kpi-num">' + o.num +
+        (o.unit ? '<span class="ov-unit">' + A.esc(o.unit) + '</span>' : '') + '</b>' +
+      '<span class="adm-kpi-hint">' + o.hint + '</span>' +
+      (o.link ? '<a class="link-gold" href="' + o.link.href + '">' +
+        A.esc(o.link.text) + ARROW + '</a>' : '') +
+      '</div>';
+  }
+
+  function paintKpis() {
+    var ac = data.accounts || {}, pay = data.payments || {},
+        at = data.attempts || {}, ce = data.certificates || {};
+    var newInPeriod = seriesSum('accounts');
+
+    $('kpis').innerHTML = [
+      kpi({
+        label: 'بانتظار الموافقة', mod: 'adm-kpi--gold', num: num(ac.pending),
+        hint: (ac.pending ? 'تنتظر قرار الإدارة' : 'لا طلبات معلّقة الآن') +
+              ' — لا يبدأ أي حساب محاولة قبل الموافقة',
+        link: { href: 'admin-users.html?status=pending', text: 'إدارة الموافقات' }
+      }),
+      kpi({
+        label: 'حسابات موافَق عليها', num: num(ac.approved),
+        hint: 'مؤهلة لبدء الامتحان · ' +
+              cnt(ac.rejected, ['حسابات مرفوضة', 'حساباً مرفوضاً', 'حساب مرفوض واحد', 'حسابان مرفوضان'])
+      }),
+      kpi({
+        label: 'إجمالي الحسابات', num: num(ac.total),
+        hint: (ac.exempt ? 'منها ' : '') +
+              cnt(ac.exempt, ['حسابات معفاة', 'حساباً معفى', 'حساب واحد معفى', 'حسابان معفيان']) +
+              ' من الرسوم'
+      }),
+      kpi({
+        label: 'تسجيلات اليوم', num: num(ac.today),
+        hint: cnt(newInPeriod, ['تسجيلات', 'تسجيلاً', 'تسجيل واحد', 'تسجيلان']) +
+              ' خلال آخر ' + daysLabel(state.days)
+      }),
+      kpi({
+        label: 'محاولات الامتحان', num: num(at.count),
+        hint: at.count
+          ? ('منها ' + num(at.passed) + ' ناجحة — نسبة النجاح ' + arPct(at.passed, at.count))
+          : 'لم تُسلَّم أي محاولة بعد'
+      }),
+      kpi({
+        label: 'متوسط الدرجة', mod: 'adm-kpi--warm',
+        num: at.count ? (A.toAr(Math.round(Number(at.avg_score) || 0)) + '٪') : '—',
+        hint: at.count
+          ? ('متوسط درجات ' +
+             cnt(at.count, ['محاولات مسلَّمة', 'محاولة مسلَّمة', 'محاولة واحدة مسلَّمة', 'محاولتين مسلَّمتين']))
+          : 'يظهر المتوسط بعد أول محاولة مسلَّمة'
+      }),
+      kpi({
+        label: 'شهادات صادرة', num: num(ce.count),
+        hint: !ce.count ? 'تصدر الشهادة تلقائياً عند نجاح المحاولة'
+          : ce.distinctions
+            ? ('منها ' +
+               cnt(ce.distinctions, ['شهادات تميّز', 'شهادة تميّز', 'شهادة تميّز واحدة', 'شهادتا تميّز']))
+            : 'لم تصدر شهادة تميّز بعد'
+      }),
+      kpi({
+        label: 'الإيرادات المحصّلة', mod: 'adm-kpi--gold',
+        num: num(pay.revenue), unit: 'ل.س',
+        hint: pay.count
+          ? (cnt(pay.paid, ['دفعات مسدَّدة', 'دفعة مسدَّدة', 'دفعة واحدة مسدَّدة', 'دفعتان مسدَّدتان']) +
+             ' · ' +
+             cnt(pay.exempt, ['دفعات معفاة', 'دفعة معفاة', 'دفعة واحدة معفاة', 'دفعتان معفاتان']) +
+             ' من أصل ' + num(pay.count))
+          : 'لم تُسجَّل أي دفعة بعد — يُسجَّل رسم كل محاولة هنا'
+      })
+    ].join('');
+  }
+
+  /* ---------------------------------------------------------------- السلسلة الزمنية */
+  function paintSeries() {
+    var host = $('seriesHost'), rows = (data && data.series) || [], m = metricDef(state.metric);
+
+    if (!rows.length) {
+      $('seriesTotal').textContent = '—';
+      host.innerHTML = A.emptyState('لا سلسلة زمنية',
+        'تُبنى السلسلة يوماً بيوم من سجلات المدة المختارة.');
+      return;
+    }
+
+    var vals = rows.map(function (r) { return Number(r[state.metric]) || 0; });
+    var total = vals.reduce(function (s, v) { return s + v; }, 0);
+    var first = rows[0].day, last = rows[rows.length - 1].day;
+
+    $('seriesTotal').textContent = (total ? 'المجموع ' + cnt(total, m.n) : cnt(0, m.n)) +
+      (state.metric === 'payments' && total ? ' · إيراد ' + num(seriesSum('revenue')) + ' ل.س' : '');
+
+    var max = Math.max.apply(null, vals);
+    /* رسم كل أعمدته أصفار يكذب على القارئ — تحل محله حالة فراغ تشرح متى يمتلئ */
+    if (!max) {
+      host.innerHTML = A.emptyState('لا حركة في هذه المدة',
+        'لم يُسجَّل ' + m.none + ' بين ' + A.arDate(first) + ' و' + A.arDate(last) +
+        ' — يمتلئ الرسم فور بدء التشغيل الفعلي.');
+      return;
+    }
+
+    var tk = todayKey();
+    var cols = rows.map(function (r, i) {
+      var v = vals[i];
+      var h = Math.round(v / max * 100);
+      return '<span class="col"' + (r.day === tk ? ' data-today="1"' : '') +
+        ' title="' + A.esc(A.arDate(r.day) + ' — ' + cnt(v, m.n)) + '">' +
+        '<i style="height:' + h + '%"></i></span>';
+    }).join('');
+
+    host.innerHTML =
+      '<div class="adm-series" role="img" aria-label="' +
+        A.esc(m.label + ' يومياً: المجموع ' + cnt(total, m.n) +
+              '، وأعلى يوم ' + num(max)) + '">' + cols + '</div>' +
+      '<div class="adm-series-axis"><span dir="rtl">' + A.arDate(first) + '</span>' +
+        '<span dir="rtl">' + A.arDate(last) + '</span></div>';
+  }
+
+  /* ---------------------------------------------------------------- رسوم الأشرطة */
+  function bars(rows, gold) {
+    var max = rows.reduce(function (mx, r) { return Math.max(mx, Number(r.n) || 0); }, 0) || 1;
+    return '<div class="adm-chart">' + rows.map(function (r) {
+      var w = Math.max(2, Math.round((Number(r.n) || 0) / max * 100));   /* النسبة من الأكبر */
+      return '<div class="adm-chart-row">' +
+        '<span class="lbl" title="' + A.esc(r.plain) + '">' + r.label + '</span>' +
+        '<div><div class="bar' + (gold ? ' bar--gold' : '') + '" style="width:' + w + '%"></div></div>' +
+        '<span class="val">' + num(r.n) + '</span>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function paintBranches() {
+    var rows = data.branches || [];
+    $('branchTag').textContent = rows.length
+      ? cnt(rows.length, ['فروع', 'فرعاً', 'فرع واحد', 'فرعان']) : '—';
+    if (!rows.length) {
+      $('branchHost').innerHTML = A.emptyState('لا حسابات بعد',
+        'يظهر توزّع الفروع فور تسجيل أول مهندس من التطبيق.');
+      return;
+    }
+    $('branchHost').innerHTML = bars(rows.map(function (b) {
+      return { n: b.n, plain: b.branch, label: A.esc(b.branch) };
+    }), false);
+  }
+
+  function paintTop() {
+    var rows = data.top_content || [];
+    $('topTag').textContent = rows.length
+      ? cnt(rows.length, ['عناصر', 'عنصراً', 'عنصر واحد', 'عنصران']) + ' في الصدارة' : '—';
+    if (!rows.length) {
+      $('topHost').innerHTML = A.emptyState('لا فتحات مسجّلة',
+        'يُسجَّل كل فتح لكتاب أو استمارة أو درس، ويظهر ترتيب الأكثر فتحاً هنا.');
+      return;
+    }
+    $('topHost').innerHTML = bars(rows.map(function (c) {
+      var kind = KIND[c.kind] || c.kind || '';
+      return {
+        n: c.n,
+        plain: kind + ' — ' + (c.title || ''),
+        label: '<span class="ov-kind">' + A.esc(kind) + '</span>' + A.esc(c.title)
+      };
+    }), true);
+  }
+
+  /* ---------------------------------------------------------------- بطاقتا الحالة */
+  function kv(pairs) {
+    return pairs.map(function (p) {
+      return '<dt>' + A.esc(p[0]) + '</dt><dd>' + p[1] + '</dd>';
+    }).join('');
+  }
+
+  function paintContent() {
+    var c = data.content || {}, l = data.lessons || {};
+    $('contentKv').innerHTML = kv([
+      ['الكتب', num(c.books)],
+      ['الاستمارات', num(c.forms)],
+      ['الدروس', num(c.lessons)],
+      ['الأسئلة النشطة', num(c.questions)],
+      ['عناصر المحتوى', num(c.active) + ' نشط من ' + num(c.items)],
+      ['مرات الوصول', num(c.accesses)],
+      ['تقدّم الدروس', l.rows
+        ? (cnt(l.rows, ['سجلات', 'سجلاً', 'سجل واحد', 'سجلان']) + ' لـ' +
+           cnt(l.learners, ['متعلّمين', 'متعلّماً', 'متعلّم واحد', 'متعلّمَين']))
+        : 'لا متابعة بعد']
+    ]);
+    var note = $('contentNote');
+    note.hidden = !!c.accesses;
+    note.textContent = 'لم يُفتح أي عنصر بعد — يبدأ العدّ فور استعمال المهندسين للمكتبة من التطبيق.';
+  }
+
+  function paintSessions() {
+    var at = data.attempts || {};
+    $('sessionsKv').innerHTML = kv([
+      ['جلسات مُصدَرة', num(at.sessions)],
+      ['محاولات مسلَّمة', num(at.count) +
+        (at.sessions ? ' (' + arPct(at.count, at.sessions) + ' من الجلسات)' : '')],
+      ['متروكة بلا تسليم', num(at.abandoned) +
+        (at.sessions ? ' (' + arPct(at.abandoned, at.sessions) + ')' : '')],
+      ['محاولات ناجحة', num(at.passed) +
+        (at.count ? ' (' + arPct(at.passed, at.count) + ')' : '')],
+      ['متوسط الدرجة', at.count ? A.toAr(Math.round(Number(at.avg_score) || 0)) + '٪' : '—']
+    ]);
+    var note = $('sessionsNote');
+    note.hidden = !!at.sessions;
+    note.textContent = 'تُفتح الجلسة حين يبدأ العضو الامتحان، وتُحسب متروكة إن انتهت مدتها '
+      + 'دون تسليم — يظهر العدّ فور أول امتحان.';
+  }
+})();
+</script>
+</body>
+</html>

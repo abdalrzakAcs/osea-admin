@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الأكواد المُوجَّهة — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* أنماط الصفحة — بتوكنات الهوية حصراً */
+.sheet-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.code-cell{font-family:var(--font-display);font-weight:700;letter-spacing:1px;
+  color:var(--navy-800);white-space:nowrap}
+/* اختيار المستهدفين: بحث + رقائق */
+.picked{display:flex;flex-wrap:wrap;gap:8px;margin-block-start:10px}
+.picked .tag button{margin-inline-start:6px;font-weight:700;line-height:1}
+.acc-hits{border:1px solid var(--border);border-radius:10px;margin-block-start:8px;
+  max-height:220px;overflow:auto;background:var(--surface)}
+.acc-hit{display:flex;align-items:center;gap:10px;width:100%;text-align:start;
+  padding:10px 14px;border-block-end:1px solid var(--border);font-size:13.5px}
+.acc-hit:last-child{border-block-end:0}
+.acc-hit:hover{background:var(--navy-25)}
+.acc-hit b{color:var(--navy-800)}
+.acc-hit small{color:var(--text-secondary)}
+.acc-hit .mono{margin-inline-start:auto;font-family:var(--font-display);font-weight:700}
+/* عرض الكود المُصدر — يُنسخ من هنا فقط */
+.issued-code{
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  padding:22px;margin-block-start:8px;
+  background:var(--navy-800);border-radius:12px;
+  font-family:var(--font-display);font-size:30px;font-weight:700;
+  letter-spacing:4px;color:var(--gold-300);
+}
+.tgl-list{font-size:12px;line-height:1.8;color:var(--text-secondary);max-width:280px}
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <div class="adm-kpis" id="kpis"></div>
+
+      <div class="notice" style="margin-block:22px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <span>
+          <strong>كل كود مربوط بحسابات بعينها — التسريب بلا قيمة.</strong>
+          الكود يُعرض مرة واحدة لحظة إصداره فانسخه وسلّمه لصاحبه بنفسك.
+          «إبطال» يوقف الكود قبل استعماله، وما استُعمل فاستحقاقه باقٍ في سجل صاحبه.
+        </span>
+      </div>
+
+      <div class="adm-bar">
+        <div class="adm-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="input" id="q" type="search" autocomplete="off"
+                 placeholder="بحث بالكود أو الملاحظة أو اسم المستهدَف أو معرّفه">
+        </div>
+        <span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" id="addBtn" data-write>إصدار كود</button>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2>سجل الأكواد</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="totalTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>الكود</th>
+                <th>يمنح</th>
+                <th>المستهدفون</th>
+                <th>الاسترداد</th>
+                <th>الانتهاء</th>
+                <th>الملاحظة</th>
+                <th>الحالة</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="adm-pager">
+          <span>الكود يُستعمل مرة واحدة لكل حساب مستهدَف، ويسجَّل كل استرداد في سجل التدقيق.</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  var KIND = {
+    exam:    { label: 'محاولة امتحان', needBooks: false, needMonths: false },
+    /* «books» تاريخياً: صار يقبل أي بند من الكتالوج (ترحيل 022) —
+       كتاباً أو استمارة أو درساً؛ الاستحقاق الممنوح kind='book' لكل بند */
+    books:   { label: 'اشتراك ببنود محددة', needBooks: true, needMonths: true },
+    library: { label: 'كامل المكتبة',  needBooks: false, needMonths: true },
+    /* اشتراك بمجلد (ترحيل 021): المدة اختيارية — فارغة تعني اشتراكاً دائماً */
+    folder:  { label: 'اشتراك بمجلد',  needBooks: false, needMonths: true,
+               needFolders: true, monthsOptional: true }
+  };
+  /* وسم طريقة اشتراك المجلد في لائحة الاختيار — كما في شاشة المجلدات */
+  var ACCESS_AR = { free: 'مجاني', account: 'يتطلب حساباً', paid: 'مدفوع' };
+  /* سابقة نوع البند في لائحة الاختيار والملخص — تميّز المتشابه بالعنوان */
+  var ITEM_KIND_AR = { book: 'كتاب', form: 'استمارة', lesson: 'درس' };
+  function itemLabel(c) {
+    return (ITEM_KIND_AR[c.kind] || c.kind || 'بند') + ' — ' + c.title;
+  }
+
+  var state = { search: '' };
+  var items = [], catItems = [], folders = [];
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody;
+
+  A.boot({
+    page: 'codes',
+    title: 'الأكواد المُوجَّهة',
+    lead: 'أكواد تفعيل شخصية تصدر باسم حساب أو مجموعة حسابات لخدمة محددة — '
+        + 'محاولة امتحان أو اشتراك ببنود محددة أو بمجلد أو بكامل المكتبة. الكود لا يعمل إلا لأصحابه.',
+    crumb: 'الأكواد'
+  }).then(function (st) {
+    if (!st) { return; }
+    tbody = $('rows');
+    $('q').addEventListener('input', A.debounce(function (e) {
+      state.search = A.norm(e.target.value);
+      render();
+    }, 160));
+    $('addBtn').addEventListener('click', openIssue);
+    load();
+  });
+
+  function load() {
+    Promise.all([
+      API.admin.listCodes(),
+      API.content.catalog(),
+      /* المجلدات لأكواد الاشتراك بمجلد — قراءة الطاقم تشمل المعطّل، وفشلها
+         لا يُسقط الصفحة كلها (قبل تطبيق ترحيل 021 مثلاً) بل يترك اللائحة فارغة */
+      API.admin.folders().catch(function () { return { folders: [] }; })
+    ]).then(function (r) {
+      items = r[0] || [];
+      /* كل بنود الكتالوج الفعّالة لا الكتب وحدها — admin_issue_code (ترحيل
+         022) يقبل أي بند، والاستحقاق kind='book' يفكّ الاستمارة والدرس أيضاً */
+      catItems = (r[1] || []).filter(function (c) { return c.active !== false; });
+      folders = ((r[2] || {}).folders) || [];
+      render();
+    }).catch(function (err) {
+      tbody.innerHTML = '<tr><td colspan="8">' + A.errorState(A.errText(err)) + '</td></tr>';
+    });
+  }
+
+  function kindText(r) {
+    if (r.kind === 'exam') { return 'محاولة امتحان'; }
+    if (r.kind === 'library') { return 'كامل المكتبة — ' + A.toAr(r.months) + ' شهراً'; }
+    if (r.kind === 'folder') {
+      var fnames = (r.item_ids || []).map(function (id) {
+        var f = folders.filter(function (x) { return x.id === id; })[0];
+        return f ? f.name : id;
+      });
+      return 'مجلدات (' + A.toAr(fnames.length) + ') — '
+        + (r.months ? A.toAr(r.months) + ' شهراً' : 'اشتراك دائم')
+        + (fnames.length ? ': ' + fnames.join('، ') : '');
+    }
+    var names = (r.item_ids || []).map(function (id) {
+      var b = catItems.filter(function (x) { return x.id === id; })[0];
+      return b ? itemLabel(b) : id;
+    });
+    return 'بنود محددة (' + A.toAr(names.length) + ') — ' + A.toAr(r.months) + ' شهراً'
+      + (names.length ? ': ' + names.join('، ') : '');
+  }
+
+  function visible() {
+    if (!state.search) { return items; }
+    return items.filter(function (r) {
+      var hay = A.norm([r.code, r.note, kindText(r),
+        (r.target_list || []).map(function (t) { return t.name + ' ' + t.member_no; }).join(' ')
+      ].join(' '));
+      return hay.indexOf(state.search) > -1;
+    });
+  }
+
+  function expired(r) {
+    return r.expires_at && new Date(r.expires_at) < new Date();
+  }
+
+  function render() {
+    var active = items.filter(function (r) { return r.active && !expired(r); }).length;
+    var redeemed = items.reduce(function (n, r) { return n + (r.redeemed || 0); }, 0);
+    $('kpis').innerHTML =
+      kpi('إجمالي الأكواد', items.length, 'كل ما أُصدر') +
+      kpi('ساري', active, 'قابل للاستعمال') +
+      kpi('مُبطَل', items.length - active, 'أوقفته الإدارة') +
+      kpi('استرداد مسجَّل', redeemed, 'استعمال فعلي');
+
+    var rows = visible();
+    $('totalTag').textContent = A.toAr(rows.length) + ' من ' + A.toAr(items.length);
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="8">' +
+        A.emptyState(items.length ? 'لا نتائج مطابقة.' : 'لا أكواد بعد — أصدر أول كود.') +
+        '</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(function (r) {
+      var tgl = (r.target_list || []).map(function (t) {
+        return (t.redeemed ? '✓ ' : '') + A.esc(t.name) + ' <span dir="ltr">(' + A.esc(t.member_no || '—') + ')</span>';
+      }).join('<br>');
+      return '<tr>' +
+        '<td class="code-cell" dir="ltr">' + A.esc(r.code) + '</td>' +
+        '<td>' + A.esc(kindText(r)) + '</td>' +
+        '<td><div class="tgl-list">' + (tgl || '—') + '</div></td>' +
+        '<td>' + A.toAr(r.redeemed || 0) + ' من ' + A.toAr(r.targets || 0) + '</td>' +
+        '<td>' + (r.expires_at ? A.arDateTime(r.expires_at) : '—') + '</td>' +
+        '<td>' + A.esc(r.note || '—') + '</td>' +
+        '<td>' + (!r.active
+            ? '<span class="tag tag--error">مُبطَل</span>'
+            : expired(r)
+              ? '<span class="tag tag--gold">منتهٍ</span>'
+              : '<span class="tag tag--success">ساري</span>') + '</td>' +
+        '<td class="adm-actions">' +
+          (r.active
+            ? '<button class="btn btn-outline btn-sm" data-revoke="' + A.esc(r.id) + '" data-write>إبطال</button>'
+            : '—') +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
+    tbody.querySelectorAll('[data-revoke]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var r = items.filter(function (x) { return String(x.id) === b.getAttribute('data-revoke'); })[0];
+        askRevoke(r);
+      });
+    });
+  }
+
+  function kpi(label, n, hint) {
+    return '<div class="adm-kpi">' +
+      '<span class="adm-kpi-label">' + A.esc(label) + '</span>' +
+      '<span class="adm-kpi-num">' + A.toAr(n) + '</span>' +
+      '<span class="adm-kpi-hint">' + A.esc(hint) + '</span></div>';
+  }
+
+  /* ---------- إصدار كود ---------- */
+
+  var picked = [];   /* الحسابات المستهدفة المختارة في اللوحة المفتوحة */
+
+  function issueBody() {
+    return '' +
+      '<div class="field"><span>ماذا يمنح الكود</span>' +
+        '<select class="input" id="c-kind">' +
+          '<option value="exam">محاولة اختبار اعتماد</option>' +
+          '<option value="books">اشتراك ببنود محددة (كتاب/استمارة/درس)</option>' +
+          '<option value="folder">اشتراك بمجلد أو أكثر</option>' +
+          '<option value="library">اشتراك بكامل المكتبة</option>' +
+        '</select></div>' +
+      '<div class="field" id="c-books-wrap" hidden><span>البنود المشمولة</span>' +
+        '<div style="display:grid;gap:8px;margin-block-start:6px">' +
+        (catItems.length ? catItems.map(function (b) {
+          return '<label style="display:flex;align-items:center;gap:8px;font-size:13.5px">' +
+            '<input type="checkbox" class="c-book" value="' + A.esc(b.id) + '"> ' + A.esc(itemLabel(b)) + '</label>';
+        }).join('')
+        : '<span class="hint">لا بنود منشورة بعد — أنشئها من شاشة المحتوى أولاً.</span>') +
+        '</div></div>' +
+      '<div class="field" id="c-folders-wrap" hidden><span>المجلدات المشمولة</span>' +
+        '<div style="display:grid;gap:8px;margin-block-start:6px">' +
+        (folders.length ? folders.map(function (f) {
+          return '<label style="display:flex;align-items:center;gap:8px;font-size:13.5px">' +
+            '<input type="checkbox" class="c-folder" value="' + A.esc(f.id) + '"> ' + A.esc(f.name) +
+            ' <small style="color:var(--text-secondary)">' +
+              A.esc((f.domain || '—') + ' · ' + (ACCESS_AR[f.access] || f.access || '—') +
+                    (f.active === false ? ' · معطّل' : '')) +
+            '</small></label>';
+        }).join('')
+        : '<span class="hint">لا مجلدات بعد — أنشئها من شاشة «المجلدات والرسوم» أولاً.</span>') +
+        '</div></div>' +
+      '<div class="sheet-pair">' +
+        '<div class="field" id="c-months-wrap" hidden><span>مدة الاشتراك (أشهر)</span>' +
+          '<input class="input" id="c-months" type="text" inputmode="numeric" autocomplete="off" value="1">' +
+          '<span class="hint" id="c-months-hint" hidden>اتركها فارغة لاشتراك دائم بالمجلد.</span></div>' +
+        '<div class="field"><span>انتهاء صلاحية الكود (اختياري)</span>' +
+          '<input class="input" id="c-expires" type="date" min="' +
+            new Date().toISOString().slice(0, 10) + '"></div>' +
+      '</div>' +
+      '<label class="field"><span>ملاحظة داخلية (اختياري)</span>' +
+        '<input class="input" id="c-note" maxlength="200" placeholder="مثال: دفعة فرع حلب — آب"></label>' +
+      '<div class="field"><span>الحسابات المستهدفة — الكود لا يعمل لغيرها</span>' +
+        '<input class="input" id="c-acc" type="search" autocomplete="off" ' +
+          'placeholder="ابحث بالمعرّف أو الاسم أو الرقم النقابي أو الهاتف">' +
+        '<div class="acc-hits" id="c-hits" hidden></div>' +
+        '<div class="picked" id="c-picked"></div>' +
+      '</div>';
+  }
+
+  function wireIssue(host) {
+    picked = [];
+    var kindSel = host.querySelector('#c-kind');
+    var syncKind = function () {
+      var k = KIND[kindSel.value];
+      host.querySelector('#c-books-wrap').hidden = !k.needBooks;
+      host.querySelector('#c-folders-wrap').hidden = !k.needFolders;
+      host.querySelector('#c-months-wrap').hidden = !k.needMonths;
+      host.querySelector('#c-months-hint').hidden = !k.monthsOptional;
+    };
+    kindSel.addEventListener('change', syncKind);
+    syncKind();
+
+    var accIn = host.querySelector('#c-acc');
+    var hits = host.querySelector('#c-hits');
+    var renderPicked = function () {
+      host.querySelector('#c-picked').innerHTML = picked.map(function (a, i) {
+        return '<span class="tag tag--navy">' + A.esc(a.name) +
+          ' <span dir="ltr">(' + A.esc(a.member_no || '—') + ')</span>' +
+          '<button type="button" data-unpick="' + i + '" aria-label="إزالة">×</button></span>';
+      }).join('');
+      host.querySelectorAll('[data-unpick]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          picked.splice(parseInt(b.getAttribute('data-unpick'), 10), 1);
+          renderPicked();
+        });
+      });
+    };
+
+    accIn.addEventListener('input', A.debounce(function () {
+      var q = accIn.value.trim();
+      if (!q) { hits.hidden = true; return; }
+      /* بحث خادمي: يطال كل السجل مهما كبر، والمعتمدون حصراً —
+         كود لحساب غير معتمد يفشل استرداده أصلاً */
+      API.admin.accounts({ search: q, status: 'approved', limit: 8 }).then(function (d) {
+      var found = (d.rows || []).filter(function (a) {
+        return !picked.some(function (p) { return p.id === a.id; });
+      });
+      hits.hidden = !found.length;
+      hits.innerHTML = found.map(function (a) {
+        return '<button type="button" class="acc-hit" data-pick="' + A.esc(a.id) + '">' +
+          '<span><b>' + A.esc(a.name) + '</b><br><small>' + A.esc(a.branch || '') +
+          ' · نقابي ' + A.esc(a.synd_no || '—') + '</small></span>' +
+          '<span class="mono" dir="ltr">' + A.esc(a.member_no || '—') + '</span></button>';
+      }).join('');
+      hits.querySelectorAll('[data-pick]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var a = found.filter(function (x) { return String(x.id) === b.getAttribute('data-pick'); })[0];
+          if (a) { picked.push(a); renderPicked(); }
+          accIn.value = ''; hits.hidden = true; accIn.focus();
+        });
+      });
+      }).catch(function () { hits.hidden = true; });
+    }, 220));
+
+    renderPicked();
+  }
+
+  function openIssue() {
+    var sh = A.sheet({
+      title: 'إصدار كود مُوجَّه',
+      okLabel: 'إصدار الكود',
+      body: issueBody(),
+      onOk: function (host) {
+        var kind = host.querySelector('#c-kind').value;
+        var k = KIND[kind];
+        var bookIds = Array.prototype.slice.call(host.querySelectorAll('.c-book:checked'))
+          .map(function (c) { return c.value; });
+        var folderIds = Array.prototype.slice.call(host.querySelectorAll('.c-folder:checked'))
+          .map(function (c) { return c.value; });
+        /* الحقل نصّي لا رقمي عمداً: type=number يُفرغ قيمته لأي مدخل يرفضه
+           المتصفح (الأرقام الهندية مثلاً)، والفراغ في كود المجلد يعني
+           «اشتراك دائم» — أي أن خطأ كتابةٍ كان يمنح اشتراكاً بلا نهاية. */
+        var monthsRaw = A.norm(host.querySelector('#c-months').value)
+          .replace(/[\s,،٬]/g, '');
+        var monthsBad = monthsRaw !== '' && !/^\d+$/.test(monthsRaw);
+        var months = /^\d+$/.test(monthsRaw) ? parseInt(monthsRaw, 10) : 0;
+        if (k.needMonths && monthsBad) {
+          return Promise.reject(new Error('مدة الاشتراك رقم صحيح بين شهر و24 شهراً.'));
+        }
+        var expires = host.querySelector('#c-expires').value || null;
+
+        if (!picked.length) { return Promise.reject(new Error('حدّد حساباً مستهدفاً واحداً على الأقل.')); }
+        if (k.needBooks && !bookIds.length) { return Promise.reject(new Error('اختر بنداً واحداً على الأقل.')); }
+        if (k.needFolders && !folderIds.length) { return Promise.reject(new Error('اختر مجلداً واحداً على الأقل.')); }
+        /* مدة المجلد اختيارية: فارغة = اشتراك دائم — لغيره لا تزال إلزامية */
+        if (k.needMonths && !(k.monthsOptional && !monthsRaw) && (months < 1 || months > 24)) {
+          return Promise.reject(new Error(k.monthsOptional
+            ? 'مدة الاشتراك بين شهر و24 شهراً — أو اتركها فارغة للاشتراك الدائم.'
+            : 'مدة الاشتراك بين شهر و24 شهراً.'));
+        }
+
+        return API.admin.issueCode({
+          kind: kind,
+          accounts: picked.map(function (a) { return a.id; }),
+          item_ids: k.needFolders ? folderIds : (k.needBooks ? bookIds : null),
+          months: k.needMonths && months >= 1 ? months : null,
+          note: host.querySelector('#c-note').value.trim() || null,
+          /* نهاية اليوم بتوقيت دمشق — لا UTC الذي يمدّد الصلاحية ثلاث ساعات */
+          expires: expires ? (expires + 'T23:59:59+03:00') : null
+        }).then(function (r) {
+          load();
+          showIssued(r.code);
+        });
+      }
+    });
+    /* ربط تفاعلات اللوحة بعد بنائها: تبديل النوع، بحث الحسابات، الرقائق */
+    wireIssue(sh.el);
+  }
+
+  /* الكود يُعرض هنا مرة واحدة فقط — لا يُخزَّن معروضاً في أي مكان آخر */
+  function showIssued(code) {
+    A.sheet({
+      title: 'صدر الكود — انسخه الآن',
+      hideOk: true,
+      closeLabel: 'أغلقت ونسخته',
+      body:
+        '<p style="font-size:13.5px;line-height:1.9;color:var(--text-secondary)">' +
+          'سلّم هذا الكود لأصحابه بنفسك (اتصال أو رسالة خاصة). ' +
+          'لن يظهر كاملاً مرة أخرى، ولا يعمل إلا للحسابات المستهدفة.</p>' +
+        '<div class="issued-code" dir="ltr"><span id="issuedVal">' + A.esc(code) + '</span></div>' +
+        '<button type="button" class="btn btn-outline btn-block" id="copyCode" style="margin-block-start:14px">نسخ الكود</button>'
+    });
+    var btn = document.getElementById('copyCode');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        var t = document.getElementById('issuedVal').textContent;
+        (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject())
+          .then(function () { btn.textContent = 'نُسخ ✓'; })
+          .catch(function () {
+            var r = document.createRange();
+            r.selectNodeContents(document.getElementById('issuedVal'));
+            var sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+            btn.textContent = 'حدّدته لك — انسخه يدوياً';
+          });
+      });
+    }
+  }
+
+  function askRevoke(r) {
+    if (!r) { return; }
+    A.confirm({
+      title: 'إبطال الكود',
+      text: 'سيتوقف الكود «' + r.code + '» فوراً ولن يقبله التطبيق بعد الآن. '
+          + 'ما استُرد به قبل الإبطال يبقى سارياً في سجل أصحابه. الإبطال لا يُتراجع عنه.',
+      okLabel: 'إبطال نهائي'
+    }).then(function (ok) {
+      if (!ok) { return; }
+      API.admin.revokeCode(r.id).then(function () {
+        A.toast('أُبطل الكود «' + r.code + '».', 'ok');
+        load();
+      }).catch(function (err) { A.toast(A.errText(err), 'bad'); });
+    });
+  }
+})();
+</script>
+</body>
+</html>

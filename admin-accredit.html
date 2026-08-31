@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سجل الاعتمادات — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* أنماط الصفحة — بتوكنات الهوية حصراً */
+.sheet-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.accr-name-cell{max-width:320px}
+.accr-name-cell b{display:block;font-size:14px;line-height:1.55;color:var(--navy-800)}
+.accr-name-cell small{display:block;margin-block-start:3px;font-size:12px;line-height:1.7;
+  color:var(--text-secondary);overflow:hidden;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical}
+.accr-cert{direction:ltr;unicode-bidi:isolate;letter-spacing:.4px;font-weight:600}
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <div class="adm-kpis" id="kpis"></div>
+
+      <div class="notice" style="margin-block:22px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>
+          <strong>ما يُنشر هنا يظهر فوراً في تبويب «الاعتمادات» بالتطبيق.</strong>
+          السجل علني: يتصفحه الأعضاء والزوار معاً، ويُثبت كل بند بشهادة اعتماد
+          برقم وتاريخ ومجال. «غير منشور» يُخفي البند عن الجميع دون حذفه.
+        </span>
+      </div>
+
+      <div class="adm-bar">
+        <div class="adm-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="input" id="q" type="search" autocomplete="off"
+                 placeholder="بحث بالاسم أو رقم الشهادة أو المجال أو الفرع">
+        </div>
+        <span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" id="addBtn" data-write>إضافة بند</button>
+      </div>
+
+      <div class="adm-bar" style="margin-block-start:-8px">
+        <div class="adm-filters" id="filters" role="group" aria-label="تصفية السجل"></div>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2>سجل الاعتمادات</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="totalTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>الجهة</th>
+                <th>النوع</th>
+                <th>رقم الشهادة</th>
+                <th>تاريخ الاعتماد</th>
+                <th>مجال الاعتماد</th>
+                <th>الحالة</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="7"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="adm-pager">
+          <span>يُعرض السجل في التطبيق مرتباً بحقل «الترتيب» ثم بالاسم هجائياً.</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  /* الأنواع الثلاثة — المفاتيح نفسها في قيد جدول accreditations وشاشات التطبيق */
+  var KINDS = [
+    { k: 'engineer', label: 'مهندس', plural: 'المهندسون' },
+    { k: 'org',      label: 'منظمة', plural: 'المنظمات' },
+    { k: 'company',  label: 'شركة',  plural: 'الشركات' }
+  ];
+  function kindLabel(k) {
+    var f = KINDS.filter(function (x) { return x.k === k; })[0];
+    return f ? f.label : k;
+  }
+
+  var state = { kind: 'all', status: 'all', search: '' };
+  var items = [];
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody, filtersEl;
+
+  A.boot({
+    page: 'accredit',
+    title: 'سجل الاعتمادات',
+    lead: 'الجهات المعتمدة لدى النقابة من مهندسين ومنظمات وشركات — إضافة البنود '
+        + 'ونشرها وسحبها، وكل تغيير يظهر في تبويب «الاعتمادات» بالتطبيق فور حفظه.',
+    crumb: 'الاعتمادات'
+  }).then(function (st) {
+    if (!st) { return; }
+    tbody = $('rows'); filtersEl = $('filters');
+    wire();
+    load();
+  });
+
+  function wire() {
+    $('q').addEventListener('input', A.debounce(function (e) {
+      state.search = A.norm(e.target.value);
+      render();
+    }, 160));
+    $('addBtn').addEventListener('click', function () { openEdit(null); });
+    filtersEl.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-kind],button[data-status]') : null;
+      if (!b) { return; }
+      if (b.hasAttribute('data-kind')) { state.kind = b.getAttribute('data-kind'); }
+      else { state.status = b.getAttribute('data-status'); }
+      render();
+    });
+  }
+
+  function load() {
+    API.accredit.all().then(function (rows) {
+      items = rows || [];
+      render();
+    }).catch(function (err) {
+      tbody.innerHTML = '<tr><td colspan="7">' + A.errorState(A.errText(err)) + '</td></tr>';
+    });
+  }
+
+  function visible() {
+    return items.filter(function (r) {
+      if (state.kind !== 'all' && r.kind !== state.kind) { return false; }
+      if (state.status === 'live' && !r.active) { return false; }
+      if (state.status === 'draft' && r.active) { return false; }
+      if (!state.search) { return true; }
+      var hay = A.norm([r.name, r.cert_no, r.field, r.branch,
+                        r.address_sy, r.address_abroad, r.phone, r.website].join(' '));
+      return hay.indexOf(state.search) > -1;
+    });
+  }
+
+  function countKind(k) {
+    return items.filter(function (r) { return r.kind === k; }).length;
+  }
+
+  function render() {
+    var live = items.filter(function (r) { return r.active; }).length;
+    $('kpis').innerHTML =
+      kpi('إجمالي السجل', items.length, 'منشور منها ' + A.toAr(live)) +
+      kpi('المهندسون', countKind('engineer'), 'مهندسون معتمدون') +
+      kpi('المنظمات', countKind('org'), 'منظمات معتمدة') +
+      kpi('الشركات', countKind('company'), 'شركات معتمدة');
+
+    var kindChips = [['all', 'الكل', items.length]].concat(KINDS.map(function (K) {
+      return [K.k, K.plural, countKind(K.k)];
+    })).map(function (f) {
+      var on = state.kind === f[0];
+      return '<button type="button" class="tag' + (on ? ' is-on' : '') + '" data-kind="' + f[0] +
+        '" aria-pressed="' + (on ? 'true' : 'false') + '">' + f[1] + ' (' + A.toAr(f[2]) + ')</button>';
+    });
+    var statusChips = [
+      ['all', 'كل الحالات', items.length],
+      ['live', 'منشور', live],
+      ['draft', 'غير منشور', items.length - live]
+    ].map(function (f) {
+      var on = state.status === f[0];
+      return '<button type="button" class="tag' + (on ? ' is-on' : '') + '" data-status="' + f[0] +
+        '" aria-pressed="' + (on ? 'true' : 'false') + '">' + f[1] + ' (' + A.toAr(f[2]) + ')</button>';
+    });
+    filtersEl.innerHTML = kindChips.join('') +
+      '<span style="width:1px;align-self:stretch;background:var(--border);margin-inline:6px"></span>' +
+      statusChips.join('');
+
+    var rows = visible();
+    $('totalTag').textContent = A.toAr(rows.length) + ' من ' + A.toAr(items.length);
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="7">' +
+        A.emptyState(items.length ? 'لا نتائج مطابقة.' : 'السجل فارغ — ابدأ بإضافة أول بند اعتماد.') +
+        '</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(function (r) {
+      var whereBits = [];
+      if (r.kind === 'engineer' && r.branch) { whereBits.push(r.branch); }
+      if (r.address_sy) { whereBits.push(r.address_sy); }
+      if (r.address_abroad) { whereBits.push(r.address_abroad); }
+      return '<tr>' +
+        '<td class="accr-name-cell"><b>' + A.esc(r.name) + '</b>' +
+          (whereBits.length ? '<small>' + A.esc(whereBits.join(' · ')) + '</small>' : '') + '</td>' +
+        '<td><span class="tag">' + A.esc(kindLabel(r.kind)) + '</span></td>' +
+        '<td><span class="accr-cert">' + A.esc(A.toAr(r.cert_no)) + '</span></td>' +
+        '<td>' + A.esc(r.cert_date_ar || '—') + '</td>' +
+        '<td>' + A.esc(r.field || '—') + '</td>' +
+        '<td>' + (r.active
+            ? '<span class="tag tag--success">منشور</span>'
+            : '<span class="tag">غير منشور</span>') + '</td>' +
+        '<td class="adm-actions">' +
+          '<button class="btn btn-outline btn-sm" data-edit="' + A.esc(r.id) + '" data-write>تعديل</button>' +
+          '<button class="btn btn-outline btn-sm" data-toggle="' + A.esc(r.id) + '" data-write>' +
+            (r.active ? 'سحب' : 'نشر') + '</button>' +
+          '<button class="btn btn-outline btn-sm" data-del="' + A.esc(r.id) + '" data-write>حذف</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
+    tbody.querySelectorAll('[data-edit]').forEach(function (b) {
+      b.addEventListener('click', function () { openEdit(byId(b.getAttribute('data-edit'))); });
+    });
+    tbody.querySelectorAll('[data-toggle]').forEach(function (b) {
+      b.addEventListener('click', function () { togglePublish(byId(b.getAttribute('data-toggle'))); });
+    });
+    tbody.querySelectorAll('[data-del]').forEach(function (b) {
+      b.addEventListener('click', function () { askDelete(byId(b.getAttribute('data-del'))); });
+    });
+  }
+
+  function byId(id) {
+    return items.filter(function (r) { return String(r.id) === String(id); })[0];
+  }
+
+  function kpi(label, n, hint) {
+    return '<div class="adm-kpi">' +
+      '<span class="adm-kpi-label">' + A.esc(label) + '</span>' +
+      '<span class="adm-kpi-num">' + A.toAr(n) + '</span>' +
+      '<span class="adm-kpi-hint">' + A.esc(hint) + '</span></div>';
+  }
+
+  /* ---------- اللوحة الجانبية: إنشاء وتعديل ---------- */
+
+  function fieldsHTML(r) {
+    r = r || {};
+    return '' +
+      '<label class="field"><span>النوع</span>' +
+        '<select class="input" id="f-kind">' +
+        KINDS.map(function (K) {
+          return '<option value="' + K.k + '"' + (r.kind === K.k ? ' selected' : '') + '>' +
+            K.label + '</option>';
+        }).join('') + '</select></label>' +
+      '<label class="field"><span>الاسم</span>' +
+        '<input class="input" id="f-name" maxlength="200" value="' + A.esc(r.name || '') + '"></label>' +
+      '<div class="sheet-pair">' +
+        '<label class="field"><span>رقم شهادة الاعتماد</span>' +
+          '<input class="input" id="f-cert" maxlength="60" dir="ltr" value="' + A.esc(r.cert_no || '') + '"></label>' +
+        '<label class="field"><span>تاريخ الاعتماد</span>' +
+          '<input class="input" id="f-date" type="date" value="' + A.esc(r.cert_date || '') + '"></label>' +
+      '</div>' +
+      '<label class="field"><span>مجال الاعتماد</span>' +
+        '<input class="input" id="f-field" maxlength="160" placeholder="مثال: تقييم الأضرار الإنشائية" value="' +
+          A.esc(r.field || '') + '"></label>' +
+      '<label class="field" id="w-branch"><span>فرع النقابة — للمهندسين</span>' +
+        '<input class="input" id="f-branch" placeholder="مثال: فرع ريف دمشق" value="' +
+          A.esc(r.branch || '') + '"></label>' +
+      '<label class="field"><span>العنوان في سوريا (اختياري)</span>' +
+        '<input class="input" id="f-addr-sy" value="' + A.esc(r.address_sy || '') + '"></label>' +
+      '<label class="field" id="w-abroad"><span>العنوان في الخارج — للجهات العربية والأجنبية (اختياري)</span>' +
+        '<input class="input" id="f-addr-ab" value="' + A.esc(r.address_abroad || '') + '"></label>' +
+      '<div class="sheet-pair">' +
+        '<label class="field"><span>الموقع الإلكتروني (اختياري)</span>' +
+          '<input class="input" id="f-site" dir="ltr" placeholder="example.org" value="' +
+            A.esc(r.website || '') + '"></label>' +
+        '<label class="field"><span>رقم موبايل للتواصل (اختياري)</span>' +
+          '<input class="input" id="f-phone" dir="ltr" placeholder="+963 9xx xxx xxx" value="' +
+            A.esc(r.phone || '') + '"></label>' +
+      '</div>' +
+      '<div class="sheet-pair">' +
+        '<label class="field"><span>الترتيب — الأصغر يظهر أولاً</span>' +
+          '<input class="input" id="f-sort" type="number" min="0" value="' + (r.sort || 0) + '"></label>' +
+        '<div class="field"><span>&nbsp;</span>' +
+          '<label style="display:flex;align-items:center;gap:7px;font-size:13.5px;min-height:50px">' +
+            '<input type="checkbox" id="f-active"' + (r.active === false ? '' : ' checked') + '> منشور</label></div>' +
+      '</div>';
+  }
+
+  /* حقلا الفرع والعنوان الخارجي يتبعان النوع: الفرع للمهندس، والعنوان
+     الخارجي للمنظمات والشركات — إظهار غير المعني يجرّ إدخالاً في غير محله */
+  function syncKindFields(host) {
+    var kind = host.querySelector('#f-kind').value;
+    host.querySelector('#w-branch').style.display = kind === 'engineer' ? '' : 'none';
+    host.querySelector('#w-abroad').style.display = kind === 'engineer' ? 'none' : '';
+  }
+
+  function readFields(host) {
+    var g = function (id) { var el = host.querySelector('#' + id); return el ? el.value.trim() : ''; };
+    var kind = g('f-kind');
+    return {
+      kind: kind,
+      name: g('f-name'),
+      /* الرقم يُطوى للاتيني قبل الحفظ: العرض والبحث يطويانه أصلاً، وحفظ
+         «٤٥» و«45» خامَ الإدخال يمرّر رقمين متطابقين للعين عبر قيد الفرادة */
+      cert_no: A.toAr(g('f-cert')),
+      cert_date: g('f-date') || null,
+      field: g('f-field'),
+      branch: kind === 'engineer' ? (g('f-branch') || null) : null,
+      address_sy: g('f-addr-sy') || null,
+      address_abroad: kind === 'engineer' ? null : (g('f-addr-ab') || null),
+      website: g('f-site') || null,
+      phone: g('f-phone') || null,
+      sort: parseInt(g('f-sort'), 10) || 0,
+      active: !!host.querySelector('#f-active').checked
+    };
+  }
+
+  function openEdit(r) {
+    var sheet = A.sheet({
+      title: r ? 'تعديل بند الاعتماد' : 'إضافة بند اعتماد',
+      okLabel: r ? 'حفظ التعديلات' : 'إضافة البند',
+      body: fieldsHTML(r),
+      onOk: function (host) {
+        var f = readFields(host);
+        if (!f.name || f.name.length < 2) { return Promise.reject(new Error('الاسم مطلوب.')); }
+        if (!f.cert_no) { return Promise.reject(new Error('رقم شهادة الاعتماد مطلوب.')); }
+        if (!f.field || f.field.length < 2) { return Promise.reject(new Error('مجال الاعتماد مطلوب.')); }
+        /* رقم الشهادة معرّف رسمي لا يتكرر داخل سجل النوع — الفحص هنا يعيد
+           رسالة عربية بدل خطأ Postgres الإنجليزي من قيد الفرادة.
+           المقارنة بعد التطبيع: صفوف قديمة قد تحمل الرقم بأرقام هندية. */
+        var dup = items.some(function (x) {
+          return x.kind === f.kind && A.norm(x.cert_no) === A.norm(f.cert_no) && (!r || x.id !== r.id);
+        });
+        if (dup) {
+          return Promise.reject(new Error('رقم الشهادة «' + f.cert_no + '» مسجَّل في هذا السجل لبند آخر.'));
+        }
+        if (r) { f.id = r.id; }
+        return API.accredit.save(f).then(function () {
+          A.toast(r ? 'حُفظت تعديلات «' + f.name + '».' : 'أُضيف «' + f.name + '» إلى السجل.', 'ok');
+          load();
+        });
+      }
+    });
+    /* ربط تبديل النوع بعد بناء اللوحة */
+    var host = sheet && sheet.el ? sheet.el : document;
+    var sel = host.querySelector('#f-kind');
+    if (sel) {
+      sel.addEventListener('change', function () { syncKindFields(host); });
+      syncKindFields(host);
+    }
+  }
+
+  function togglePublish(r) {
+    if (!r) { return; }
+    var next = !r.active;
+    API.accredit.save({
+      id: r.id, kind: r.kind, name: r.name, cert_no: r.cert_no,
+      cert_date: r.cert_date, field: r.field, branch: r.branch,
+      address_sy: r.address_sy, address_abroad: r.address_abroad,
+      website: r.website, phone: r.phone, sort: r.sort, active: next
+    }).then(function () {
+      A.toast(next ? 'نُشر «' + r.name + '».' : 'سُحب «' + r.name + '» من العرض.', 'ok');
+      load();
+    }).catch(function (err) { A.toast(A.errText(err), 'bad'); });
+  }
+
+  function askDelete(r) {
+    if (!r) { return; }
+    A.confirm({
+      title: 'حذف بند الاعتماد',
+      text: 'سيُحذف «' + r.name + '» نهائياً ولا يمكن التراجع. '
+          + 'وإن كان القصد إخفاءه مؤقتاً فاستعمل «سحب» بدل الحذف — يبقى في السجل ويعود بضغطة.',
+      okLabel: 'حذف نهائي'
+    }).then(function (ok) {
+      if (!ok) { return; }
+      API.accredit.remove(r.id).then(function () {
+        A.toast('حُذف «' + r.name + '» من السجل.', 'ok');
+        load();
+      }).catch(function (err) { A.toast(A.errText(err), 'bad'); });
+    });
+  }
+})();
+</script>
+</body>
+</html>

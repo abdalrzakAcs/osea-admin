@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الأخبار والإعلانات — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* أنماط الصفحة — بتوكنات الهوية حصراً */
+.sheet-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.news-title-cell{max-width:360px}
+.news-title-cell b{display:block;font-size:14px;line-height:1.55;color:var(--navy-800)}
+.news-title-cell small{display:block;margin-block-start:3px;font-size:12px;line-height:1.7;
+  color:var(--text-secondary);overflow:hidden;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* معاينة قالب الغلاف داخل اللوحة — يرى المحرّر ما سيراه العضو */
+.cov-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-block-start:8px}
+.cov-opt{position:relative}
+.cov-opt input{position:absolute;inset:0;opacity:0;cursor:pointer;margin:0}
+.cov-opt span{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:12px 6px;border:1.5px solid var(--border-strong);border-radius:10px;
+  background:var(--navy-800);color:var(--gold-300);
+  font-size:11.5px;font-weight:600;text-align:center;
+}
+.cov-opt span svg{width:26px;height:26px;stroke:var(--gold-400);fill:none;
+  stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.cov-opt input:checked + span{border-color:var(--gold-400);box-shadow:0 0 0 2px rgba(211,165,24,.28)}
+.cov-opt input:focus-visible + span{box-shadow:0 0 0 3px rgba(211,165,24,.55)}
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <div class="adm-kpis" id="kpis"></div>
+
+      <div class="notice" style="margin-block:22px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>
+          <strong>ما يُنشر هنا يظهر فوراً في التطبيق والموقع.</strong>
+          كانت الأخبار قبل اليوم مكتوبة داخل صفحات الموقع، فلا يمكن نشر خبر
+          ولا سحبه دون مبرمج وإصدار جديد للتطبيق. الآن النشر والسحب من هنا،
+          و«غير منشور» يُخفي الخبر عن الجميع دون حذفه.
+        </span>
+      </div>
+
+      <div class="adm-bar">
+        <div class="adm-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="input" id="q" type="search" autocomplete="off"
+                 placeholder="بحث بالعنوان أو النص أو القسم">
+        </div>
+        <span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" id="addBtn" data-write>إضافة خبر</button>
+      </div>
+
+      <div class="adm-bar" style="margin-block-start:-8px">
+        <div class="adm-filters" id="filters" role="group" aria-label="تصفية بالحالة"></div>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2>سجل الأخبار</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="totalTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>العنوان</th>
+                <th>القسم</th>
+                <th>التاريخ</th>
+                <th>التصنيفات</th>
+                <th>الغلاف</th>
+                <th>مثبّت</th>
+                <th>الحالة</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="adm-pager">
+          <span>المثبّت يظهر أولاً، ثم الأحدث تاريخاً. وترتيب المتساويين بحقل «الترتيب».</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  /* قوالب الغلاف — نفس المفاتيح المسموحة في قيد جدول news،
+     ونفس الرسوم المستعملة في شاشة الأخبار بالتطبيق. */
+  var COVERS = [
+    { k: 'megaphone', label: 'إعلان',   g: '<path d="m3 11 18-5v12L3 13z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>' },
+    { k: 'exam',      label: 'اختبار',  g: '<path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>' },
+    { k: 'book',      label: 'مكتبة',   g: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>' },
+    { k: 'council',   label: 'المجلس',  g: '<path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6"/>' },
+    { k: 'office',    label: 'المكاتب', g: '<path d="M3 21h18"/><path d="M5 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16"/><path d="M15 9h3a1 1 0 0 1 1 1v11"/><path d="M9 8h2M9 12h2M9 16h2"/>' },
+    { k: 'fund',      label: 'الصندوق', g: '<circle cx="12" cy="12" r="9"/><path d="M15 9.5a3.5 3 0 1 0 0 5"/><path d="M12 6v12"/>' },
+    { k: 'soon',      label: 'قريباً',  g: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>' },
+    { k: 'shield',    label: 'حماية',   g: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>' },
+    { k: 'calendar',  label: 'موعد',    g: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>' }
+  ];
+  var COVER_OF = {};
+  COVERS.forEach(function (c) { COVER_OF[c.k] = c; });
+
+  /* التصنيفات المتاحة — تطابق مصفيات شاشة الأخبار في التطبيق */
+  var CATS = [
+    { k: 'platform', label: 'المنصة' },
+    { k: 'council',  label: 'قرارات المجلس' },
+    { k: 'offices',  label: 'المكاتب' }
+  ];
+
+  var state = { status: 'all', search: '' };
+  var items = [];
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody, filtersEl;
+
+  A.boot({
+    page: 'news',
+    title: 'الأخبار والإعلانات',
+    lead: 'سجل ما تعلنه النقابة على التطبيق والموقع — إنشاء الخبر ونشره وسحبه '
+        + 'وتثبيته، وكل تغيير يظهر للأعضاء فور حفظه دون إصدار جديد للتطبيق.',
+    crumb: 'الأخبار'
+  }).then(function (st) {
+    if (!st) { return; }
+    tbody = $('rows'); filtersEl = $('filters');
+    wire();
+    load();
+  });
+
+  function wire() {
+    $('q').addEventListener('input', A.debounce(function (e) {
+      state.search = A.norm(e.target.value);
+      render();
+    }, 160));
+    $('addBtn').addEventListener('click', function () { openEdit(null); });
+    filtersEl.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-status]') : null;
+      if (!b) { return; }
+      state.status = b.getAttribute('data-status');
+      render();
+    });
+  }
+
+  function load() {
+    API.news.all().then(function (rows) {
+      items = rows || [];
+      render();
+    }).catch(function (err) {
+      tbody.innerHTML = '<tr><td colspan="8">' + A.errorState(A.errText(err)) + '</td></tr>';
+    });
+  }
+
+  function visible() {
+    return items.filter(function (r) {
+      if (state.status === 'live' && !r.active) { return false; }
+      if (state.status === 'draft' && r.active) { return false; }
+      if (state.status === 'pinned' && !r.pinned) { return false; }
+      if (!state.search) { return true; }
+      var hay = A.norm([r.title, r.summary, r.body, r.section, r.chip].join(' '));
+      return hay.indexOf(state.search) > -1;
+    });
+  }
+
+  function render() {
+    var live = items.filter(function (r) { return r.active; }).length;
+    var pinned = items.filter(function (r) { return r.pinned; }).length;
+    $('kpis').innerHTML =
+      kpi('إجمالي الأخبار', items.length, 'كل ما في السجل') +
+      kpi('منشور', live, 'ظاهر للأعضاء الآن') +
+      kpi('غير منشور', items.length - live, 'محفوظ ومخفيّ') +
+      kpi('مثبّت', pinned, 'يتصدّر القائمة');
+
+    filtersEl.innerHTML = [
+      ['all', 'الكل', items.length],
+      ['live', 'منشور', live],
+      ['draft', 'غير منشور', items.length - live],
+      ['pinned', 'مثبّت', pinned]
+    ].map(function (f) {
+      var on = state.status === f[0];
+      return '<button type="button" class="tag' + (on ? ' is-on' : '') + '" data-status="' + f[0] +
+        '" aria-pressed="' + (on ? 'true' : 'false') + '">' + f[1] + ' (' + A.toAr(f[2]) + ')</button>';
+    }).join('');
+
+    var rows = visible();
+    $('totalTag').textContent = A.toAr(rows.length) + ' من ' + A.toAr(items.length);
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="8">' +
+        A.emptyState(items.length ? 'لا نتائج مطابقة.' : 'لا أخبار بعد — ابدأ بإضافة خبر.') +
+        '</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(function (r) {
+      return '<tr>' +
+        '<td class="news-title-cell"><b>' + A.esc(r.title) + '</b>' +
+          '<small>' + A.esc(r.summary) + '</small></td>' +
+        '<td>' + A.esc(r.section || '—') + '</td>' +
+        '<td>' + A.esc(r.date_ar) + '</td>' +
+        '<td>' + ((r.cats || []).map(function (c) {
+            var f = CATS.filter(function (x) { return x.k === c; })[0];
+            return '<span class="tag">' + A.esc(f ? f.label : c) + '</span>';
+          }).join(' ') || '—') + '</td>' +
+        '<td>' + (r.image_url
+            ? '<img src="' + A.esc(r.image_url) + '" alt="" style="width:64px;height:36px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">'
+            : '<span class="tag">شعار النقابة</span>') + '</td>' +
+        '<td>' + (r.pinned ? '<span class="tag tag--gold">مثبّت</span>' : '—') + '</td>' +
+        '<td>' + (r.active
+            ? '<span class="tag tag--success">منشور</span>'
+            : '<span class="tag">غير منشور</span>') + '</td>' +
+        '<td class="adm-actions">' +
+          '<button class="btn btn-outline btn-sm" data-edit="' + A.esc(r.id) + '" data-write>تعديل</button>' +
+          '<button class="btn btn-outline btn-sm" data-toggle="' + A.esc(r.id) + '" data-write>' +
+            (r.active ? 'سحب' : 'نشر') + '</button>' +
+          '<button class="btn btn-outline btn-sm" data-del="' + A.esc(r.id) + '" data-write>حذف</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
+    tbody.querySelectorAll('[data-edit]').forEach(function (b) {
+      b.addEventListener('click', function () { openEdit(byId(b.getAttribute('data-edit'))); });
+    });
+    tbody.querySelectorAll('[data-toggle]').forEach(function (b) {
+      b.addEventListener('click', function () { togglePublish(byId(b.getAttribute('data-toggle'))); });
+    });
+    tbody.querySelectorAll('[data-del]').forEach(function (b) {
+      b.addEventListener('click', function () { askDelete(byId(b.getAttribute('data-del'))); });
+    });
+  }
+
+  function byId(id) {
+    return items.filter(function (r) { return String(r.id) === String(id); })[0];
+  }
+
+  function kpi(label, n, hint) {
+    return '<div class="adm-kpi">' +
+      '<span class="adm-kpi-label">' + A.esc(label) + '</span>' +
+      '<span class="adm-kpi-num">' + A.toAr(n) + '</span>' +
+      '<span class="adm-kpi-hint">' + A.esc(hint) + '</span></div>';
+  }
+
+  /* ---------- اللوحة الجانبية: إنشاء وتعديل ---------- */
+
+  function coverPicker(sel) {
+    return '<div class="cov-grid">' + COVERS.map(function (c) {
+      return '<label class="cov-opt">' +
+        '<input type="radio" name="f-icon" value="' + c.k + '"' +
+          (c.k === sel ? ' checked' : '') + '>' +
+        '<span><svg viewBox="0 0 24 24">' + c.g + '</svg>' + c.label + '</span>' +
+      '</label>';
+    }).join('') + '</div>';
+  }
+
+  function fieldsHTML(r) {
+    r = r || {};
+    var cats = r.cats || [];
+    return '' +
+      '<label class="field"><span>العنوان</span>' +
+        '<input class="input" id="f-title" maxlength="160" value="' + A.esc(r.title || '') + '"></label>' +
+      '<label class="field"><span>الملخّص — السطر الذي يقرؤه العضو في البطاقة</span>' +
+        '<textarea class="input" id="f-summary" rows="3" maxlength="400">' + A.esc(r.summary || '') + '</textarea></label>' +
+      '<label class="field"><span>تفاصيل إضافية (اختياري)</span>' +
+        '<textarea class="input" id="f-body" rows="3">' + A.esc(r.body || '') + '</textarea></label>' +
+      '<div class="sheet-pair">' +
+        '<label class="field"><span>القسم — يظهر بجانب التاريخ</span>' +
+          '<input class="input" id="f-section" value="' + A.esc(r.section || 'المنصة') + '"></label>' +
+        '<label class="field"><span>وسم الغلاف (اختياري)</span>' +
+          '<input class="input" id="f-chip" value="' + A.esc(r.chip || '') + '"></label>' +
+      '</div>' +
+      '<div class="sheet-pair">' +
+        '<label class="field"><span>تاريخ النشر</span>' +
+          '<input class="input" id="f-date" type="date" value="' +
+            A.esc(r.published_at || new Date().toISOString().slice(0, 10)) + '"></label>' +
+        '<label class="field"><span>الترتيب</span>' +
+          '<input class="input" id="f-sort" type="number" min="0" value="' + (r.sort || 0) + '"></label>' +
+      '</div>' +
+      '<label class="field"><span>نصّ بديل للتاريخ (اختياري) — لخبر بلا موعد معلن</span>' +
+        '<input class="input" id="f-datelabel" placeholder="مثال: لم يُعلن الموعد" value="' +
+          A.esc(r.date_label || '') + '"></label>' +
+      '<div class="field"><span>التصنيفات — تحدّد المصفاة التي يظهر تحتها</span>' +
+        '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-block-start:6px">' +
+        CATS.map(function (c) {
+          return '<label style="display:flex;align-items:center;gap:7px;font-size:13.5px">' +
+            '<input type="checkbox" class="f-cat" value="' + c.k + '"' +
+              (cats.indexOf(c.k) > -1 ? ' checked' : '') + '> ' + c.label + '</label>';
+        }).join('') + '</div></div>' +
+      '<div class="field"><span>صورة الخبر</span>' +
+        '<input type="file" class="input" id="f-image" accept="image/jpeg,image/png,image/webp">' +
+        '<span class="hint" style="display:block;margin-block-start:6px">' +
+          'JPG أو PNG حتى 3 م.ب — بلا صورة يظهر شعار النقابة على خلفية كحلية.</span>' +
+        '<div id="f-img-now" style="margin-block-start:8px">' +
+          (r.image_url
+            ? '<img src="' + A.esc(r.image_url) + '" alt="" style="max-width:220px;border-radius:8px;border:1px solid var(--border)">' +
+              '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-block-start:6px">' +
+              '<input type="checkbox" id="f-img-del"> إزالة الصورة (يعود شعار النقابة)</label>'
+            : '<span class="hint">لا صورة حالياً — يُعرض شعار النقابة.</span>') +
+        '</div></div>' +
+      '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-block-start:14px">' +
+        '<label style="display:flex;align-items:center;gap:7px;font-size:13.5px">' +
+          '<input type="checkbox" id="f-active"' + (r.active === false ? '' : ' checked') + '> منشور</label>' +
+        '<label style="display:flex;align-items:center;gap:7px;font-size:13.5px">' +
+          '<input type="checkbox" id="f-pinned"' + (r.pinned ? ' checked' : '') + '> مثبّت في الأعلى</label>' +
+      '</div>';
+  }
+
+  function readFields(host) {
+    var g = function (id) { var el = host.querySelector('#' + id); return el ? el.value.trim() : ''; };
+    var chk = function (id) { var el = host.querySelector('#' + id); return !!(el && el.checked); };
+    var cats = Array.prototype.slice.call(host.querySelectorAll('.f-cat:checked'))
+      .map(function (c) { return c.value; });
+    var icon = host.querySelector('input[name="f-icon"]:checked');
+    return {
+      title: g('f-title'), summary: g('f-summary'), body: g('f-body') || null,
+      section: g('f-section') || 'المنصة', chip: g('f-chip') || null,
+      published_at: g('f-date'), date_label: g('f-datelabel') || null,
+      sort: parseInt(g('f-sort'), 10) || 0, cats: cats,
+      icon: icon ? icon.value : 'megaphone',
+      active: chk('f-active'), pinned: chk('f-pinned')
+    };
+  }
+
+  function openEdit(r) {
+    A.sheet({
+      title: r ? 'تعديل الخبر' : 'إضافة خبر',
+      okLabel: r ? 'حفظ التعديلات' : 'إضافة الخبر',
+      body: fieldsHTML(r),
+      onOk: function (host) {
+        var f = readFields(host);
+        if (!f.title || f.title.length < 3) { return Promise.reject(new Error('العنوان مطلوب.')); }
+        if (!f.summary || f.summary.length < 3) { return Promise.reject(new Error('الملخّص مطلوب.')); }
+        if (!f.published_at) { return Promise.reject(new Error('تاريخ النشر مطلوب.')); }
+        if (r) { f.id = r.id; }
+
+        /* الصورة: ملف جديد يُرفع للسلة العامة، وخانة الإزالة تعيد الشعار */
+        var fileEl = host.querySelector('#f-image');
+        var delEl = host.querySelector('#f-img-del');
+        var file = fileEl && fileEl.files && fileEl.files[0];
+        var prep;
+        if (file) {
+          if (file.size > 3 * 1024 * 1024) {
+            return Promise.reject(new Error('الصورة أكبر من 3 م.ب — صغّرها ثم أعد الرفع.'));
+          }
+          prep = API.news.uploadImage(file).then(function (url) { f.image_url = url; });
+        } else if (delEl && delEl.checked) {
+          f.image_url = null;
+          prep = Promise.resolve();
+        } else {
+          f.image_url = r ? (r.image_url || null) : null;
+          prep = Promise.resolve();
+        }
+
+        return prep.then(function () { return API.news.save(f); }).then(function () {
+          A.toast(r ? 'حُفظت تعديلات «' + f.title + '».' : 'أُضيف الخبر «' + f.title + '».', 'ok');
+          load();
+        });
+      }
+    });
+  }
+
+  function togglePublish(r) {
+    if (!r) { return; }
+    var next = !r.active;
+    API.news.save({
+      id: r.id, title: r.title, summary: r.summary, body: r.body,
+      chip: r.chip, section: r.section, cats: r.cats, icon: r.icon,
+      published_at: r.published_at, date_label: r.date_label,
+      pinned: r.pinned, sort: r.sort, active: next
+    }).then(function () {
+      A.toast(next ? 'نُشر «' + r.title + '».' : 'سُحب «' + r.title + '» من العرض.', 'ok');
+      load();
+    }).catch(function (err) { A.toast(A.errText(err), 'bad'); });
+  }
+
+  function askDelete(r) {
+    if (!r) { return; }
+    A.confirm({
+      title: 'حذف الخبر',
+      text: 'سيُحذف «' + r.title + '» نهائياً ولا يمكن التراجع. '
+          + 'وإن كان القصد إخفاءه مؤقتاً فاستعمل «سحب» بدل الحذف — يبقى السجل ويعود بضغطة.',
+      okLabel: 'حذف نهائي'
+    }).then(function (ok) {
+      if (!ok) { return; }
+      API.news.remove(r.id).then(function () {
+        A.toast('حُذف «' + r.title + '».', 'ok');
+        load();
+      }).catch(function (err) { A.toast(A.errText(err), 'bad'); });
+    });
+  }
+})();
+</script>
+</body>
+</html>

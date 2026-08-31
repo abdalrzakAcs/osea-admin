@@ -1,0 +1,255 @@
+/* ======================================================================
+   نقابة المهندسين السوريين — لوحة الإدارة · طبقة مكوّنات
+   ----------------------------------------------------------------------
+   تُحمَّل بعد identity.css وتبني عليها. كانت كل صفحة إدارة تحمل كتلة
+   <style> خاصة بها والترويسة والقائمة منسوخة يدوياً في ستة ملفات —
+   هذه الطبقة مع admin.js تُنهيان التكرار.
+
+   الالتزام نفسه: الألوان الأربعة وظلالها، والذهبي ممنوع نصاً على فاتح.
+   ====================================================================== */
+
+:root{
+  --adm-gap:24px;
+  --adm-radius:var(--radius-container, 16px);
+  --adm-tool:var(--radius-tool, 8px);
+  --adm-hair:1px solid var(--border);
+}
+
+/* ---------------------------------------------------------------- شريط الأدوات */
+.adm-bar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:12px;
+  padding:16px 18px;
+  background:var(--surface);
+  border:var(--adm-hair);
+  border-radius:var(--adm-radius);
+  box-shadow:var(--shadow-rest);
+  margin-block-end:20px;
+}
+.adm-bar .grow{flex:1 1 220px;min-width:180px}
+.adm-bar .spacer{flex:1}
+
+/* حقل بحث بأيقونة */
+.adm-search{position:relative;flex:1 1 260px;min-width:200px}
+.adm-search .input{padding-inline-start:42px}
+.adm-search svg{
+  position:absolute;inset-inline-start:13px;top:50%;transform:translateY(-50%);
+  width:18px;height:18px;color:var(--text-secondary);pointer-events:none;
+}
+
+/* أزرار تصفية متجاورة */
+.adm-filters{display:flex;flex-wrap:wrap;gap:8px}
+.adm-chip{
+  display:inline-flex;align-items:center;gap:7px;
+  min-height:38px;padding-inline:14px;
+  font-size:13.5px;font-weight:600;
+  color:var(--navy-700);background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius-pill);
+  transition:background var(--t-micro) var(--ease-std),
+             border-color var(--t-micro) var(--ease-std),color var(--t-micro) var(--ease-std);
+}
+.adm-chip:hover{border-color:var(--navy-300);background:var(--navy-25)}
+.adm-chip[aria-pressed="true"]{background:var(--navy-700);color:#fff;border-color:var(--navy-700)}
+.adm-chip .n{
+  font-size:12px;font-weight:700;min-width:20px;padding-inline:5px;
+  border-radius:var(--radius-pill);
+  background:var(--navy-50);color:var(--navy-700);
+}
+.adm-chip[aria-pressed="true"] .n{background:rgba(255,255,255,.2);color:#fff}
+
+/* ---------------------------------------------------------------- الجداول */
+.adm-table-card{
+  background:var(--surface);
+  border:var(--adm-hair);
+  border-radius:var(--adm-radius);
+  box-shadow:var(--shadow-rest);
+  overflow:hidden;
+}
+.adm-table-head{
+  display:flex;flex-wrap:wrap;align-items:center;gap:12px;
+  padding:15px 18px;border-block-end:var(--adm-hair);
+  background:var(--navy-25);
+}
+.adm-table-head h2{font-size:16px;line-height:1.5;margin:0}
+.adm-table-head .spacer{flex:1}
+.adm-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+.adm-table{width:100%;border-collapse:collapse;font-size:14px}
+.adm-table th,.adm-table td{
+  padding:13px 14px;text-align:start;vertical-align:middle;
+  border-block-end:var(--adm-hair);white-space:nowrap;
+}
+.adm-table th{
+  font-size:12.5px;font-weight:700;color:var(--text-secondary);
+  background:var(--surface);position:sticky;top:0;z-index:1;
+  border-block-end:2px solid var(--border);
+}
+/* رأس عمود قابل للفرز */
+.adm-table th button{
+  display:inline-flex;align-items:center;gap:5px;
+  font:inherit;color:inherit;padding:0;
+}
+.adm-table th button svg{width:12px;height:12px;opacity:.45}
+.adm-table th button[data-on="1"]{color:var(--navy-700)}
+.adm-table th button[data-on="1"] svg{opacity:1}
+.adm-table tbody tr{transition:background var(--t-micro) var(--ease-std)}
+.adm-table tbody tr:hover{background:var(--navy-25)}
+.adm-table tbody tr:last-child td{border-block-end:0}
+.adm-table td.wrap{white-space:normal;min-width:220px}
+.adm-table .num{font-variant-numeric:tabular-nums}
+.adm-table .strong{font-weight:700;color:var(--navy-800)}
+.adm-table a.link{color:var(--navy-700);font-weight:700;text-decoration:underline;
+  text-underline-offset:3px;text-decoration-color:var(--navy-200)}
+.adm-table a.link:hover{text-decoration-color:var(--gold-600)}
+.adm-sub{display:block;font-size:12px;color:var(--text-secondary);margin-block-start:3px;
+  white-space:normal}
+
+/* صف مختار */
+.adm-table tbody tr[data-sel="1"]{background:var(--cream-50)}
+.adm-table tbody tr[data-sel="1"]:hover{background:var(--cream-100)}
+.adm-check{width:18px;height:18px;accent-color:var(--navy-700);cursor:pointer}
+
+/* حالات الجدول */
+.adm-state{padding:44px 20px;text-align:center;color:var(--text-secondary)}
+.adm-state svg{width:40px;height:40px;margin:0 auto 12px;color:var(--navy-200)}
+.adm-state h3{font-size:16px;color:var(--text-display);margin-block-end:6px}
+.adm-state p{font-size:13.5px;line-height:1.8;max-width:420px;margin-inline:auto}
+.adm-state .btn{margin-block-start:16px}
+
+/* هيكل تحميل */
+.adm-skel{height:14px;border-radius:4px;background:var(--navy-50);
+  animation:adm-pulse 1.2s ease-in-out infinite}
+@keyframes adm-pulse{0%,100%{opacity:1}50%{opacity:.45}}
+
+/* ---------------------------------------------------------------- الترقيم */
+.adm-pager{
+  display:flex;flex-wrap:wrap;align-items:center;gap:12px;
+  padding:14px 18px;border-block-start:var(--adm-hair);background:var(--navy-25);
+  font-size:13px;color:var(--text-secondary);
+}
+.adm-pager .spacer{flex:1}
+.adm-pager .btn{min-height:36px}
+
+/* ---------------------------------------------------------------- بطاقات المؤشرات */
+.adm-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.adm-kpi{
+  position:relative;
+  background:var(--surface);border:var(--adm-hair);
+  border-block-start:3px solid var(--navy-700);
+  border-radius:var(--adm-radius);
+  padding:18px;box-shadow:var(--shadow-rest);
+}
+.adm-kpi--gold{border-block-start-color:var(--gold-400)}
+.adm-kpi--warm{border-block-start-color:var(--warm-500)}
+.adm-kpi-label{font-size:13.5px;font-weight:600;color:var(--text-secondary);line-height:1.5}
+.adm-kpi-num{display:block;font-family:var(--font-display);font-size:36px;line-height:1.3;
+  color:var(--navy-700);margin-block-start:4px;font-variant-numeric:tabular-nums}
+.adm-kpi-hint{display:block;font-size:12.5px;line-height:1.6;color:var(--text-secondary);
+  margin-block-start:6px}
+
+/* جسم بطاقة تحت .adm-table-head — كل بطاقة فيها رسم تحتاجه */
+.adm-card-body{padding:18px}
+
+/* ---------------------------------------------------------------- الرسوم */
+.adm-chart{display:grid;gap:3px;margin-block-start:14px;--adm-lbl:104px}
+/* عناوين المحتوى أطول من أسماء الفروع فتحتاج عمود تسمية أوسع */
+.adm-chart--wide{--adm-lbl:220px}
+.adm-chart-row{display:grid;grid-template-columns:var(--adm-lbl,104px) 1fr 52px;gap:12px;
+  align-items:center;min-height:26px}
+.adm-chart-row .lbl{font-size:12.5px;color:var(--text-secondary);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.adm-chart-row .bar{height:12px;border-radius:var(--radius-pill);background:var(--navy-500);
+  min-width:2px}
+.adm-chart-row .bar--gold{background:var(--gold-400)}
+.adm-chart-row .val{font-size:13.5px;color:var(--text-primary);font-variant-numeric:tabular-nums;
+  text-align:end}
+
+/* سلسلة زمنية: أعمدة رأسية */
+.adm-series{display:flex;align-items:flex-end;gap:3px;height:132px;padding-block-start:8px;
+  direction:ltr}
+.adm-series .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;
+  height:100%;min-width:0}
+.adm-series .col i{display:block;background:var(--navy-500);border-radius:2px 2px 0 0;
+  min-height:2px;transition:height var(--t-comp) var(--ease-std)}
+.adm-series .col[data-today="1"] i{background:var(--gold-400)}
+.adm-series-axis{display:flex;justify-content:space-between;font-size:11.5px;
+  color:var(--text-secondary);margin-block-start:8px;direction:ltr}
+
+/* ---------------------------------------------------------------- اللوحة الجانبية */
+.adm-sheet{
+  position:fixed;inset:0;z-index:90;display:none;
+}
+.adm-sheet[open],.adm-sheet.on{display:block}
+.adm-sheet-veil{position:absolute;inset:0;background:rgba(0,18,48,.45)}
+.adm-sheet-panel{
+  position:absolute;inset-block:0;inset-inline-end:0;width:min(520px,100%);
+  background:var(--surface);box-shadow:-8px 0 32px rgba(0,31,71,.18);
+  display:flex;flex-direction:column;
+  animation:adm-slide var(--t-comp) var(--ease-std);
+}
+@keyframes adm-slide{from{transform:translateX(-24px);opacity:.4}to{transform:none;opacity:1}}
+[dir="rtl"] .adm-sheet-panel{animation-name:adm-slide-rtl}
+@keyframes adm-slide-rtl{from{transform:translateX(24px);opacity:.4}to{transform:none;opacity:1}}
+.adm-sheet-head{
+  display:flex;align-items:center;gap:12px;
+  padding:18px 20px;border-block-end:var(--adm-hair);background:var(--navy-25);
+}
+.adm-sheet-head h2{flex:1;font-size:17px;margin:0}
+.adm-sheet-body{flex:1;overflow-y:auto;padding:20px;display:grid;gap:16px;align-content:start}
+.adm-sheet-foot{display:flex;gap:10px;padding:16px 20px;border-block-start:var(--adm-hair);
+  background:var(--navy-25)}
+.adm-sheet-foot .btn{flex:1}
+.adm-x{width:38px;height:38px;display:grid;place-items:center;border-radius:var(--adm-tool);
+  color:var(--text-secondary)}
+.adm-x:hover{background:var(--navy-50);color:var(--navy-700)}
+.adm-x svg{width:20px;height:20px}
+
+/* ---------------------------------------------------------------- التنبيهات العائمة
+   وسط الأعلى تحت الترويسة اللاصقة (76px) — في مرمى النظر مباشرة،
+   ولا تغطي أزرار صفوف الجداول كما كان موضع الزاوية السفلية. */
+.adm-toasts{position:fixed;inset-block-start:90px;inset-inline:0;z-index:120;
+  display:grid;gap:10px;justify-items:center;padding-inline:16px;pointer-events:none}
+.adm-toast{
+  pointer-events:auto;
+  display:flex;gap:11px;align-items:flex-start;
+  max-width:min(520px,100%);
+  padding:13px 18px;border-radius:var(--adm-tool);
+  background:var(--navy-800);color:#fff;
+  box-shadow:0 8px 24px rgba(0,31,71,.28);
+  font-size:13.5px;line-height:1.7;
+  animation:adm-toast-in var(--t-comp) var(--ease-std);
+}
+@keyframes adm-toast-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.adm-toast svg{width:18px;height:18px;flex:none;margin-block-start:2px;color:var(--gold-400)}
+.adm-toast--ok{background:#05502F}
+.adm-toast--ok svg{color:#7CE0AE}
+.adm-toast--bad{background:#7A1710}
+.adm-toast--bad svg{color:#FFB4AC}
+
+/* ---------------------------------------------------------------- متفرقات */
+.adm-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:var(--adm-gap);align-items:start}
+.adm-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--adm-gap);align-items:start}
+.adm-stack{display:grid;gap:var(--adm-gap)}
+.adm-kv{display:grid;grid-template-columns:150px 1fr;gap:10px 14px;font-size:14px}
+.adm-kv dt{color:var(--text-secondary);font-weight:600}
+.adm-kv dd{color:var(--text-primary);font-weight:600}
+.adm-mono{font-variant-numeric:tabular-nums;letter-spacing:.3px}
+.adm-danger{color:var(--error-600)}
+.btn-danger{background:var(--error-600);color:#fff;border-color:var(--error-600)}
+.btn-danger:hover{background:#8f1c13;border-color:#8f1c13}
+
+/* شارة الوضع في ترويسة الصفحة */
+.adm-mode[data-live="1"]{background:var(--success-50);color:var(--success-600);
+  border-color:#c6e9d2}
+
+/* عناصر الكتابة تُخفى عن حساب المشاهدة (role=viewer) */
+html[data-role="viewer"] [data-write]{display:none !important}
+
+@media (max-width:1080px){
+  .adm-kpis{grid-template-columns:1fr 1fr}
+  .adm-grid-2,.adm-grid-3{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .adm-kpis{grid-template-columns:1fr}
+  .adm-kv{grid-template-columns:1fr;gap:2px 0}
+  .adm-kv dd{margin-block-end:10px}
+}

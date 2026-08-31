@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دخول الإدارة — نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<style>
+  .login-wrap { max-width: 460px; margin-inline: auto; }
+  .login-card { margin-block-start: -56px; position: relative; z-index: 2; }
+  .login-head { display: flex; align-items: center; gap: 14px; margin-block-end: 22px; }
+  .login-head img { width: 54px; height: 54px; }
+  .login-head h2 { font-size: 19px; line-height: 30px; }
+  .login-head p { font-size: 13px; color: var(--text-secondary); }
+  .mode-note { margin-block-start: 20px; }
+</style>
+</head>
+<body>
+
+<!-- شريط الدولة: طبقة الثقة -->
+<div class="statebar">
+  <div class="container">
+    <span class="statebar-official">
+      <img src="assets/img/logo-mark-96.png" alt="" width="96" height="96">
+      <span>منصة رسمية تابعة لنقابة المهندسين السوريين — الجمهورية العربية السورية</span>
+    </span>
+    <span class="statebar-actions">
+      <a class="hide-mobile" href="tel:+963940900457" dir="ltr">+963 940 900 457</a>
+    </span>
+  </div>
+</div>
+
+<!-- شريط العلامة -->
+<header class="masthead" id="masthead">
+  <div class="container">
+    <a class="masthead-brand" href="index.html">
+      <img src="assets/img/logo-mark-192.png" alt="شعار نقابة المهندسين السوريين" width="192" height="192">
+      <span>
+        <span class="ar">نقابة المهندسين السوريين</span>
+        <span class="en">Syrian Engineers Syndicate</span>
+      </span>
+    </a>
+    <div class="masthead-tools">
+      <span class="tag tag--navy">لوحة الإدارة</span>
+      <a href="index.html" class="btn btn-outline btn-sm">العودة إلى المنصة</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="page-head">
+    <div class="container" style="padding-block-end:88px">
+      <span class="tag tag--dark">وصول مقيّد — طاقم الإدارة فقط</span>
+      <h1>دخول لوحة الإدارة</h1>
+    </div>
+  </section>
+
+  <section class="section--tight">
+    <div class="container login-wrap">
+      <div class="card login-card">
+        <div class="login-head">
+          <img src="assets/img/logo-mark-192.png" alt="" width="192" height="192">
+          <div>
+            <h2>حساب الطاقم</h2>
+            <p>بالبريد وكلمة المرور المعتمدين لدى إدارة المنصة.</p>
+          </div>
+        </div>
+
+        <div class="notice" id="loginChecking">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>
+          <span>جارٍ التحقق من الجلسة…</span>
+        </div>
+
+        <form id="loginForm" class="grid-2" style="grid-template-columns:1fr; gap:16px" novalidate hidden>
+          <div class="field">
+            <label for="email">البريد الإلكتروني</label>
+            <input class="input" type="email" id="email" name="email" dir="ltr" autocomplete="username" required placeholder="admin@osea.org.sy">
+          </div>
+          <div class="field">
+            <label for="password">كلمة المرور</label>
+            <input class="input" type="password" id="password" name="password" dir="ltr" autocomplete="current-password" required placeholder="••••••••••">
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg btn-block" id="loginBtn">دخول</button>
+        </form>
+
+        <div class="notice notice--error" id="loginError" style="margin-block-start:16px" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5h.01"/></svg>
+          <span id="loginErrorText">تعذّر الدخول — تحقق من البريد وكلمة المرور.</span>
+        </div>
+
+        <div class="notice mode-note" id="demoNote" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5h.01"/></svg>
+          <span>
+            <strong>المنصة بوضع العرض التوضيحي:</strong> لم تُربط قاعدة البيانات بعد،
+            ولوحة الإدارة مفتوحة للمعاينة ببيانات تجريبية دون دخول.
+            للربط الحي: املأ <span dir="ltr">assets/js/osea-config.js</span> وفق
+            <span dir="ltr">db/SETUP.md</span>.
+            <a class="link-navy" href="admin.html" style="margin-inline-start:8px">تابع إلى اللوحة</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script>
+(function () {
+  'use strict';
+  var form = document.getElementById('loginForm');
+  var checking = document.getElementById('loginChecking');
+  var btn = document.getElementById('loginBtn');
+  var err = document.getElementById('loginError');
+  var errText = document.getElementById('loginErrorText');
+
+  function fail(msg) { errText.textContent = msg; err.hidden = false; }
+  function idle() { btn.disabled = false; btn.textContent = 'دخول'; }
+
+  if (!OSEA_API.LIVE) {
+    checking.hidden = true;
+    form.hidden = false;
+    document.getElementById('demoNote').hidden = false;
+    form.querySelectorAll('input, button').forEach(function (el) { el.disabled = true; });
+    return;
+  }
+
+  /* ------------------------------------------------------------------
+     إصلاح سباق «بسجّل بيقلّي غلط، بسوّي رفرش بيفتح»:
+     فحص الجلسة المخزَّنة ليس فورياً — التوكن المنتهي يحتاج جولة شبكة
+     لتجديده (قيست 240–425ملّي على وصلة سليمة، وتصير ثوانيَ على وصلة
+     بطيئة). كان النموذج ظاهراً وشغّالاً طوال تلك النافذة، فيحاول المدير
+     الدخول قبل أن يُحسم الفحص، فتفشل محاولته وتُعرض رسالة الخطأ، ثم
+     يجد نفسه داخل اللوحة عند أول تحديث للصفحة لأن الجلسة كانت قائمة.
+     الآن: لا يظهر النموذج إلا بعد أن يُحسم الفحص (بمهلة قصوى 8 ثوانٍ كي
+     لا تعلّق الصفحة على وصلة ميتة)، وأي نتيجة فحص تصل بعد ظهوره تُهمَل
+     فلا يعود «الدخول المفاجئ» ممكناً.
+     ------------------------------------------------------------------ */
+  var settled = false;
+  function showForm() {
+    if (settled) { return; }
+    settled = true;
+    checking.hidden = true;
+    form.hidden = false;
+  }
+  function gotoPanel() {
+    if (settled) { return; }
+    settled = true;
+    window.location.replace('admin.html');
+  }
+
+  var cap = setTimeout(showForm, 8000);
+  OSEA_API.session().then(function (s) {
+    clearTimeout(cap);
+    if (s) { gotoPanel(); } else { showForm(); }
+  }).catch(function () { clearTimeout(cap); showForm(); });
+
+  if (new URLSearchParams(location.search).get('e') === 'notstaff') {
+    fail('هذا الحساب غير مدرج ضمن طاقم الإدارة — راجع مسؤول المنصة.');
+  }
+
+  /* رسالة تصف السبب الحقيقي: «غلط» كانت تُعرض لانقطاع الشبكة وللحظر
+     المؤقت وللبيانات الخاطئة على السواء، فيظل المدير يعيد كتابة كلمة
+     مرور صحيحة بلا طائل. */
+  function reason(e) {
+    var m = String((e && (e.message || e.error_description)) || '').toLowerCase();
+    var st = e && (e.status || e.statusCode);
+    if (m.indexOf('invalid login credentials') > -1 || m.indexOf('invalid_grant') > -1) {
+      return 'البريد أو كلمة المرور غير صحيحة.';
+    }
+    if (st === 429 || m.indexOf('rate limit') > -1 || m.indexOf('too many') > -1) {
+      return 'محاولات كثيرة — انتظر دقيقة ثم أعد المحاولة.';
+    }
+    if (m.indexOf('email not confirmed') > -1) {
+      return 'البريد غير مُفعَّل بعد — راجع مسؤول المنصة.';
+    }
+    return 'تعذّر الاتصال بالخادم — تحقق من الإنترنت ثم أعد المحاولة.';
+  }
+
+  var busy = false;
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (busy || !form.reportValidity()) { return; }
+    err.hidden = true;
+    busy = true;
+    btn.disabled = true;
+    btn.textContent = 'جارٍ الدخول…';
+
+    OSEA_API.signIn(document.getElementById('email').value.trim(),
+                    document.getElementById('password').value)
+      .then(function () {
+        /* نجح الدخول والجلسة صارت محفوظة فعلاً. ما بعدها لا يجوز أن يُعرض
+           كخطأ في البيانات: فشل التحقق من الصلاحية هنا سببه الشبكة لا كلمة
+           المرور، وترك المستخدم على صفحة الدخول ومعه جلسة قائمة هو نفسه ما
+           كان ينتج «رفرش بيفتح». نمرّره للوحة، وحارسها يتولّى الباقي. */
+        return OSEA_API.isStaff().then(function (st) {
+          if (st) { window.location.replace('admin.html'); return; }
+          /* ليس من الطاقم: أنهِ الجلسة كي لا يبقى داخلاً بنصف صلاحية.
+             وإن تعذّر إنهاؤها شبكياً فالرسالة تُعرض على أي حال. */
+          return OSEA_API.signOut().catch(function () {}).then(function () {
+            fail('هذا الحساب غير مدرج ضمن طاقم الإدارة — راجع مسؤول المنصة.');
+            busy = false;
+            idle();
+          });
+        }).catch(function () {
+          window.location.replace('admin.html');
+        });
+      })
+      .catch(function (e2) {
+        fail(reason(e2));
+        busy = false;
+        idle();
+      });
+  });
+})();
+</script>
+</body>
+</html>

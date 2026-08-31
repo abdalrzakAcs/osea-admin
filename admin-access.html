@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سجل الوصول للمحتوى — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+  /* فاصل رأسي بين كتل الصفحة — .adm-bar تحمل هامشها السفلي أصلاً فلا تُغلَّف بشبكة */
+  .acc-block{margin-block-end:20px}
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <!-- المؤشرات تُحسب من نافذة الخمسمئة سجل الأخيرة: الدالة تُرجع صفحة واحدة،
+           والقيم المميّزة (عناصر/حسابات) لا يمكن اشتقاقها من الصفحة المعروضة وحدها -->
+      <div class="adm-kpis acc-block">
+        <div class="adm-kpi">
+          <span class="adm-kpi-label">إجمالي مرات الوصول</span>
+          <span class="adm-kpi-num" id="kTotal">—</span>
+          <span class="adm-kpi-hint" id="kTotalHint">كل مرة صدر فيها رابط موقّع لملف محمي</span>
+        </div>
+        <div class="adm-kpi">
+          <span class="adm-kpi-label">عدد العناصر المطلوبة</span>
+          <span class="adm-kpi-num" id="kItems">—</span>
+          <span class="adm-kpi-hint" id="kItemsHint">عناصر مختلفة من الكتب والاستمارات والدروس</span>
+        </div>
+        <div class="adm-kpi adm-kpi--gold">
+          <span class="adm-kpi-label">عدد الحسابات المميّزة</span>
+          <span class="adm-kpi-num" id="kAccts">—</span>
+          <span class="adm-kpi-hint" id="kAcctsHint">حسابات مختلفة طلبت محتوى محمياً</span>
+        </div>
+        <div class="adm-kpi adm-kpi--warm">
+          <span class="adm-kpi-label">مرات وصول بلا حساب</span>
+          <span class="adm-kpi-num" id="kAnon">—</span>
+          <span class="adm-kpi-hint" id="kAnonHint">سجلات حقلها account_id فارغ</span>
+        </div>
+      </div>
+
+      <!-- ملاحظة صادقة: الأرقام الحالية كلها من اختبار محلي، لا من تسريب -->
+      <div class="notice acc-block" role="note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>
+          <strong>كيف يمتلئ هذا السجل:</strong>
+          يُسجَّل الوصول تلقائياً في كل مرة تُصدر فيها دالة <span class="adm-mono" dir="ltr">content-url</span>
+          رابطاً موقّعاً لأي ملف محمي — لا يفتح أي كتاب أو استمارة إلا برابط عمره خمس دقائق، وكل إصدار يترك أثراً هنا.
+          <br>
+          <strong>ملاحظة على البيانات الحالية:</strong>
+          السجلات الثلاثون الموجودة اليوم كلها بلا حساب مرتبط لأنها من اختبار محلي جرى قبل تشغيل التسجيل،
+          وليست دليل تسريب. يبقى الحقل فارغاً أيضاً إن كان العنصر لا يشترط حساباً أو لم يمرّر التطبيق معرّف الحساب.
+        </span>
+      </div>
+
+      <!-- تصفية بحساب واحد: يصل إليها المدير من ملف العضو (?account=) -->
+      <div class="adm-bar" id="acctBar" hidden style="border-color:var(--gold-400);background:var(--cream-50)">
+        <strong id="acctText" style="font-size:14px">مصفّى بحساب واحد</strong>
+        <span class="spacer"></span>
+        <button class="btn btn-outline btn-sm" id="acctClear">عرض وصول كل الحسابات</button>
+      </div>
+
+      <div class="adm-bar">
+        <select class="input" id="item" style="flex:1 1 320px" aria-label="تصفية بالعنصر">
+          <option value="all">كل العناصر</option>
+        </select>
+        <span class="spacer"></span>
+        <button class="btn btn-outline btn-sm" id="exportBtn">تصدير Excel</button>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2>سجل الوصول</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="totalTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>التوقيت</th>
+                <th>العنصر</th>
+                <th>النوع</th>
+                <th>الحساب</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="4"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="adm-pager" id="pager"></div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  var KIND = { book: 'كتاب', form: 'استمارة', lesson: 'درس' };
+
+  /* حدّ الدالة الأقصى خمسمئة صف — يُستعمل للمؤشرات والتصدير معاً */
+  var CAP = 500;
+
+  var state = { item: 'all', account: null, limit: 50, offset: 0, total: 0 };
+  var rows = [];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody, pagerEl;
+
+  A.boot({
+    page: 'access',
+    title: 'سجل الوصول للمحتوى',
+    lead: 'أثر التدقيق ضد التسريب: من طلب أي ملف محمي ومتى. كل رابط موقّع يُصدَر للكتب '
+        + 'والاستمارات والدروس يُسجَّل هنا تلقائياً.',
+    crumb: 'سجل الوصول'
+  }).then(function (st) {
+    if (!st) return;
+    tbody = $('rows'); pagerEl = $('pager');
+    readQuery();
+    wire();
+    loadItems();
+    load();
+    loadStats();
+  });
+
+  /* الوصول إلى سجل حساب بعينه يأتي من ملف العضو، لا من داخل هذه الصفحة */
+  function readQuery() {
+    var m = /[?&]account=([^&]+)/.exec(window.location.search);
+    if (!m) return;
+    state.account = decodeURIComponent(m[1]);
+    $('acctBar').hidden = false;
+  }
+
+  function wire() {
+    $('item').addEventListener('change', function () {
+      state.item = this.value; state.offset = 0; load(); loadStats();
+    });
+    $('acctClear').addEventListener('click', function () {
+      state.account = null; state.offset = 0;
+      $('acctBar').hidden = true;
+      load(); loadStats();
+    });
+    $('exportBtn').addEventListener('click', exportAll);
+  }
+
+  function args(limit, offset) {
+    return {
+      item: state.item === 'all' ? null : state.item,
+      account: state.account || null,
+      limit: limit, offset: offset
+    };
+  }
+
+  /* ---------------------------------------------------------------- الجدول */
+  function load() {
+    tbody.innerHTML = '<tr><td colspan="4"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    API.admin.accessLog(args(state.limit, state.offset)).then(function (d) {
+      rows = d.rows || [];
+      state.total = d.total | 0;
+      $('totalTag').textContent = A.toAr(state.total) + ' سجل وصول';
+      paintRows();
+      paintAcctLabel();
+      A.pager(pagerEl, state, function (off) {
+        state.offset = off; load(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }).catch(function (e) {
+      tbody.innerHTML = '<tr><td colspan="4">' + A.errorState(A.errText(e), 'retry') + '</td></tr>';
+      var r = $('retry'); if (r) r.addEventListener('click', load);
+    });
+  }
+
+  function paintRows() {
+    if (!rows.length) {
+      var filtered = state.item !== 'all' || state.account;
+      tbody.innerHTML = '<tr><td colspan="4">' + A.emptyState(
+        filtered ? 'لا سجلات وصول مطابقة' : 'لا سجلات وصول بعد',
+        filtered
+          ? 'جرّب اختيار «كل العناصر» أو إلغاء تصفية الحساب.'
+          : 'يمتلئ هذا الجدول تلقائياً فور أن يفتح أول مهندس كتاباً أو استمارة من التطبيق — '
+          + 'التسجيل يجري لحظة إصدار الرابط الموقّع لا لحظة التنزيل.'
+      ) + '</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(function (r) {
+      var kind = KIND[r.item_kind] || r.item_kind || '—';
+      /* العنصر قد يكون محذوفاً من الكتالوج: الربط خارجي فيبقى المعرّف وحده */
+      var title = r.item_title || r.item_id || '—';
+      return '<tr>' +
+        '<td class="num">' + A.arDateTime(r.at) + '</td>' +
+        '<td class="wrap"><span class="strong">' + A.esc(title) + '</span>' +
+          /* المعرّف لاتيني داخل خلية عربية: اتجاهه ltr ومحاذاته إلى حافة العنوان نفسها */
+          '<span class="adm-sub adm-mono" dir="ltr" style="text-align:end">' + A.esc(r.item_id || '') + '</span>' +
+          (!r.item_title ? '<span class="adm-sub">العنصر لم يعد في كتالوج المحتوى</span>' : '') + '</td>' +
+        '<td><span class="tag">' + A.esc(kind) + '</span></td>' +
+        '<td class="wrap">' + accountCell(r) + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function accountCell(r) {
+    if (!r.account_id) {
+      return '<span class="tag tag--gold">زائر بلا حساب</span>' +
+             '<span class="adm-sub">لم يُمرَّر معرّف حساب مع الطلب</span>';
+    }
+    return '<a class="link" href="admin-user-detail.html?id=' + A.esc(r.account_id) + '">' +
+      A.esc(r.account_name || 'حساب محذوف') + '</a>' +
+      (r.synd_no ? '<span class="adm-sub adm-mono" dir="ltr" style="text-align:end">' +
+        A.esc(r.synd_no) + '</span>' : '');
+  }
+
+  function paintAcctLabel() {
+    if (!state.account) return;
+    var named = rows.filter(function (r) { return r.account_name; })[0];
+    $('acctText').textContent = named
+      ? ('وصول الحساب: ' + named.account_name)
+      : 'مصفّى بحساب واحد';
+  }
+
+  /* ---------------------------------------------------------------- المؤشرات */
+  function loadStats() {
+    var ids = ['kTotal', 'kItems', 'kAccts', 'kAnon'];
+    ids.forEach(function (id) { $(id).textContent = '…'; });
+
+    API.admin.accessLog(args(CAP, 0)).then(function (d) {
+      var list = d.rows || [], items = Object.create(null), accts = Object.create(null), anon = 0;
+      list.forEach(function (r) {
+        if (r.item_id) { items[r.item_id] = 1; }
+        if (r.account_id) { accts[r.account_id] = 1; } else { anon++; }
+      });
+      var total = d.total | 0;
+      var capped = total > list.length;
+      var scope = capped ? 'محسوب على أحدث ' + A.toAr(list.length) + ' سجل من أصل ' + A.toAr(total) : '';
+
+      $('kTotal').textContent = A.toAr(total);
+      $('kItems').textContent = A.toAr(Object.keys(items).length);
+      $('kAccts').textContent = A.toAr(Object.keys(accts).length);
+      $('kAnon').textContent  = A.toAr(anon);
+
+      if (capped) {
+        $('kItemsHint').textContent = scope;
+        $('kAcctsHint').textContent = scope;
+        $('kAnonHint').textContent  = scope;
+      }
+      $('kTotalHint').textContent = state.item !== 'all' || state.account
+        ? 'ضمن التصفية المطبَّقة حالياً'
+        : 'كل مرة صدر فيها رابط موقّع لملف محمي';
+      if (!capped && !anon && total) {
+        $('kAnonHint').textContent = 'كل سجل مرتبط بحساب معروف';
+      }
+    }).catch(function () {
+      /* فشل المؤشرات لا يُعطّل الجدول: تبقى شرطات وتظهر رسالة الخطأ في مكان الجدول */
+      ids.forEach(function (id) { $(id).textContent = '—'; });
+      $('kTotalHint').textContent = 'تعذّر حساب المؤشرات';
+    });
+  }
+
+  /* ---------------------------------------------------------------- قائمة العناصر */
+  function loadItems() {
+    API.admin.content().then(function (d) {
+      var list = (d && d.items) || [];
+      var sel = $('item');
+      list.forEach(function (it) {
+        var o = document.createElement('option');
+        o.value = it.id;
+        o.textContent = (it.title || it.id) + ' — ' + (KIND[it.kind] || it.kind || '');
+        sel.appendChild(o);
+      });
+      if (state.item !== 'all') { sel.value = state.item; }
+    }).catch(function () {
+      var o = document.createElement('option');
+      o.disabled = true;
+      o.textContent = 'تعذّر تحميل قائمة العناصر';
+      $('item').appendChild(o);
+    });
+  }
+
+  /* ---------------------------------------------------------------- التصدير */
+  function exportAll() {
+    var btn = $('exportBtn');
+    btn.disabled = true; btn.textContent = 'جارٍ التجهيز…';
+    /* التصدير يجلب أقصى ما تسمح به الدالة لا الصفحة المعروضة فقط */
+    API.admin.accessLog(args(CAP, 0)).then(function (d) {
+      var all = d.rows || [];
+      A.exportCsv('osea-content-access.csv',
+        ['التوقيت', 'معرّف العنصر', 'العنصر', 'النوع', 'معرّف الحساب', 'اسم الحساب', 'الرقم النقابي'],
+        all.map(function (r) {
+          return [r.at || '', r.item_id || '', r.item_title || '',
+                  KIND[r.item_kind] || r.item_kind || '',
+                  r.account_id || '', r.account_name || 'زائر بلا حساب', r.synd_no || ''];
+        }));
+      A.toast('صُدّر ' + A.toAr(all.length) + ' سجلاً.' +
+        ((d.total | 0) > all.length
+          ? ' (أحدث ' + A.toAr(all.length) + ' من ' + A.toAr(d.total) + ')' : ''), 'ok');
+    }).catch(function (e) { A.toast(A.errText(e), 'bad'); })
+      .then(function () { btn.disabled = false; btn.textContent = 'تصدير Excel'; });
+  }
+})();
+</script>
+</body>
+</html>

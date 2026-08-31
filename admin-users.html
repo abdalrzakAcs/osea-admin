@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الحسابات — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <!-- شريط الأدوات: بحث خادمي + تصفية + فرز + تصدير -->
+      <div class="adm-bar">
+        <div class="adm-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="input" id="q" type="search" autocomplete="off"
+                 placeholder="بحث بالاسم أو الرقم النقابي أو الهوية أو الموبايل أو البريد">
+        </div>
+        <select class="input" id="branch" style="flex:0 1 190px" aria-label="تصفية بالفرع">
+          <option value="all">كل الفروع</option>
+        </select>
+        <select class="input" id="sort" style="flex:0 1 190px" aria-label="ترتيب">
+          <option value="created_desc">الأحدث تسجيلاً</option>
+          <option value="created_asc">الأقدم تسجيلاً</option>
+          <option value="name_asc">الاسم (أ–ي)</option>
+          <option value="name_desc">الاسم (ي–أ)</option>
+          <option value="branch_asc">الفرع</option>
+          <option value="status_asc">الحالة</option>
+        </select>
+        <span class="spacer"></span>
+        <button class="btn btn-outline btn-sm" id="exportBtn">تصدير Excel</button>
+      </div>
+
+      <div class="adm-bar" style="margin-block-start:-8px">
+        <div class="adm-filters" id="filters" role="group" aria-label="تصفية بالحالة"></div>
+      </div>
+
+      <!-- شريط العمليات الجماعية -->
+      <div class="adm-bar" id="bulkBar" hidden style="border-color:var(--gold-400);background:var(--cream-50)">
+        <strong id="bulkCount" style="font-size:14px"></strong>
+        <span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" data-write id="bulkApprove">الموافقة على المحدَّد</button>
+        <button class="btn btn-outline btn-sm" data-write id="bulkReject">رفض المحدَّد</button>
+        <button class="btn btn-outline btn-sm" id="bulkClear">إلغاء التحديد</button>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2 id="tableTitle">الحسابات المسجّلة</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="totalTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th style="width:40px"><input class="adm-check" type="checkbox" id="selAll" aria-label="تحديد الكل" data-write></th>
+                <th>الاسم</th>
+                <th>الرقم النقابي</th>
+                <th>رقم الهوية</th>
+                <th>الفرع</th>
+                <th>وسيلة التواصل</th>
+                <th>تاريخ التسجيل</th>
+                <th>الحالة</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="9"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="adm-pager" id="pager"></div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  var STATUS = {
+    pending:  { label: 'بانتظار الموافقة', cls: 'tag--gold' },
+    approved: { label: 'موافَق عليه',       cls: 'tag--success' },
+    rejected: { label: 'مرفوض',             cls: 'tag--error' }
+  };
+
+  /* الحالة الابتدائية تقبل ?status= — النظرة العامة تربط ببطاقة «بانتظار
+     الموافقة» مباشرةً، فلا يصح أن تفتح الصفحة على «الكل». */
+  var qs = new URLSearchParams(window.location.search);
+  var q0 = qs.get('status');
+  var state = { search: qs.get('q') || '',
+                status: ['pending', 'approved', 'rejected'].indexOf(q0) >= 0 ? q0 : 'all',
+                branch: 'all',
+                sort: 'created_desc', limit: 50, offset: 0, total: 0 };
+  var rows = [];
+  var picked = Object.create(null);
+
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody, pagerEl, filtersEl, bulkBar, bulkCount;
+
+  A.boot({
+    page: 'users',
+    title: 'الحسابات',
+    lead: 'كل طلبات الانتساب المسجّلة على المنصة — بحث وتصفية وفرز على الخادم، '
+        + 'وموافقة ورفض وتعديل، وملف تفصيلي لكل عضو.',
+    crumb: 'الحسابات'
+  }).then(function (st) {
+    if (!st) return;
+    tbody = $('rows'); pagerEl = $('pager'); filtersEl = $('filters');
+    bulkBar = $('bulkBar'); bulkCount = $('bulkCount');
+    if (state.search) { $('q').value = state.search; }
+    wire();
+    load();
+  });
+
+  function wire() {
+    $('q').addEventListener('input', A.debounce(function () {
+      state.search = $('q').value.trim(); state.offset = 0; load();
+    }, 300));
+    $('branch').addEventListener('change', function () {
+      state.branch = this.value; state.offset = 0; load();
+    });
+    $('sort').addEventListener('change', function () {
+      state.sort = this.value; state.offset = 0; load();
+    });
+    $('exportBtn').addEventListener('click', exportAll);
+    $('selAll').addEventListener('change', function () {
+      var on = this.checked;
+      rows.forEach(function (r) { if (on) picked[r.id] = r; else delete picked[r.id]; });
+      paintRows(); paintBulk();
+    });
+    $('bulkClear').addEventListener('click', function () {
+      picked = Object.create(null); paintRows(); paintBulk();
+    });
+    $('bulkApprove').addEventListener('click', function () { bulk('approved'); });
+    $('bulkReject').addEventListener('click', function () { bulk('rejected'); });
+    tbody.addEventListener('click', onRowClick);
+    tbody.addEventListener('change', onRowChange);
+  }
+
+  /* ---------------------------------------------------------------- التحميل */
+  function load() {
+    tbody.innerHTML = '<tr><td colspan="9"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    API.admin.accounts(state).then(function (d) {
+      rows = d.rows || [];
+      state.total = d.total | 0;
+      paintFilters(d.counts || {});
+      paintBranches(d.branches || []);
+      $('totalTag').textContent = A.toAr(state.total) + ' حساب';
+      paintRows();
+      A.pager(pagerEl, state, function (off) {
+        state.offset = off; load(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }).catch(function (e) {
+      tbody.innerHTML = '<tr><td colspan="9">' + A.errorState(A.errText(e), 'retry') + '</td></tr>';
+      var r = $('retry'); if (r) r.addEventListener('click', load);
+    });
+  }
+
+  function paintFilters(c) {
+    var defs = [['all', 'الكل'], ['pending', 'بانتظار الموافقة'],
+                ['approved', 'موافَق عليها'], ['rejected', 'مرفوضة']];
+    filtersEl.innerHTML = defs.map(function (d) {
+      return '<button class="adm-chip" data-f="' + d[0] + '" aria-pressed="' +
+        (state.status === d[0]) + '">' + A.esc(d[1]) +
+        '<span class="n">' + A.toAr(c[d[0]] || 0) + '</span></button>';
+    }).join('');
+    filtersEl.querySelectorAll('[data-f]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.status = b.getAttribute('data-f'); state.offset = 0; load();
+      });
+    });
+  }
+
+  function paintBranches(list) {
+    var sel = $('branch');
+    if (sel.options.length > 1) return;            /* يُبنى مرة واحدة */
+    list.forEach(function (b) {
+      var o = document.createElement('option');
+      o.value = o.textContent = b;
+      sel.appendChild(o);
+    });
+  }
+
+  function paintRows() {
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="9">' + A.emptyState(
+        state.search || state.status !== 'all' || state.branch !== 'all'
+          ? 'لا نتائج مطابقة'
+          : 'لا حسابات مسجّلة بعد',
+        state.search || state.status !== 'all' || state.branch !== 'all'
+          ? 'جرّب توسيع البحث أو إلغاء التصفية.'
+          : 'ستظهر هنا طلبات الانتساب فور تسجيل المهندسين من التطبيق.'
+      ) + '</td></tr>';
+      $('selAll').checked = false;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(function (a) {
+      var s = STATUS[a.status] || { label: a.status, cls: '' };
+      var contact = a.contact_method === 'email' ? (a.email || '—') : (a.phone || '—');
+      var sel = picked[a.id] ? ' data-sel="1"' : '';
+      return '<tr' + sel + ' data-id="' + A.esc(a.id) + '">' +
+        '<td><input class="adm-check" type="checkbox" data-pick="' + A.esc(a.id) + '"' +
+          (picked[a.id] ? ' checked' : '') + ' aria-label="تحديد" data-write></td>' +
+        '<td class="wrap"><a class="link" href="admin-user-detail.html?id=' + A.esc(a.id) + '">' +
+          A.esc(a.name) + '</a>' +
+          (a.exempt ? '<span class="adm-sub"><span class="tag tag--gold">معفى من الرسوم</span></span>' : '') +
+          (a.pass_hash === undefined && a.has_password === false
+            ? '<span class="adm-sub">بلا كلمة مرور</span>' : '') + '</td>' +
+        '<td class="num strong">' + A.esc(a.synd_no) + '</td>' +
+        '<td class="num">' + A.esc(a.national_id) + '</td>' +
+        '<td>' + A.esc(a.branch) + '</td>' +
+        '<td class="num" dir="ltr" style="text-align:start">' + A.esc(contact) + '</td>' +
+        '<td>' + A.arDate(a.created_at) + '</td>' +
+        '<td><span class="tag ' + s.cls + '">' + A.esc(s.label) + '</span>' +
+          (a.status === 'rejected' && a.note
+            ? '<span class="adm-sub">السبب: ' + A.esc(a.note) + '</span>' : '') +
+          (a.decided_at ? '<span class="adm-sub">' + A.arDate(a.decided_at) + '</span>' : '') + '</td>' +
+        '<td>' + actions(a) + '</td>' +
+      '</tr>';
+    }).join('');
+
+    $('selAll').checked = rows.length > 0 && rows.every(function (r) { return picked[r.id]; });
+  }
+
+  function actions(a) {
+    var b = [];
+    if (a.status !== 'approved') {
+      b.push('<button class="btn btn-primary btn-sm" data-act="approve" data-write>موافقة</button>');
+    }
+    if (a.status !== 'rejected') {
+      b.push('<button class="btn btn-outline btn-sm" data-act="reject" data-write>رفض</button>');
+    }
+    if (a.status !== 'pending') {
+      b.push('<button class="btn btn-outline btn-sm" data-act="reconsider" data-write>إعادة النظر</button>');
+    }
+    b.push('<button class="btn btn-outline btn-sm" data-act="edit" data-write>تعديل</button>');
+    return '<span style="display:flex;gap:6px;flex-wrap:wrap">' + b.join('') + '</span>';
+  }
+
+  /* ---------------------------------------------------------------- الأحداث */
+  function onRowChange(e) {
+    var cb = e.target.closest('[data-pick]');
+    if (!cb) return;
+    var id = cb.getAttribute('data-pick');
+    var row = rows.filter(function (r) { return r.id === id; })[0];
+    if (cb.checked) { picked[id] = row; } else { delete picked[id]; }
+    cb.closest('tr').setAttribute('data-sel', cb.checked ? '1' : '');
+    $('selAll').checked = rows.every(function (r) { return picked[r.id]; });
+    paintBulk();
+  }
+
+  function onRowClick(e) {
+    var btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    var tr = btn.closest('tr');
+    var id = tr.getAttribute('data-id');
+    var a = rows.filter(function (r) { return r.id === id; })[0];
+    if (!a) return;
+    var act = btn.getAttribute('data-act');
+
+    if (act === 'edit') return openEdit(a);
+    if (act === 'approve')    return setStatus([id], 'approved', null, a.name);
+    if (act === 'reconsider') return setStatus([id], 'pending', null, a.name);
+    if (act === 'reject') {
+      return A.confirm({
+        title: 'رفض الطلب', danger: true, okLabel: 'رفض الطلب',
+        text: 'سيُرفض طلب «' + a.name + '». يظهر السبب للعضو داخل التطبيق.',
+        reason: 'سبب الرفض (اختياري)'
+      }).then(function (reason) {
+        if (reason === null) return;
+        setStatus([id], 'rejected', reason || null, a.name);
+      });
+    }
+  }
+
+  function setStatus(ids, status, note, name) {
+    return API.admin.bulkStatus(ids, status, note).then(function (n) {
+      var word = status === 'approved' ? 'الموافقة على' : status === 'rejected' ? 'رفض' : 'إعادة';
+      A.toast(ids.length === 1
+        ? ('تمت ' + word + ' «' + name + '».')
+        : ('تم تحديث ' + A.toAr(n) + ' حساباً.'), 'ok');
+      picked = Object.create(null);
+      paintBulk();
+      load();
+    }).catch(function (e) { A.toast(A.errText(e), 'bad'); });
+  }
+
+  function paintBulk() {
+    var n = Object.keys(picked).length;
+    bulkBar.hidden = n === 0;
+    bulkCount.textContent = 'محدَّد: ' + A.toAr(n) + ' حساب';
+  }
+
+  function bulk(status) {
+    var ids = Object.keys(picked);
+    if (!ids.length) return;
+    A.confirm({
+      title: status === 'approved' ? 'موافقة جماعية' : 'رفض جماعي',
+      danger: status === 'rejected',
+      okLabel: status === 'approved' ? 'الموافقة على الكل' : 'رفض الكل',
+      text: 'سيُطبَّق الإجراء على ' + A.toAr(ids.length) + ' حساباً محدَّداً.',
+      reason: status === 'rejected' ? 'سبب الرفض (يُطبَّق على الكل)' : null
+    }).then(function (r) {
+      if (r === null) return;
+      setStatus(ids, status, typeof r === 'string' ? r : null);
+    });
+  }
+
+  /* ---------------------------------------------------------------- التعديل */
+  function openEdit(a) {
+    var branches = Array.prototype.slice.call($('branch').options)
+      .filter(function (o) { return o.value !== 'all'; })
+      .map(function (o) {
+        return '<option value="' + A.esc(o.value) + '"' +
+          (o.value === a.branch ? ' selected' : '') + '>' + A.esc(o.value) + '</option>';
+      }).join('');
+
+    A.sheet({
+      title: 'تعديل بيانات الحساب',
+      okLabel: 'حفظ التعديلات',
+      body:
+        '<div class="field"><label for="eName">الاسم الثلاثي</label>' +
+          '<input class="input" id="eName" value="' + A.esc(a.name) + '" maxlength="120"></div>' +
+        '<div class="field"><label for="eSynd">الرقم النقابي</label>' +
+          '<input class="input" id="eSynd" dir="ltr" value="' + A.esc(a.synd_no) + '"></div>' +
+        '<div class="field"><label for="eNid">رقم الهوية الوطنية</label>' +
+          '<input class="input" id="eNid" dir="ltr" value="' + A.esc(a.national_id) + '"></div>' +
+        '<div class="field"><label for="eBranch">الفرع النقابي</label>' +
+          '<select class="input" id="eBranch">' + branches + '</select></div>' +
+        '<div class="field"><label for="ePhone">رقم الموبايل</label>' +
+          '<input class="input" id="ePhone" dir="ltr" value="' + A.esc(a.phone || '') + '"></div>' +
+        '<div class="field"><label for="eEmail">البريد الإلكتروني</label>' +
+          '<input class="input" id="eEmail" dir="ltr" value="' + A.esc(a.email || '') + '"></div>' +
+        '<div class="field"><label style="display:flex;align-items:center;gap:9px;cursor:pointer">' +
+          '<input class="adm-check" type="checkbox" id="eExempt"' + (a.exempt ? ' checked' : '') + '>' +
+          'معفى من الرسوم</label>' +
+          '<span class="adm-sub">الإعفاء يستثني الحساب من احتساب الإيرادات.</span></div>' +
+        '<div class="field"><label for="eNote">ملاحظة إدارية</label>' +
+          '<input class="input" id="eNote" value="' + A.esc(a.note || '') + '" maxlength="200"></div>' +
+        '<div class="notice"><span>تغيير هذه الحقول يُسجَّل في سجل التدقيق باسمك.</span></div>',
+      onOk: function (host) {
+        var g = function (id) { return host.querySelector('#' + id).value.trim(); };
+        return API.admin.updateAccount(a.id, {
+          name: g('eName'), synd_no: g('eSynd'), national_id: g('eNid'),
+          branch: host.querySelector('#eBranch').value,
+          phone: g('ePhone'), email: g('eEmail'),
+          exempt: host.querySelector('#eExempt').checked,
+          note: g('eNote')
+        }).then(function () {
+          A.toast('حُفظت تعديلات «' + g('eName') + '».', 'ok');
+          load();
+        });
+      }
+    });
+  }
+
+  /* ---------------------------------------------------------------- التصدير */
+  function exportAll() {
+    var btn = $('exportBtn');
+    btn.disabled = true; btn.textContent = 'جارٍ التجهيز…';
+    /* التصدير يجلب كل السجل من الخادم لا الصفحة المعروضة فقط */
+    API.admin.accounts({ search: state.search, status: state.status, branch: state.branch,
+                         sort: state.sort, limit: 500, offset: 0 })
+      .then(function (d) {
+        var all = d.rows || [];
+        A.exportCsv('osea-accounts.csv',
+          ['الاسم', 'الرقم النقابي', 'رقم الهوية', 'الفرع', 'وسيلة التواصل',
+           'الموبايل', 'البريد', 'الحالة', 'معفى', 'تاريخ التسجيل', 'تاريخ القرار', 'ملاحظة'],
+          all.map(function (a) {
+            return [a.name, a.synd_no, a.national_id, a.branch,
+                    a.contact_method === 'email' ? 'بريد' : 'موبايل',
+                    a.phone || '', a.email || '',
+                    (STATUS[a.status] || {}).label || a.status,
+                    a.exempt ? 'نعم' : 'لا',
+                    a.created_at || '', a.decided_at || '', a.note || ''];
+          }));
+        A.toast('صُدّر ' + A.toAr(all.length) + ' حساباً.' +
+          (d.total > all.length ? ' (أول 500 من ' + A.toAr(d.total) + ')' : ''), 'ok');
+      })
+      .catch(function (e) { A.toast(A.errText(e), 'bad'); })
+      .then(function () { btn.disabled = false; btn.textContent = 'تصدير Excel'; });
+  }
+})();
+</script>
+</body>
+</html>

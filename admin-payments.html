@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>المدفوعات — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* أنماط الصفحة وحدها — بتوكنات الهوية حصراً */
+
+/* وحدة العملة داخل رقم المؤشر: أصغر من الرقم كي يبقى الرقم هو المرئي أولاً */
+.pay-unit { font-family: var(--font-text); font-size: 15px; font-weight: 600; color: var(--text-secondary); }
+
+/* ملاحظة سقف مصدر البيانات: سطر كامل تحت عنوان الجدول لا عنصر مزاحم له */
+.pay-note { flex: 1 1 100%; margin: 0; font-size: 12.5px; line-height: 1.7; color: var(--text-secondary); }
+
+/* قائمة اختيار الحساب: select متعدد الأسطر لا يقبل min-height الثابت في .input */
+.pay-pick { min-height: 0; height: 184px; padding: 6px; font-size: 14px; }
+.pay-pick option { padding: 7px 9px; }
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <!-- المؤشرات من admin_overview: محسوبة على كامل السجل لا على الصفوف المعروضة -->
+      <div class="adm-kpis" id="kpis"></div>
+
+      <!-- شريط الأدوات: بحث في المتصفح على الصفوف المجلوبة + قيد دفعة + تصدير -->
+      <div class="adm-bar" style="margin-block-start:20px">
+        <div class="adm-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="input" id="q" type="search" autocomplete="off"
+                 placeholder="بحث باسم الحساب أو رقم العملية">
+        </div>
+        <span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" id="addBtn" data-write>تسجيل دفعة</button>
+        <button class="btn btn-outline btn-sm" id="exportBtn">تصدير Excel</button>
+      </div>
+
+      <div class="adm-bar" style="margin-block-start:-8px">
+        <div class="adm-filters" id="filters" role="group" aria-label="تصفية بنوع الدفعة"></div>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2>سجل الدفعات</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="totalTag">—</span>
+          <div class="adm-pager" id="pagerEl" style="margin-block-start:10px"></div>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>اسم الحساب</th>
+                <th>الفرع</th>
+                <th>رقم العملية</th>
+                <th>المبلغ</th>
+                <th>الخدمة</th>
+                <th>الحالة</th>
+                <th>التوقيت</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  /* 🔴 كان الجلب مقصوصاً على أحدث 200 والبحث محلياً داخلها — عند مئات
+     الآلاف يختفي التاريخ كله بصمت. الآن كل شيء خادمي: بحث وتصفية وترقيم. */
+  var PAGE = 50;
+
+  /* أسماء الخدمات كما في شاشة الدفع */
+  var SVC = {
+    'exam':     'امتحان — محاولة أولى',
+    'exam-re':  'إعادة امتحان',
+    'book-m':   'اشتراك شهري بكتاب',
+    'book-y':   'اشتراك سنوي بكتاب',
+    'folder-m': 'اشتراك شهري بمجلد',
+    'folder-y': 'اشتراك سنوي بمجلد',
+    'folder-o': 'اشتراك دائم بمجلد',
+    /* تسعير البند المفرد (ترحيلة 022): كتاب أو استمارة أو درس مسعَّر بنفسه */
+    'item-m':   'اشتراك شهري ببند',
+    'item-y':   'اشتراك سنوي ببند',
+    'item-o':   'اشتراك دائم ببند'
+  };
+  var bookTitles = {};   /* item_id ⟵ العنوان، من الكتالوج — يحلّ دفعات book-* وitem-* */
+  var folderNames = {};  /* item_id ⟵ اسم المجلد، من admin_folders (يشمل المعطّل) */
+  var state = { search: '', filter: 'all', total: 0, limit: PAGE, offset: 0 };
+  var rows = [];                       /* صفحة الخادم الحالية */
+  var view = [];                       /* مرادفها — يبقى الاسم لمسار التصدير */
+
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody, kpisEl, filtersEl;
+
+  A.boot({
+    page: 'payments',
+    title: 'المدفوعات',
+    lead: 'سجل الدفعات المقيَّدة على المنصة — قيدٌ يدوي برقم العملية ومبلغ حرّ بالليرة، '
+        + 'وإعفاء لمن استُثني من الرسوم، وحذفٌ لأي قيد خاطئ يُثبَّت في سجل التدقيق.',
+    crumb: 'المدفوعات'
+  }).then(function (st) {
+    if (!st) return;
+    tbody = $('rows'); kpisEl = $('kpis'); filtersEl = $('filters');
+    wire();
+    loadKpis();
+    loadRows();
+  });
+
+  function wire() {
+    $('q').addEventListener('input', A.debounce(function () {
+      state.search = $('q').value.trim();
+      state.offset = 0;
+      loadRows();
+    }, 300));
+    $('addBtn').addEventListener('click', openAdd);
+    $('exportBtn').addEventListener('click', exportView);
+    tbody.addEventListener('click', onRowClick);
+  }
+
+  /* ---------------------------------------------------------------- التنسيق */
+  /* مبلغ بالليرة: فاصل آلاف عربي ثم أرقام هندية — الرقم في نص عربي فيبقى هندياً */
+  function amt(n) {
+    return A.toAr(String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+  }
+  /* تمييز العدد في الفصحى يتغيّر بتغيّر العدد — «5 دفعة» لحنٌ ظاهر في واجهة رسمية */
+  function nPay(n) {
+    n = n | 0;
+    if (n === 1) return 'دفعة واحدة';
+    if (n === 2) return 'دفعتان';
+    return A.toAr(n) + (n >= 3 && n <= 10 ? ' دفعات' : ' دفعة');
+  }
+
+  /* ---------------------------------------------------------------- المؤشرات */
+  function kpi(label, numHtml, hint, cls) {
+    return '<div class="adm-kpi' + (cls ? ' ' + cls : '') + '">' +
+      '<span class="adm-kpi-label">' + A.esc(label) + '</span>' +
+      '<b class="adm-kpi-num">' + numHtml + '</b>' +
+      '<span class="adm-kpi-hint">' + A.esc(hint) + '</span></div>';
+  }
+
+  /* الإيراد من admin_overview لا من الصفوف المجلوبة: تلك مقصوصة على 200 صف
+     فجمعها يعطي رقماً أصغر من الحقيقة بلا أي إشارة إلى النقص */
+  function loadKpis() {
+    kpisEl.innerHTML =
+      kpi('عدد الدفعات', '—', 'جارٍ التحميل…', '') +
+      kpi('دفعات مدفوعة', '—', 'جارٍ التحميل…', '') +
+      kpi('دفعات معفاة', '—', 'جارٍ التحميل…', 'adm-kpi--warm') +
+      kpi('الإيراد الكلي', '—', 'جارٍ التحميل…', 'adm-kpi--gold');
+
+    API.admin.overview(30).then(function (d) {
+      var p = (d && d.payments) || {};
+      kpisEl.innerHTML =
+        kpi('عدد الدفعات', A.toAr(p.count | 0),
+            'كل ما قُيّد على المنصة منذ إطلاقها.', '') +
+        kpi('دفعات مدفوعة', A.toAr(p.paid | 0),
+            'قيود لها مبلغ محصَّل فعلاً.', '') +
+        kpi('دفعات معفاة', A.toAr(p.exempt | 0),
+            'قيود بمبلغ صفر لمن استُثني من الرسوم.', 'adm-kpi--warm') +
+        kpi('الإيراد الكلي', amt(p.revenue | 0) + ' <span class="pay-unit">ل.س</span>',
+            'مجموع مبالغ الدفعات غير المعفاة في كامل السجل.', 'adm-kpi--gold');
+    }).catch(function (e) {
+      kpisEl.innerHTML = '<div class="adm-kpi" style="grid-column:1/-1">' +
+        A.errorState(A.errText(e), 'kpiRetry') + '</div>';
+      var r = $('kpiRetry'); if (r) r.addEventListener('click', loadKpis);
+    });
+  }
+
+  /* ---------------------------------------------------------------- الجدول */
+  function loadRows() {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    if (!Object.keys(bookTitles).length) {
+      API.content.catalog().then(function (cat) {
+        (cat || []).forEach(function (c) { bookTitles[c.id] = c.title; });
+      }).catch(function () {});
+    }
+    /* أسماء المجلدات لدفعات folder-*: قراءة الطاقم لا القراءة العلنية —
+       المجلد المعطَّل يبقى محلولاً بالاسم في السجل القديم */
+    if (!Object.keys(folderNames).length) {
+      API.admin.folders().then(function (d) {
+        (((d || {}).folders) || []).forEach(function (f) { folderNames[f.id] = f.name; });
+      }).catch(function () {});
+    }
+    API.admin.listPayments({
+      search: state.search || null,
+      status: state.filter === 'all' ? null : state.filter,
+      limit: state.limit, offset: state.offset
+    }).then(function (d) {
+      state.total = d.total | 0;
+      /* الدالة تعيد حقول الحساب مفرودة — تُعاد لهيئة العرض القائمة */
+      rows = (d.rows || []).map(function (r) {
+        r.accounts = { name: r.acc_name, branch: r.acc_branch, exempt: r.acc_exempt };
+        return r;
+      });
+      view = rows;
+      paint();
+      A.pager($('pagerEl'), state, function (off) {
+        state.offset = off; loadRows();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }).catch(function (e) {
+      $('totalTag').textContent = '—';
+      filtersEl.innerHTML = '';
+      tbody.innerHTML = '<tr><td colspan="8">' + A.errorState(A.errText(e), 'retry') + '</td></tr>';
+      var r = $('retry'); if (r) r.addEventListener('click', loadRows);
+    });
+  }
+
+  function paint() {
+    paintFilters();
+    paintHead();
+    paintRows();
+  }
+
+  /* التصفية بالحالة — خادمية على كامل السجل */
+  function paintFilters() {
+    var defs = [['all', 'الكل'], ['pending', 'قيد التدقيق'],
+                ['verified', 'مدقَّقة'], ['rejected', 'مرفوضة']];
+    filtersEl.innerHTML = defs.map(function (d) {
+      return '<button class="adm-chip" data-f="' + d[0] + '" aria-pressed="' +
+        (state.filter === d[0]) + '">' + A.esc(d[1]) + '</button>';
+    }).join('');
+    filtersEl.querySelectorAll('[data-f]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.filter = b.getAttribute('data-f');
+        state.offset = 0;
+        loadRows();
+      });
+    });
+  }
+
+  function paintHead() {
+    $('totalTag').textContent = nPay(state.total);
+  }
+
+  function paintRows() {
+    if (!view.length) {
+      var filtered = !!state.search || state.filter !== 'all';
+      tbody.innerHTML = '<tr><td colspan="8">' + A.emptyState(
+        filtered ? 'لا نتائج مطابقة' : 'لا دفعات مسجّلة بعد',
+        filtered
+          ? 'جرّب توسيع البحث أو إلغاء التصفية.'
+          : 'ستمتلئ هذه القائمة بكل دفعة تُقيَّد من زر «تسجيل دفعة» أعلاه، برقم عمليتها ومبلغها.'
+      ) + '</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = view.map(function (r) {
+      var acc = r.accounts || {};
+      var money = (r.amount | 0) > 0 ? amt(r.amount) + ' ل.س' : '—';
+      var name = acc.name
+        ? '<a class="link" href="admin-user-detail.html?id=' + A.esc(r.account_id) + '">' +
+            A.esc(acc.name) + '</a>'
+        : '<a class="link" href="admin-user-detail.html?id=' + A.esc(r.account_id) + '">حساب محذوف أو غير متاح</a>';
+      return '<tr data-id="' + A.esc(r.id) + '">' +
+        '<td class="wrap">' + name +
+          (acc.exempt ? '<span class="adm-sub">الحساب معفى من الرسوم</span>' : '') + '</td>' +
+        '<td>' + A.esc(acc.branch || '—') + '</td>' +
+        '<td class="num adm-mono" dir="ltr" style="text-align:start">' + A.esc(r.op_no) + '</td>' +
+        '<td class="num strong">' + money + '</td>' +
+        '<td class="wrap">' + (r.service
+          ? A.esc(SVC[r.service] || r.service) +
+            (r.item_id ? '<span class="adm-sub">' + A.esc(folderNames[r.item_id] || bookTitles[r.item_id] || r.item_id) + '</span>' : '')
+          : (r.exempt ? '<span class="tag tag--gold">معفاة</span>' : '—')) + '</td>' +
+        '<td>' + (r.status === 'pending'
+            ? '<span class="tag tag--gold">قيد التدقيق</span>'
+            : r.status === 'rejected'
+              ? '<span class="tag tag--error">مرفوضة</span>'
+              : '<span class="tag tag--success">مدقَّقة ومفعَّلة</span>') + '</td>' +
+        '<td>' + A.arDateTime(r.paid_at) + '</td>' +
+        '<td class="adm-actions">' +
+          (r.status === 'pending'
+            ? '<button class="btn btn-primary btn-sm" data-act="ok" data-write>تدقيق وتفعيل</button>' +
+              '<button class="btn btn-outline btn-sm" data-act="no" data-write>رفض</button>'
+            : '<button class="btn btn-outline btn-sm" data-act="del" data-write>حذف</button>') +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  /* ------------------------------------------------- التدقيق والتفعيل */
+  function decide(r, approve) {
+    var who = (r.accounts && r.accounts.name) || 'حساب غير متاح';
+    /* اسم المجلد أو البند (كتاب/استمارة/درس) في نص التأكيد: المدير يوافق
+       على مال حقيقي — يجب أن يرى أي بند وأي خطة سيمنحها قبل الضغط */
+    var what = (r.service ? (SVC[r.service] || r.service) : 'دفعة بلا خدمة محددة')
+      + (r.item_id ? ' — «' + (folderNames[r.item_id] || bookTitles[r.item_id] || r.item_id) + '»' : '');
+    A.confirm({
+      title: approve ? 'تدقيق وتفعيل الدفعة' : 'رفض الدفعة',
+      okLabel: approve ? 'تدقيق وتفعيل' : 'رفض الدفعة',
+      text: approve
+        ? 'تأكدت من رقم العملية ' + r.op_no + ' في حساب شام كاش؟ بالموافقة يُمنح «' + who +
+          '» استحقاق: ' + what + ' — فوراً وتلقائياً، ويظهر في حسابه.'
+        : 'سترُفض دفعة «' + who + '» رقم ' + r.op_no + ' ولن يُمنح أي استحقاق. ' +
+          'الرفض يُسجَّل في سجل التدقيق باسمك.'
+    }).then(function (ok) {
+      if (ok === null || ok === false) return;
+      API.admin.verifyPayment(r.id, approve).then(function () {
+        A.toast(approve ? 'دُقّقت الدفعة وفُعّل الاستحقاق.' : 'رُفضت الدفعة.', 'ok');
+        loadRows(); loadKpis();
+      }).catch(function (err) { A.toast(A.errText(err), 'bad'); });
+    });
+  }
+
+  /* ---------------------------------------------------------------- الحذف */
+  function onRowClick(e) {
+    var act = e.target.closest('[data-act]');
+    if (act && act.getAttribute('data-act') !== 'del') {
+      var id0 = act.closest('tr').getAttribute('data-id');
+      var r0 = rows.filter(function (x) { return String(x.id) === id0; })[0];
+      if (r0) { decide(r0, act.getAttribute('data-act') === 'ok'); }
+      return;
+    }
+    var btn = e.target.closest('[data-act="del"]');
+    if (!btn) return;
+    var id = btn.closest('tr').getAttribute('data-id');
+    var r = rows.filter(function (x) { return String(x.id) === id; })[0];
+    if (!r) return;
+    var who = (r.accounts && r.accounts.name) || 'حساب غير متاح';
+
+    A.confirm({
+      title: 'حذف الدفعة',
+      danger: true,
+      okLabel: 'حذف الدفعة',
+      text: 'ستُحذف الدفعة رقم ' + r.op_no + ' لحساب «' + who + '» نهائياً، '
+          + 'وينقص الإيراد بقيمتها. يُسجَّل الحذف في سجل التدقيق باسمك.'
+    }).then(function (ok) {
+      if (ok === null) return;
+      API.admin.deletePayment(r.id).then(function () {
+        A.toast('حُذفت الدفعة ' + r.op_no + '.', 'ok');
+        loadRows(); loadKpis();
+      }).catch(function (err) { A.toast(A.errText(err), 'bad'); });
+    });
+  }
+
+  /* ---------------------------------------------------------------- قيد دفعة */
+  /* اقتراح رقم عملية: أعلى تسلسل SC-<سنة>-<رقم> بين المجلوب زائد واحد.
+     يبقى نصاً حراً — يستبدله الموظف برقم العملية الفعلي إن كان الدفع إلكترونياً */
+  function suggestOp() {
+    var y = new Date().getFullYear(), max = 0;
+    rows.forEach(function (r) {
+      var m = /^SC-(\d{4})-(\d+)$/.exec(String(r.op_no || ''));
+      if (m && Number(m[1]) === y) { max = Math.max(max, Number(m[2])); }
+    });
+    var n = String(max + 1);
+    while (n.length < 5) { n = '0' + n; }
+    return 'SC-' + y + '-' + n;
+  }
+
+  function openAdd() {
+    var s = A.sheet({
+      title: 'تسجيل دفعة',
+      okLabel: 'قيد الدفعة',
+      body:
+        '<div class="field"><label for="pQ">الحساب</label>' +
+          '<input class="input" id="pQ" type="search" autocomplete="off"' +
+            ' placeholder="بحث بالاسم أو الرقم النقابي أو الفرع">' +
+          '<select class="input pay-pick" id="pAcc" size="7" aria-label="اختيار الحساب">' +
+            '<option value="" disabled>جارٍ تحميل الحسابات…</option></select>' +
+          '<span class="hint" id="pAccHint">الحسابات الموافَق عليها فقط.</span></div>' +
+
+        '<div class="field"><label for="pAmount">المبلغ (ليرة سورية)</label>' +
+          '<input class="input" id="pAmount" type="number" dir="ltr" min="0" step="1"' +
+            ' inputmode="numeric" value="100">' +
+          '<span class="hint">أي مبلغ صحيح من صفر فما فوق. القيمة الظاهرة اقتراح يُعدَّل بحرية.</span></div>' +
+
+        '<div class="field"><label style="display:flex;align-items:center;gap:9px;cursor:pointer">' +
+          '<input class="adm-check" type="checkbox" id="pExempt">معفى من الرسوم</label>' +
+          '<span class="adm-sub">يُقيَّد المبلغ صفراً ولا يدخل في الإيراد.</span></div>' +
+
+        '<div class="field"><label for="pOp">رقم العملية</label>' +
+          '<input class="input adm-mono" id="pOp" dir="ltr" maxlength="60" value="' +
+            A.esc(suggestOp()) + '">' +
+          '<span class="hint">نص حر يجب أن يكون فريداً — رقم شام كاش يُقبل بأي أرقام ' +
+            'أو فواصل ويُوحَّد تلقائياً إلى قالب SC. الرقم المقترح تسلسلي — ' +
+            'استبدله برقم عملية الدفع الفعلي إن وُجد.</span></div>' +
+
+        '<div class="notice"><span>القيد يدوي: أدخله بعد التثبّت من وصول المبلغ فعلاً. ' +
+          'الإدراج والحذف كلاهما يُسجَّل في سجل التدقيق باسم من نفّذه.</span></div>',
+
+      onOk: function (host) {
+        var accId = host.querySelector('#pAcc').value;
+        /* تطبيع رقم العملية: أرقام عربية/فارسية إلى ASCII وإسقاط علامات
+           الاتجاه الخفية التي يحملها اللصق من تطبيقات الدفع */
+        var opNo = host.querySelector('#pOp').value
+          .replace(/[٠-٩]/g, function (d) { return String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)); })
+          .replace(/[۰-۹]/g, function (d) { return String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); })
+          .replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '')
+          .trim();
+        /* توحيد مع قالب دفعات الأعضاء (ترحيل 011): رقم شامي — بفواصل أو
+           بسابقة SC أو دونهما — يُخزَّن SC-<الأرقام>، فيصطدم المكرَّر بقيد
+           التفرّد بدل أن يمرّ بهجاء مختلف. الاقتراح التسلسلي SC-سنة-تسلسل
+           يبقى بهيئته: قيد يدوي داخلي لا رقم عملية فعلي */
+        if (!/^SC-\d{4}-\d+$/.test(opNo)) {
+          var dig = opNo.toUpperCase().replace(/[^0-9A-Z]/g, '').replace(/^SC/, '');
+          if (/^\d{6,20}$/.test(dig)) { opNo = 'SC-' + dig; }
+        }
+        var exempt = host.querySelector('#pExempt').checked;
+        var raw = host.querySelector('#pAmount').value.trim();
+
+        if (!accId) { return Promise.reject(new Error('اختر الحساب أولاً.')); }
+        if (!opNo) { return Promise.reject(new Error('أدخل رقم العملية.')); }
+        var money = 0;
+        if (!exempt) {
+          if (!/^\d{1,9}$/.test(raw)) {
+            return Promise.reject(new Error('المبلغ يجب أن يكون عدداً صحيحاً بالليرة، صفراً فما فوق.'));
+          }
+          money = parseInt(raw, 10);
+        }
+
+        /* دالة الإدارة لا دالة الأعضاء: نص حر بلا قالب SC-، تملأ created_by،
+           تحترم الإعفاء وتسجّل في التدقيق — كانت موصولة خطأً بدالة الأعضاء
+           الصارمة فرُفض كل رقم فعلي حتى الاقتراح المولَّد هنا */
+        return API.admin.addPayment({
+          account_id: accId, op_no: opNo, amount: money, exempt: exempt
+        }).then(function () {
+          A.toast('قُيّدت الدفعة ' + opNo + '.', 'ok');
+          loadRows(); loadKpis();
+        }).catch(function (e) {
+          /* op_no فريد في القاعدة: 23505 = انتهاك التفرّد، ورسالته الأصلية إنكليزية */
+          var msg = (e && (e.message || '')) + '';
+          if ((e && e.code === '23505') || /duplicate key|payments_op_no/i.test(msg)) {
+            throw new Error('رقم العملية ' + opNo + ' مسجّل سابقاً — لكل دفعة رقم فريد.');
+          }
+          throw e;
+        });
+      }
+    });
+
+    /* الإعفاء يُصفّر المبلغ ويعطّل حقله، والإلغاء يعيد ما كان مكتوباً قبله */
+    var exBox = s.el.querySelector('#pExempt');
+    var amtBox = s.el.querySelector('#pAmount');
+    exBox.addEventListener('change', function () {
+      if (exBox.checked) {
+        amtBox.setAttribute('data-prev', amtBox.value);
+        amtBox.value = '0';
+        amtBox.disabled = true;
+      } else {
+        amtBox.disabled = false;
+        amtBox.value = amtBox.getAttribute('data-prev') || '100';
+      }
+    });
+
+    /* قائمة الحسابات تُجلب عند كل فتح لا مرة واحدة: الموافقات تتغيّر أثناء الجلسة */
+    var sel = s.el.querySelector('#pAcc');
+    var hint = s.el.querySelector('#pAccHint');
+    var all = [];
+
+    var fill = function () {
+      var q = A.norm(s.el.querySelector('#pQ').value);
+      var list = !q ? all : all.filter(function (a) {
+        return A.norm(a.name).indexOf(q) !== -1 ||
+               A.norm(a.synd_no).indexOf(q) !== -1 ||
+               A.norm(a.branch).indexOf(q) !== -1;
+      });
+      if (!list.length) {
+        sel.innerHTML = '<option value="" disabled>' +
+          (all.length ? 'لا حساب مطابق' : 'لا حسابات موافَق عليها بعد') + '</option>';
+        return;
+      }
+      sel.innerHTML = list.map(function (a) {
+        return '<option value="' + A.esc(a.id) + '">' +
+          A.esc(a.name + ' — ' + (a.synd_no || 'بلا رقم نقابي') + ' — ' + (a.branch || '')) +
+          '</option>';
+      }).join('');
+    };
+
+    s.el.querySelector('#pQ').addEventListener('input', A.debounce(fill, 200));
+
+    API.admin.accounts({ status: 'approved', limit: 500, offset: 0 })
+      .then(function (d) {
+        all = d.rows || [];
+        fill();
+        hint.textContent = (d.total | 0) > all.length
+          ? 'المحمَّل من الحسابات الموافَق عليها: ' + A.toAr(all.length) + ' من ' +
+            A.toAr(d.total) + ' — البحث يعمل داخل المحمَّل فقط.'
+          : 'الحسابات الموافَق عليها: ' + A.toAr(all.length) + '.';
+      })
+      .catch(function (e) {
+        sel.innerHTML = '<option value="" disabled>تعذّر تحميل الحسابات</option>';
+        hint.textContent = A.errText(e);
+      });
+  }
+
+  /* ---------------------------------------------------------------- التصدير */
+  function exportView() {
+    if (!view.length) { A.toast('لا صفوف لتصديرها.', 'bad'); return; }
+    A.exportCsv('osea-payments.csv',
+      ['اسم الحساب', 'الفرع', 'رقم العملية', 'المبلغ (ل.س)', 'النوع', 'التوقيت'],
+      view.map(function (r) {
+        var acc = r.accounts || {};
+        return [acc.name || '', acc.branch || '', r.op_no || '', r.amount | 0,
+                r.exempt ? 'معفاة' : 'مدفوعة', r.paid_at || ''];
+      }));
+    A.toast('صُدّر الملف — ' + nPay(view.length) + '.', 'ok');
+  }
+})();
+</script>
+</body>
+</html>

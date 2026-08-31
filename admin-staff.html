@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>أعضاء الطاقم — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+  /* فاصل رأسي بين كتل الصفحة — .adm-bar تحمل هامشها السفلي أصلاً */
+  .stf-block{margin-block-end:20px}
+  /* بطاقتا الدورين: قائمة صلاحيات مقروءة لا فقرة نصية */
+  .stf-role h3{font-size:16px;margin-block-end:4px}
+  .stf-role ul{display:grid;gap:8px;margin-block-start:14px;list-style:none;padding:0}
+  .stf-role li{display:flex;gap:9px;align-items:flex-start;font-size:14px;line-height:1.75}
+  .stf-role li svg{width:17px;height:17px;flex:none;margin-block-start:4px;color:var(--navy-700)}
+  .stf-role li[data-no] svg{color:var(--warm-500)}
+  /* أوامر الإقلاع الأولى: لاتينية بالكامل فتبقى بمحاذاة اليسار */
+  .stf-sql{
+    margin-block-start:14px;padding:14px;overflow-x:auto;text-align:start;
+    background:var(--navy-25);border:1px solid var(--border);border-radius:var(--radius-tool);
+    /* الخط العربي في آخر السلسلة: اسم المدير داخل الأمر يبقى موصول الحروف */
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,var(--font-text),monospace;
+    font-size:12.5px;line-height:1.85;color:var(--text-primary);white-space:pre;
+  }
+  .stf-steps{max-width:600px;margin-inline:auto;text-align:start}
+  /* identity.css يلغي علامات القوائم عالمياً، والخطوات هنا مرقّمة بأرقام لاتينية
+     صريحة: العميل اعتمد 1 2 3 لا ١ ٢ ٣، وعلامة القائمة تتبع اللغة لو تُركت تلقائية */
+  .stf-steps ol{margin:0;padding-inline-start:26px;display:grid;gap:8px;
+    list-style:decimal outside;
+    font-size:13.5px;line-height:1.85;color:var(--text-secondary)}
+  .stf-steps li::marker{color:var(--navy-700);font-weight:700}
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <!-- الفرق بين الدورين أولاً: هذه الصفحة تمنح صلاحيات، فالشرح جزء من الأمان -->
+      <div class="adm-grid-2 stf-block">
+        <div class="card stf-role">
+          <h3>مدير <span class="tag tag--navy">admin</span></h3>
+          <p>الصلاحية الكاملة على المنصة — يقرأ ويكتب ويحذف.</p>
+          <ul>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>الموافقة على الحسابات ورفضها وتعديل بياناتها وحذفها</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>تصحيح المدفوعات والمحاولات وسحب الشهادات</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>تحرير المحتوى وبنك الأسئلة ونشر إصدارات التطبيق</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>إدارة الطاقم نفسه: إضافة الأعضاء وتغيير أدوارهم وإزالتهم</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="card stf-role">
+          <h3>صلاحية اطّلاع <span class="tag">viewer</span></h3>
+          <p>قراءة فقط — لا يكتب في القاعدة شيئاً على الإطلاق.</p>
+          <ul>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>يرى كل الشاشات والجداول والمؤشرات والسجلات ويصدّر CSV</span>
+            </li>
+            <li data-no>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              <span>لا تظهر له أزرار الموافقة والرفض والتعديل والحذف إطلاقاً</span>
+            </li>
+            <li data-no>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              <span>لا يستطيع نشر إصدار ولا تعديل سؤال ولا إضافة عضو طاقم</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="notice stf-block" role="note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+        <span>
+          <strong>الفصل بين الدورين منفَّذ في قاعدة البيانات نفسها، لا في الواجهة وحدها:</strong>
+          القراءة مشروطة بالدالة <span class="adm-mono" dir="ltr">is_staff()</span>
+          والكتابة مشروطة بالدالة <span class="adm-mono" dir="ltr">is_admin()</span>
+          داخل سياسات الأمان ودوال الإدارة. إخفاء الأزرار عن صاحب صلاحية الاطّلاع راحة عرض فقط —
+          لو أظهرها بأدوات المتصفح لرُدَّ طلبه من القاعدة برسالة «صلاحية المدير مطلوبة».
+        </span>
+      </div>
+
+      <div class="adm-bar">
+        <span class="tag" id="totalTag">—</span>
+        <span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" id="addBtn" data-write>إضافة عضو طاقم</button>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2>أعضاء الطاقم</h2>
+          <span class="spacer"></span>
+          <span class="tag tag--navy" id="adminsTag" hidden>—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>الاسم</th>
+                <th>البريد الإلكتروني</th>
+                <th>الدور</th>
+                <th>آخر دخول</th>
+                <th>تاريخ الإنشاء</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="6"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  var ROLE = {
+    admin:  { label: 'مدير',   cls: 'tag--navy' },
+    viewer: { label: 'اطّلاع', cls: '' }
+  };
+
+  /* كلمات المرور تُدار في Supabase Auth لا هنا: القاعدة تربط بالبريد فقط،
+     فالمستخدم يجب أن يوجد هناك أولاً وإلا رمت admin_add_staff رسالتها */
+  var AUTH_STEPS =
+    '<div class="notice" role="note">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>' +
+      '<span><strong>أنشئ المستخدم في Supabase أولاً:</strong> ' +
+      'من لوحة Supabase → <span class="adm-mono" dir="ltr">Authentication → Users → Add user</span> ' +
+      'بالبريد وكلمة مرور. كلمات المرور لا تُنشأ ولا تُغيَّر من هذه اللوحة إطلاقاً — ' +
+      'هذه الصفحة تربط مستخدماً موجوداً بالطاقم وتمنحه دوره. ' +
+      'إن لم يكن البريد موجوداً هناك سترفض القاعدة الإضافة وتظهر رسالتها كما هي.</span>' +
+    '</div>';
+
+  var rows = [];
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody;
+
+  A.boot({
+    page: 'staff',
+    title: 'أعضاء الطاقم',
+    lead: 'من يملك الدخول إلى لوحة الإدارة وبأي صلاحية. كانت العضوية تُضاف بأمر SQL يدوي، '
+        + 'وصارت تُدار من هنا بعد إنشاء المستخدم في Supabase Auth.',
+    crumb: 'الطاقم'
+  }).then(function (st) {
+    if (!st) return;
+    tbody = $('rows');
+    $('addBtn').addEventListener('click', openAdd);
+    tbody.addEventListener('click', onRowClick);
+    load();
+  });
+
+  /* ---------------------------------------------------------------- التحميل */
+  function load() {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    API.admin.staff().then(function (list) {
+      rows = list || [];
+      var admins = rows.filter(function (r) { return r.role === 'admin'; }).length;
+      $('totalTag').textContent = A.toAr(rows.length) + ' عضو طاقم';
+      $('adminsTag').hidden = !rows.length;
+      $('adminsTag').textContent = A.toAr(admins) + ' مدير · ' +
+        A.toAr(rows.length - admins) + ' اطّلاع';
+      paintRows();
+    }).catch(function (e) {
+      tbody.innerHTML = '<tr><td colspan="6">' + A.errorState(A.errText(e), 'retry') + '</td></tr>';
+      var r = $('retry'); if (r) r.addEventListener('click', load);
+    });
+  }
+
+  function paintRows() {
+    if (!rows.length) { return paintEmpty(); }
+
+    tbody.innerHTML = rows.map(function (s) {
+      var r = ROLE[s.role] || { label: s.role, cls: '' };
+      return '<tr data-id="' + A.esc(s.user_id) + '">' +
+        '<td class="wrap"><span class="strong">' + A.esc(s.name) + '</span>' +
+          (s.is_me ? ' <span class="tag tag--gold">أنت</span>' : '') + '</td>' +
+        '<td dir="ltr" style="text-align:start">' + A.esc(s.email || '—') +
+          (!s.email ? '<span class="adm-sub">لا مستخدم مطابق في Supabase Auth</span>' : '') + '</td>' +
+        '<td><span class="tag ' + r.cls + '">' + A.esc(r.label) + '</span></td>' +
+        '<td>' + (s.last_sign_in ? A.arDateTime(s.last_sign_in)
+                                 : '<span class="adm-sub">لم يسجّل دخوله بعد</span>') + '</td>' +
+        '<td>' + A.arDate(s.created_at) + '</td>' +
+        '<td><span style="display:flex;gap:6px;flex-wrap:wrap">' +
+          '<button class="btn btn-outline btn-sm" data-act="role" data-write>تغيير الدور</button>' +
+          '<button class="btn btn-outline btn-sm" data-act="remove" data-write>إزالة</button>' +
+        '</span></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  /* الجدول الفارغ حالة انتقالية: قراءة هذه الصفحة تشترط عضوية طاقم أصلاً،
+     فالخطوات هنا هي طريق إعادة إنشاء أول مدير من خارج اللوحة */
+  function paintEmpty() {
+    tbody.innerHTML = '<tr><td colspan="6">' +
+      A.emptyState('لا يوجد أي عضو طاقم بعد',
+        'أول مدير يُنشأ مرة واحدة من خارج اللوحة، ثم تُدار كل العضويات التالية من هذه الصفحة.') +
+      '<div class="stf-steps">' +
+        '<ol>' +
+          '<li>من لوحة Supabase: <span class="adm-mono" dir="ltr">Authentication → Users → Add user</span> ' +
+            '— أدخل بريد المدير وكلمة مرور قوية.</li>' +
+          '<li>من <span class="adm-mono" dir="ltr">SQL Editor</span> اربط المستخدم بالطاقم ' +
+            '(استبدل الاسم والبريد):</li>' +
+        '</ol>' +
+        '<pre class="stf-sql" dir="ltr">insert into public.staff (user_id, name, role)\n' +
+          'select id, \'مدير المنصة\', \'admin\'\n' +
+          'from auth.users\n' +
+          'where email = \'admin@osea.org.sy\';</pre>' +
+        '<ol start="3">' +
+          '<li>ادخل من <a class="link" href="admin-login.html">صفحة دخول الإدارة</a> بالبريد نفسه، ' +
+            'ثم أضف بقية الأعضاء من هنا بلا أي SQL.</li>' +
+        '</ol>' +
+      '</div></td></tr>';
+  }
+
+  /* ---------------------------------------------------------------- الأحداث */
+  function onRowClick(e) {
+    var btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    var id = btn.closest('tr').getAttribute('data-id');
+    var s = rows.filter(function (r) { return String(r.user_id) === String(id); })[0];
+    if (!s) return;
+    if (btn.getAttribute('data-act') === 'role') { return changeRole(s); }
+    return removeMember(s);
+  }
+
+  /* ---------------------------------------------------------------- الإضافة */
+  function openAdd() {
+    A.sheet({
+      title: 'إضافة عضو طاقم',
+      okLabel: 'ربط العضو بالطاقم',
+      body:
+        AUTH_STEPS +
+        '<div class="field"><label for="sEmail">البريد الإلكتروني للمستخدم</label>' +
+          '<input class="input" id="sEmail" type="email" dir="ltr" autocomplete="off" ' +
+            'placeholder="name@osea.org.sy">' +
+          '<span class="hint">البريد نفسه المسجَّل في Supabase Auth حرفاً بحرف.</span></div>' +
+        '<div class="field"><label for="sName">الاسم الكامل</label>' +
+          '<input class="input" id="sName" maxlength="120" placeholder="الاسم كما يظهر في سجل التدقيق">' +
+          '<span class="hint">هذا الاسم يُكتب بجانب كل إجراء يقوم به العضو.</span></div>' +
+        '<div class="field"><label for="sRole">الدور</label>' +
+          '<select class="input" id="sRole">' +
+            '<option value="admin">مدير — يقرأ ويكتب ويحذف</option>' +
+            '<option value="viewer">اطّلاع — قراءة فقط</option>' +
+          '</select></div>',
+      onOk: function (host) {
+        var email = host.querySelector('#sEmail').value.trim();
+        var name  = host.querySelector('#sName').value.trim();
+        var role  = host.querySelector('#sRole').value;
+        if (!email) { return Promise.reject(new Error('أدخل البريد الإلكتروني للمستخدم')); }
+        if (!name)  { return Promise.reject(new Error('أدخل اسم العضو كما يظهر في سجل التدقيق')); }
+        /* رسالة القاعدة عربية أصلاً («لا يوجد مستخدم بهذا البريد…») فتُعرض كما هي */
+        return API.admin.addStaff(email, name, role).then(function () {
+          A.toast('أُضيف «' + name + '» إلى الطاقم بدور ' +
+            (role === 'admin' ? 'مدير' : 'اطّلاع') + '.', 'ok');
+          load();
+        });
+      }
+    });
+  }
+
+  /* ---------------------------------------------------------------- تغيير الدور */
+  function changeRole(s) {
+    /* admin_add_staff دالة upsert: البريد نفسه مع دور جديد يحدّث الصفّ القائم */
+    if (!s.email) {
+      return A.toast('لا يمكن تغيير الدور: لا بريد مرتبط بهذا المستخدم في Supabase Auth.', 'bad');
+    }
+    var next = s.role === 'admin' ? 'viewer' : 'admin';
+    A.confirm({
+      title: 'تغيير دور عضو الطاقم',
+      okLabel: next === 'admin' ? 'ترقية إلى مدير' : 'تحويل إلى اطّلاع',
+      danger: next === 'viewer',
+      text: next === 'admin'
+        ? 'سيصبح «' + s.name + '» مديراً: يقرأ ويكتب ويحذف ويدير الطاقم نفسه.'
+        : 'سيصبح «' + s.name + '» صاحب صلاحية اطّلاع: يقرأ كل شيء ولا يكتب شيئاً، ' +
+          'وتختفي عنه أدوات الكتابة كلها.' +
+          (s.is_me ? ' تنبيه: هذا حسابك أنت، وستفقد صلاحية الكتابة فوراً.' : '')
+    }).then(function (ok) {
+      if (ok === null) return;
+      return API.admin.addStaff(s.email, s.name, next).then(function () {
+        A.toast('صار «' + s.name + '» ' + (next === 'admin' ? 'مديراً' : 'صاحب صلاحية اطّلاع') + '.', 'ok');
+        load();
+      }).catch(function (e) { A.toast(A.errText(e), 'bad'); });
+    });
+  }
+
+  /* ---------------------------------------------------------------- الإزالة */
+  function removeMember(s) {
+    A.confirm({
+      title: 'إزالة عضو من الطاقم',
+      danger: true,
+      okLabel: 'إزالة من الطاقم',
+      text: 'سيفقد «' + s.name + '» الدخول إلى لوحة الإدارة كلياً. ' +
+            'يبقى مستخدمه في Supabase Auth ولا يُحذف من هنا، فيمكن إعادة ربطه لاحقاً بالبريد نفسه.'
+    }).then(function (ok) {
+      if (ok === null) return;
+      /* القاعدة ترفض حذف النفس وحذف المدير الوحيد برسالتين عربيتين — تُعرضان كما هما */
+      return API.admin.removeStaff(s.user_id).then(function () {
+        A.toast('أُزيل «' + s.name + '» من الطاقم.', 'ok');
+        load();
+      }).catch(function (e) { A.toast(A.errText(e), 'bad'); });
+    });
+  }
+})();
+</script>
+</body>
+</html>

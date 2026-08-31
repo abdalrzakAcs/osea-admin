@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إصدارات التطبيق — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* أنماط الصفحة — بتوكنات الهوية حصراً */
+
+/* بطاقة الحالة: رقمان كبيران ثم شرح الأثر بثلاث حالات */
+.rel-now{display:grid;gap:22px}
+.rel-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:760px){.rel-nums{grid-template-columns:1fr}}
+.rel-num{padding:14px 16px;background:var(--navy-25);border:1px solid var(--navy-100);
+  border-radius:10px}
+/* أبناء مباشرون لا أحفاد: اسم الإصدار يُغلَّف بـspan لاتيني داخل الرقم الكبير */
+.rel-num > small{display:block;font-size:13px;font-weight:600;color:var(--text-secondary)}
+.rel-num > b{display:block;font-family:var(--font-display);font-size:32px;line-height:44px;
+  color:var(--navy-700);font-variant-numeric:tabular-nums}
+.rel-num > span{display:block;font-size:12.5px;line-height:1.7;color:var(--text-secondary)}
+
+.rel-bands{display:grid;gap:10px}
+.rel-band{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;
+  padding:12px 15px;border:1px solid var(--border);border-inline-start-width:3px;
+  border-radius:10px;font-size:13.5px;line-height:1.85;color:var(--text-primary)}
+.rel-band .rng{font-weight:700;color:var(--navy-800);white-space:nowrap}
+.rel-band--bad{border-inline-start-color:var(--error-600);background:var(--error-50)}
+.rel-band--warn{border-inline-start-color:var(--gold-400);background:var(--cream-50)}
+.rel-band--ok{border-inline-start-color:var(--success-600);background:var(--success-50)}
+
+.rel-url{max-width:280px;overflow:hidden;text-overflow:ellipsis}
+.rel-toggle{display:inline-flex;align-items:center;gap:9px}
+
+/* سطر الأثر الحيّ داخل لوحة النشر */
+.rel-impact{font-size:13px;line-height:1.85;color:var(--text-secondary)}
+.rel-impact strong{color:var(--navy-800)}
+.rel-impact[data-bad="1"]{color:var(--error-600)}
+.rel-impact[data-bad="1"] strong{color:var(--error-600)}
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <!-- تنبيهات الحالة: تُبنى من البيانات لا نصاً ثابتاً -->
+      <div id="alerts"></div>
+
+      <div class="card rel-now" id="nowCard">
+        <div>
+          <h2 style="font-size:18px;margin:0">الحالة الحالية — منصة أندرويد</h2>
+          <p style="font-size:13.5px;line-height:1.85;color:var(--text-secondary);margin-block-start:6px">
+            التطبيق يستدعي فحص التحديث عند كل إقلاع، فيقارن رقم بناء نسخته بأعلى
+            إصدار نشط مسجَّل هنا وبالحد الأدنى المدعوم فيه.
+          </p>
+        </div>
+        <div class="rel-nums" id="nums"></div>
+        <div class="rel-bands" id="bands"></div>
+      </div>
+
+      <div class="adm-bar" style="margin-block-start:24px">
+        <strong style="font-size:14px">سجل الإصدارات</strong>
+        <span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" id="pubBtn" data-write>نشر إصدار</button>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2>كل الإصدارات</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="totalTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>رقم الإصدار</th>
+                <th>اسم الإصدار</th>
+                <th>الحد الأدنى المدعوم</th>
+                <th>الملاحظات</th>
+                <th>رابط التنزيل</th>
+                <th>الحالة</th>
+                <th>تاريخ النشر</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="7"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="adm-pager">
+          <span>«رقم الإصدار» هو <span dir="ltr">versionCode</span> في ملف البناء — عدد صحيح يزيد مع كل نسخة، وهو ما يقارنه التطبيق.</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  var rows = [];       /* كل الإصدارات مرتبة تنازلياً برقم الإصدار */
+  var eff = null;      /* الإصدار المرجعي: أعلى نشط لأندرويد — ما تراه الأجهزة */
+
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody;
+
+  A.boot({
+    page: 'releases',
+    title: 'إصدارات التطبيق',
+    lead: 'الصفوف التي تتحكم ببوابة التحديث في كل جهاز: أعلى إصدار نشط هو المرجع، '
+        + 'والحد الأدنى المدعوم فيه يحجب كل نسخة أقدم بشاشة تحديث إجباري.',
+    crumb: 'إصدارات التطبيق'
+  }).then(function (st) {
+    if (!st) return;
+    tbody = $('rows');
+    $('pubBtn').addEventListener('click', openPublish);
+    tbody.addEventListener('change', onToggle);
+    load();
+  });
+
+  /* ---------------------------------------------------------------- التحميل */
+  function load() {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    API.admin.content().then(function (d) {
+      rows = (d.releases || []).slice().sort(function (a, b) {
+        return (b.version_code | 0) - (a.version_code | 0);
+      });
+      /* نفس منطق دالة الفحص في القاعدة: نشط + أندرويد + أعلى رقم إصدار */
+      eff = rows.filter(function (r) {
+        return r.active && (r.platform || 'android') === 'android';
+      })[0] || null;
+      paintAlerts();
+      paintNow();
+      paintRows();
+    }).catch(function (e) {
+      $('alerts').innerHTML = '';
+      $('nums').innerHTML = '';
+      $('bands').innerHTML = '';
+      tbody.innerHTML = '<tr><td colspan="7">' + A.errorState(A.errText(e), 'retry') + '</td></tr>';
+      var r = $('retry'); if (r) r.addEventListener('click', load);
+    });
+  }
+
+  function paintAlerts() {
+    var out = '';
+    if (!eff) {
+      out += notice('error',
+        'لا يوجد إصدار نشط لمنصة أندرويد. فحص التحديث لا يُعيد شيئاً، فلا تُطبَّق أي '
+        + 'بوابة: كل النسخ القديمة تعمل بلا حجب وبلا تنبيه.');
+    } else if (!eff.download_url) {
+      /* الحالة الفعلية اليوم: الصف الوحيد بلا رابط تنزيل */
+      out += notice('error',
+        'رابط التنزيل فارغ في الإصدار المنشور (' + eff.version_name + '). '
+        + 'أي جهاز يقع تحت الحد الأدنى المدعوم سيُحجب بشاشة تحديث إجباري تحيله إلى '
+        + 'رابط غير موجود، فيبقى عالقاً بلا مخرج. عالج ذلك بنشر الإصدار نفسه مع رابط '
+        + 'تنزيل صحيح قبل رفع الحد الأدنى.');
+    }
+    $('alerts').innerHTML = out;
+  }
+
+  function notice(kind, text) {
+    return '<div class="notice notice--' + kind + '" style="margin-block-end:22px">' +
+      (kind === 'error' ? A.ICONS.bad : A.ICONS.info) +
+      '<span>' + A.esc(text) + '</span></div>';
+  }
+
+  function paintNow() {
+    if (!eff) {
+      $('nums').innerHTML =
+        numCard('الإصدار المنشور', '—', 'لا إصدار نشط') +
+        numCard('الحد الأدنى المدعوم', '—', 'بلا حد ⇒ بلا حجب') +
+        numCard('إصدارات مسجّلة', A.toAr(rows.length),
+          rows.length ? 'كلها معطّلة' : 'لا صفوف بعد');
+      $('bands').innerHTML = '<div class="rel-band"><span class="rng">لا بوابة</span>' +
+        '<span>ما دام لا إصدار نشط فلن يظهر لأي جهاز تحديث إجباري ولا اختياري.</span></div>';
+      return;
+    }
+
+    var code = eff.version_code | 0, min = eff.min_supported | 0;
+    $('nums').innerHTML =
+      numCard('الإصدار المنشور', '<span dir="ltr">' + A.esc(eff.version_name) + '</span>',
+        'رقم البناء ' + A.toAr(code) + ' — أعلى إصدار نشط') +
+      numCard('الحد الأدنى المدعوم', A.toAr(min),
+        'كل رقم بناء أقل منه محجوب') +
+      numCard('إصدارات مسجّلة', A.toAr(rows.length),
+        A.toAr(rows.filter(function (r) { return r.active; }).length) + ' منها نشط');
+
+    var bands = '';
+    bands += band('bad', 'أقل من ' + A.toAr(min),
+      'تُحجب النسخة بشاشة تحديث إجباري لا يمكن تجاوزها: لا دخول ولا تصفح حتى '
+      + 'يُثبَّت التحديث من رابط التنزيل.');
+    if (min < code) {
+      /* مدى من رقم واحد يُقال باسمه لا بحدّيه */
+      bands += band('warn', min === code - 1
+          ? ('النسخة ' + A.toAr(min))
+          : ('من ' + A.toAr(min) + ' حتى ' + A.toAr(code - 1)),
+        'يظهر تنبيه تحديث اختياري يمكن للمستخدم تجاوزه ومتابعة الاستخدام.');
+    } else {
+      bands += band('warn', 'لا مجال اختياري',
+        'الحد الأدنى يساوي رقم الإصدار المنشور، فلا نسخة تحصل على تنبيه اختياري: '
+        + 'ما دون الأحدث محجوب مباشرة.');
+    }
+    bands += band('ok', A.toAr(code) + ' فأحدث',
+      'الجهاز على النسخة المنشورة ولا تظهر له أي شاشة تحديث.');
+    $('bands').innerHTML = bands;
+  }
+
+  function numCard(label, value, hint) {
+    return '<div class="rel-num"><small>' + A.esc(label) + '</small>' +
+      '<b>' + value + '</b><span>' + A.esc(hint) + '</span></div>';
+  }
+  function band(kind, range, text) {
+    return '<div class="rel-band rel-band--' + kind + '">' +
+      '<span class="rng">' + A.esc(range) + '</span><span>' + A.esc(text) + '</span></div>';
+  }
+
+  function paintRows() {
+    $('totalTag').textContent = A.toAr(rows.length) + ' إصداراً';
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="7">' + A.emptyState(
+        'لا إصدارات مسجّلة',
+        'انشر أول إصدار ليعرف التطبيق ما هي النسخة المعتمدة وما الحد الأدنى المقبول.'
+      ) + '</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(function (r) {
+      var isEff = eff && r.id === eff.id;
+      return '<tr data-id="' + A.esc(r.id) + '">' +
+        '<td class="num strong">' + A.toAr(r.version_code | 0) +
+          (isEff ? '<span class="adm-sub"><span class="tag tag--gold">المرجع الحالي</span></span>' : '') + '</td>' +
+        '<td class="strong" dir="ltr" style="text-align:start">' + A.esc(r.version_name) +
+          '<span class="adm-sub" dir="rtl">' + A.esc(r.platform || 'android') + '</span></td>' +
+        '<td class="num">' + A.toAr(r.min_supported | 0) + '</td>' +
+        '<td class="wrap">' + (r.notes ? A.esc(r.notes) : '—') + '</td>' +
+        '<td class="rel-url">' + urlCell(r.download_url) + '</td>' +
+        '<td><span class="rel-toggle">' +
+            '<input class="adm-check" type="checkbox" data-id="' + A.esc(r.id) + '"' +
+              (r.active ? ' checked' : '') +
+              ' aria-label="تفعيل الإصدار ' + A.esc(r.version_name) + '" data-write>' +
+            (r.active ? '<span class="tag tag--success">نشط</span>'
+                      : '<span class="tag tag--error">معطّل</span>') +
+          '</span></td>' +
+        '<td>' + A.arDate(r.released_at) + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  /* رابط لا يُعرض كرابط إلا إن كان http(s): مخطط آخر في سمة href مخاطرة بلا فائدة */
+  function urlCell(u) {
+    if (!u) return '<span class="adm-danger">غير محدد</span>';
+    if (!/^https?:\/\//i.test(u)) {
+      return '<span class="adm-mono" dir="ltr" title="' + A.esc(u) + '">' + A.esc(u) + '</span>';
+    }
+    return '<a class="link" dir="ltr" target="_blank" rel="noopener" href="' + A.esc(u) +
+      '" title="' + A.esc(u) + '">' + A.esc(u) + '</a>';
+  }
+
+  /* ---------------------------------------------------------------- التفعيل */
+  function onToggle(e) {
+    var cb = e.target.closest('input[type="checkbox"][data-id]');
+    if (!cb) return;
+    var id = cb.getAttribute('data-id');
+    var r = rows.filter(function (x) { return String(x.id) === String(id); })[0];
+    if (!r) return;
+    var on = cb.checked;
+
+    A.confirm({
+      title: on ? 'تفعيل إصدار' : 'تعطيل إصدار',
+      danger: !on,
+      okLabel: on ? 'تفعيل' : 'تعطيل',
+      text: on
+        ? ('سيصبح الإصدار ' + r.version_name + ' (رقم البناء ' + A.toAr(r.version_code | 0) + ') '
+           + 'نشطاً. إن كان أعلى إصدار نشط فسيصير هو المرجع فوراً، ويُحجب كل جهاز '
+           + 'رقم بناء نسخته أقل من ' + A.toAr(r.min_supported | 0) + '.')
+        : ('سيتوقف اعتماد الإصدار ' + r.version_name + '. إن كان هو المرجع الحالي '
+           + 'فسيحلّ محله الإصدار النشط الأعلى بعده، وقد يتغيّر الحد الأدنى المطبَّق '
+           + 'على كل الأجهزة تبعاً لذلك.')
+    }).then(function (ok) {
+      if (ok === null) { cb.checked = !on; return; }     /* إلغاء ⇒ إعادة المبدّل */
+      cb.disabled = true;
+      API.admin.setReleaseActive(r.id, on).then(function () {
+        A.toast(on ? 'فُعّل الإصدار ' + r.version_name + '.'
+                   : 'عُطّل الإصدار ' + r.version_name + '.', 'ok');
+        load();
+      }).catch(function (err) {
+        cb.checked = !on; cb.disabled = false;
+        A.toast(A.errText(err), 'bad');
+      });
+    });
+  }
+
+  /* ---------------------------------------------------------------- النشر */
+  function toNum(v) {
+    var s = A.norm(v);
+    if (s === '') return null;
+    var n = parseInt(s, 10);
+    return isNaN(n) ? null : n;
+  }
+
+  function openPublish() {
+    var nextCode = (rows.length ? (rows[0].version_code | 0) : 0) + 1;
+    var curMin = eff ? (eff.min_supported | 0) : 1;
+    var curUrl = eff && eff.download_url ? eff.download_url : '';
+
+    var s = A.sheet({
+      title: 'نشر إصدار',
+      okLabel: 'نشر الإصدار',
+      body:
+        '<div class="field"><label for="pCode">رقم الإصدار</label>' +
+          '<input class="input" id="pCode" dir="ltr" inputmode="numeric" value="' + nextCode + '">' +
+          '<span class="hint">عدد صحيح يطابق <span dir="ltr">versionCode</span> في ملف بناء التطبيق. ' +
+            'نشر رقم موجود يحدّث صفّه ويعيد تفعيله.</span></div>' +
+        '<div class="field"><label for="pName">اسم الإصدار</label>' +
+          '<input class="input" id="pName" dir="ltr" maxlength="40" placeholder="1.3">' +
+          '<span class="hint">النص الذي يراه المستخدم — مثل <span dir="ltr">1.3</span>.</span></div>' +
+        '<div class="field"><label for="pMin">الحد الأدنى المدعوم</label>' +
+          '<input class="input" id="pMin" dir="ltr" inputmode="numeric" value="' + curMin + '">' +
+          '<span class="hint">أي رقم بناء أقل منه يُحجب بتحديث إجباري. لا يجوز أن يتجاوز رقم الإصدار.</span></div>' +
+        '<div class="field"><label for="pNotes">الملاحظات</label>' +
+          '<textarea class="input" id="pNotes" rows="3" maxlength="500" ' +
+            'placeholder="ما الجديد في هذه النسخة — يُعرض للمستخدم في شاشة التحديث"></textarea></div>' +
+        '<div class="field"><label for="pUrl">رابط التنزيل</label>' +
+          '<input class="input" id="pUrl" dir="ltr" maxlength="300" value="' + A.esc(curUrl) + '" ' +
+            'placeholder="https://…"><span class="hint">رابط ملف <span dir="ltr">APK</span> مباشر أو صفحة المتجر — إليه تُحيل شاشة التحديث الإجباري.</span></div>' +
+        '<div class="field"><label for="pPlatform">المنصة</label>' +
+          '<select class="input" id="pPlatform"><option value="android">أندرويد</option></select>' +
+          '<span class="hint">التطبيق منشور على أندرويد فقط حالياً.</span></div>' +
+        '<div class="notice notice--error">' + A.ICONS.bad + '<span>' +
+          '<strong>تحذير قبل الحفظ:</strong> رفع الحد الأدنى المدعوم يحجب فوراً كل جهاز ' +
+          'يعمل بنسخة أقدم، بشاشة تحديث إجباري لا يمكن تجاوزها. تأكد أن ملف التحديث ' +
+          'منشور فعلاً على رابط التنزيل قبل النشر.' +
+        '</span></div>' +
+        '<p class="rel-impact" id="pImpact"></p>',
+      onOk: function (host) {
+        var code = toNum(host.querySelector('#pCode').value);
+        var min = toNum(host.querySelector('#pMin').value);
+        var name = host.querySelector('#pName').value.trim();
+        if (!code || code < 1) return Promise.reject(new Error('رقم الإصدار يجب أن يكون عدداً صحيحاً موجباً'));
+        if (!name) return Promise.reject(new Error('اسم الإصدار مطلوب'));
+        if (!min || min < 1) return Promise.reject(new Error('الحد الأدنى المدعوم يجب أن يكون عدداً صحيحاً موجباً'));
+        /* نفس شرط القاعدة، يُفحص هنا لتوفير رحلة فاشلة إلى الخادم */
+        if (min > code) return Promise.reject(new Error('الحد الأدنى المدعوم لا يجوز أن يتجاوز رقم الإصدار'));
+
+        return API.admin.publishRelease({
+          version_code: code, version_name: name, min_supported: min,
+          notes: host.querySelector('#pNotes').value.trim() || null,
+          download_url: host.querySelector('#pUrl').value.trim() || null,
+          platform: host.querySelector('#pPlatform').value
+        }).then(function () {
+          A.toast('نُشر الإصدار ' + name + '.', 'ok');
+          load();
+        });
+      }
+    });
+
+    /* أثر حيّ: الرقمان مجرّدان، والجملة هي ما يمنع رفع الحد الأدنى سهواً */
+    var host = s.el;
+    var impact = host.querySelector('#pImpact');
+    var paint = function () {
+      var code = toNum(host.querySelector('#pCode').value);
+      var min = toNum(host.querySelector('#pMin').value);
+      var url = host.querySelector('#pUrl').value.trim();
+      if (!code || !min) { impact.textContent = ''; impact.removeAttribute('data-bad'); return; }
+      if (min > code) {
+        impact.setAttribute('data-bad', '1');
+        impact.innerHTML = '<strong>غير مقبول:</strong> الحد الأدنى ' + A.toAr(min) +
+          ' يتجاوز رقم الإصدار ' + A.toAr(code) + ' — سترفضه القاعدة.';
+        return;
+      }
+      impact.removeAttribute('data-bad');
+      impact.innerHTML = '<strong>الأثر بعد النشر:</strong> يُحجب كل جهاز رقم بناء نسخته أقل من ' +
+        A.toAr(min) + ' بتحديث إجباري' +
+        (min < code
+          ? (min === code - 1
+              ? '، ويُنبَّه اختيارياً من هو على النسخة ' + A.toAr(min) + '.'
+              : '، ويُنبَّه اختيارياً من كان بين ' + A.toAr(min) + ' و' + A.toAr(code - 1) + '.')
+          : '، ولا مجال لتنبيه اختياري لأن الحد الأدنى يساوي رقم الإصدار.') +
+        (url ? '' : ' <strong>ورابط التنزيل فارغ: المحجوبون لن يجدوا ما يُنزّلونه.</strong>');
+    };
+    ['pCode', 'pMin', 'pUrl'].forEach(function (id) {
+      host.querySelector('#' + id).addEventListener('input', paint);
+    });
+    paint();
+  }
+})();
+</script>
+</body>
+</html>
