@@ -19,6 +19,10 @@
   color:var(--text-secondary);overflow:hidden;display:-webkit-box;
   -webkit-line-clamp:2;-webkit-box-orient:vertical}
 .accr-cert{direction:ltr;unicode-bidi:isolate;letter-spacing:.4px;font-weight:600}
+/* المؤشرات صارت ستة بعد السجلين السوريين: ثلاثة في الصف أنظف من أربعة
+   يتبعها صفٌّ فيه بطاقتان عريضتان بلا سبب */
+@media (min-width:961px){ .adm-kpis{grid-template-columns:repeat(3,1fr)} }
+.accr-where{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -35,6 +39,8 @@
           <strong>ما يُنشر هنا يظهر فوراً في تبويب «الاعتمادات» بالتطبيق.</strong>
           السجل علني: يتصفحه الأعضاء والزوار معاً، ويُثبت كل بند بشهادة اعتماد
           برقم وتاريخ ومجال. «غير منشور» يُخفي البند عن الجميع دون حذفه.
+          والمحافظة وفرع النقابة ليسا حقلين تكميليين: عليهما تقوم فلترة السجل
+          في التطبيق، والبند الذي يخلو منهما لا يظهر في أي نتيجة مفلترة.
         </span>
       </div>
 
@@ -42,7 +48,7 @@
         <div class="adm-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           <input class="input" id="q" type="search" autocomplete="off"
-                 placeholder="بحث بالاسم أو رقم الشهادة أو المجال أو الفرع">
+                 placeholder="بحث بالاسم أو رقم الشهادة أو المجال أو المحافظة أو الفرع أو البريد">
         </div>
         <span class="spacer"></span>
         <button class="btn btn-primary btn-sm" id="addBtn" data-write>إضافة بند</button>
@@ -64,6 +70,8 @@
               <tr>
                 <th>الجهة</th>
                 <th>النوع</th>
+                <th>المحافظة</th>
+                <th>فرع النقابة</th>
                 <th>رقم الشهادة</th>
                 <th>تاريخ الاعتماد</th>
                 <th>مجال الاعتماد</th>
@@ -72,7 +80,7 @@
               </tr>
             </thead>
             <tbody id="rows">
-              <tr><td colspan="7"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+              <tr><td colspan="9"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -95,16 +103,33 @@
   'use strict';
   var A = window.ADMIN, API = window.OSEA_API;
 
-  /* الأنواع الثلاثة — المفاتيح نفسها في قيد جدول accreditations وشاشات التطبيق */
-  var KINDS = [
-    { k: 'engineer', label: 'مهندس', plural: 'المهندسون' },
-    { k: 'org',      label: 'منظمة', plural: 'المنظمات' },
-    { k: 'company',  label: 'شركة',  plural: 'الشركات' }
+  /* الأنواع الخمسة تُقرأ من الواجهة المشتركة لا تُكتب هنا ثانيةً: نوعٌ
+     يُضاف في osea-api كان يظهر في التطبيق ويغيب عن اللوحة، فتعجز الإدارة
+     عن إدخال بندٍ من نوعٍ يراه العضو. النسخة الاحتياطية للنسخ القديمة
+     من الملف المشترك (كاش المتصفح) فلا تنكسر اللوحة إن سبقت الصفحةُ الملف. */
+  var KINDS = (API.accredit && API.accredit.KINDS) || [
+    { k: 'engineer',   label: 'مهندس' },
+    { k: 'org',        label: 'منظمة' },
+    { k: 'company',    label: 'شركة معتمدة' },
+    { k: 'sy_company', label: 'شركة هندسية سورية' },
+    { k: 'sy_office',  label: 'مكتب هندسي سوري' }
   ];
+  /* تسمية قصيرة لرقائق التصفية — «الشركات الهندسية السورية (٤)» تكسر
+     الشريط على شاشة اللوحة، والرقاقة تحتاج كلمتين لا جملة */
+  var SHORT = {
+    engineer: 'المهندسون', org: 'المنظمات', company: 'الشركات المعتمدة',
+    sy_company: 'شركات سورية', sy_office: 'مكاتب سورية'
+  };
   function kindLabel(k) {
     var f = KINDS.filter(function (x) { return x.k === k; })[0];
     return f ? f.label : k;
   }
+  function kindShort(k) {
+    return Object.prototype.hasOwnProperty.call(SHORT, k) ? SHORT[k] : kindLabel(k);
+  }
+
+  /* المحافظات من المصدر المشترك نفسه — قائمة القوائم المنسدلة في اللوحة */
+  var GOVS = (API.accredit && API.accredit.GOVERNORATES) || [];
 
   var state = { kind: 'all', status: 'all', search: '' };
   var items = [];
@@ -114,8 +139,9 @@
   A.boot({
     page: 'accredit',
     title: 'سجل الاعتمادات',
-    lead: 'الجهات المعتمدة لدى النقابة من مهندسين ومنظمات وشركات — إضافة البنود '
-        + 'ونشرها وسحبها، وكل تغيير يظهر في تبويب «الاعتمادات» بالتطبيق فور حفظه.',
+    lead: 'الجهات المعتمدة لدى النقابة: مهندسون ومنظمات وشركات معتمدة، وشركات '
+        + 'ومكاتب هندسية سورية — إضافة البنود ونشرها وسحبها، وكل تغيير يظهر '
+        + 'في تبويب «الاعتمادات» بالتطبيق فور حفظه.',
     crumb: 'الاعتمادات'
   }).then(function (st) {
     if (!st) { return; }
@@ -144,7 +170,7 @@
       items = rows || [];
       render();
     }).catch(function (err) {
-      tbody.innerHTML = '<tr><td colspan="7">' + A.errorState(A.errText(err)) + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9">' + A.errorState(A.errText(err)) + '</td></tr>';
     });
   }
 
@@ -154,7 +180,7 @@
       if (state.status === 'live' && !r.active) { return false; }
       if (state.status === 'draft' && r.active) { return false; }
       if (!state.search) { return true; }
-      var hay = A.norm([r.name, r.cert_no, r.field, r.branch,
+      var hay = A.norm([r.name, r.cert_no, r.field, r.governorate, r.branch, r.email,
                         r.address_sy, r.address_abroad, r.phone, r.website].join(' '));
       return hay.indexOf(state.search) > -1;
     });
@@ -166,14 +192,21 @@
 
   function render() {
     var live = items.filter(function (r) { return r.active; }).length;
+    /* عدد البنود الناقصة محافظتَها أو فرعها مؤشرٌ قائم بذاته: هي البنود
+       التي تسقط من كل نتيجة مفلترة في التطبيق، والإدارة لا تراها ناقصة
+       ما لم تُعدّ لها */
+    var noPlace = items.filter(function (r) { return !r.governorate || !r.branch; }).length;
     $('kpis').innerHTML =
       kpi('إجمالي السجل', items.length, 'منشور منها ' + A.toAr(live)) +
       kpi('المهندسون', countKind('engineer'), 'مهندسون معتمدون') +
       kpi('المنظمات', countKind('org'), 'منظمات معتمدة') +
-      kpi('الشركات', countKind('company'), 'شركات معتمدة');
+      kpi('الشركات المعتمدة', countKind('company'), 'شركات عربية وأجنبية ومحلية') +
+      kpi('شركات ومكاتب سورية', countKind('sy_company') + countKind('sy_office'),
+          A.toAr(countKind('sy_company')) + ' شركة · ' + A.toAr(countKind('sy_office')) + ' مكتب') +
+      kpi('ناقص المحافظة أو الفرع', noPlace, 'لا يظهر في نتائج الفلترة بالتطبيق');
 
     var kindChips = [['all', 'الكل', items.length]].concat(KINDS.map(function (K) {
-      return [K.k, K.plural, countKind(K.k)];
+      return [K.k, kindShort(K.k), countKind(K.k)];
     })).map(function (f) {
       var on = state.kind === f[0];
       return '<button type="button" class="tag' + (on ? ' is-on' : '') + '" data-kind="' + f[0] +
@@ -196,21 +229,28 @@
     $('totalTag').textContent = A.toAr(rows.length) + ' من ' + A.toAr(items.length);
 
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="7">' +
+      tbody.innerHTML = '<tr><td colspan="9">' +
         A.emptyState(items.length ? 'لا نتائج مطابقة.' : 'السجل فارغ — ابدأ بإضافة أول بند اعتماد.') +
         '</td></tr>';
       return;
     }
 
     tbody.innerHTML = rows.map(function (r) {
+      /* السطر الخافت تحت الاسم: العنوان والبريد — أما المحافظة والفرع
+         فلهما عمودان الآن، وتكرارهما تحت الاسم ضجيج */
       var whereBits = [];
-      if (r.kind === 'engineer' && r.branch) { whereBits.push(r.branch); }
       if (r.address_sy) { whereBits.push(r.address_sy); }
       if (r.address_abroad) { whereBits.push(r.address_abroad); }
+      if (r.email) { whereBits.push(r.email); }
+      /* الخانة الفارغة تُوسم بشرطة حمراء خافتة لا بشرطة عادية: البند بلا
+         محافظة أو فرع يسقط من فلترة التطبيق، والإدارة يجب أن تراه */
+      var miss = '<span class="tag tag--error">ناقص</span>';
       return '<tr>' +
         '<td class="accr-name-cell"><b>' + A.esc(r.name) + '</b>' +
           (whereBits.length ? '<small>' + A.esc(whereBits.join(' · ')) + '</small>' : '') + '</td>' +
         '<td><span class="tag">' + A.esc(kindLabel(r.kind)) + '</span></td>' +
+        '<td class="accr-where">' + (r.governorate ? A.esc(r.governorate) : miss) + '</td>' +
+        '<td class="accr-where">' + (r.branch ? A.esc(r.branch) : miss) + '</td>' +
         '<td><span class="accr-cert">' + A.esc(A.toAr(r.cert_no)) + '</span></td>' +
         '<td>' + A.esc(r.cert_date_ar || '—') + '</td>' +
         '<td>' + A.esc(r.field || '—') + '</td>' +
@@ -270,9 +310,10 @@
       '<label class="field"><span>مجال الاعتماد</span>' +
         '<input class="input" id="f-field" maxlength="160" placeholder="مثال: تقييم الأضرار الإنشائية" value="' +
           A.esc(r.field || '') + '"></label>' +
-      '<label class="field" id="w-branch"><span>فرع النقابة — للمهندسين</span>' +
-        '<input class="input" id="f-branch" placeholder="مثال: فرع ريف دمشق" value="' +
-          A.esc(r.branch || '') + '"></label>' +
+      '<div class="sheet-pair">' +
+        '<label class="field"><span>المحافظة</span>' + placeSelect('f-gov', r.governorate) + '</label>' +
+        '<label class="field"><span>فرع النقابة</span>' + placeSelect('f-branch', r.branch) + '</label>' +
+      '</div>' +
       '<label class="field"><span>العنوان في سوريا (اختياري)</span>' +
         '<input class="input" id="f-addr-sy" value="' + A.esc(r.address_sy || '') + '"></label>' +
       '<label class="field" id="w-abroad"><span>العنوان في الخارج — للجهات العربية والأجنبية (اختياري)</span>' +
@@ -281,10 +322,13 @@
         '<label class="field"><span>الموقع الإلكتروني (اختياري)</span>' +
           '<input class="input" id="f-site" dir="ltr" placeholder="example.org" value="' +
             A.esc(r.website || '') + '"></label>' +
-        '<label class="field"><span>رقم موبايل للتواصل (اختياري)</span>' +
-          '<input class="input" id="f-phone" dir="ltr" placeholder="+963 9xx xxx xxx" value="' +
-            A.esc(r.phone || '') + '"></label>' +
+        '<label class="field"><span>البريد الإلكتروني (اختياري)</span>' +
+          '<input class="input" id="f-email" type="email" dir="ltr" placeholder="office@example.org" value="' +
+            A.esc(r.email || '') + '"></label>' +
       '</div>' +
+      '<label class="field"><span>رقم موبايل للتواصل (اختياري)</span>' +
+        '<input class="input" id="f-phone" dir="ltr" placeholder="+963 9xx xxx xxx" value="' +
+          A.esc(r.phone || '') + '"></label>' +
       '<div class="sheet-pair">' +
         '<label class="field"><span>الترتيب — الأصغر يظهر أولاً</span>' +
           '<input class="input" id="f-sort" type="number" min="0" value="' + (r.sort || 0) + '"></label>' +
@@ -294,12 +338,29 @@
       '</div>';
   }
 
-  /* حقلا الفرع والعنوان الخارجي يتبعان النوع: الفرع للمهندس، والعنوان
-     الخارجي للمنظمات والشركات — إظهار غير المعني يجرّ إدخالاً في غير محله */
+  /* قائمة منسدلة لا حقل نصّ حرّ: فلترة التطبيق تقارن النص حرفاً بحرف،
+     و«حلب» المكتوبة مرةً «فرع حلب» تصنع محافظتين في القائمة لمكانٍ واحد.
+     والقيمة المسجّلة سابقاً خارج القائمة تُضاف خياراً كي لا يبدّلها الحفظ
+     صامتاً إلى أول خيار في القائمة. */
+  function placeSelect(id, current) {
+    var cur = String(current == null ? '' : current).trim();
+    var opts = GOVS.slice();
+    if (cur && opts.indexOf(cur) < 0) { opts.push(cur); }
+    return '<select class="input" id="' + id + '">' +
+      '<option value=""' + (cur ? '' : ' selected') + '>— غير محدَّد —</option>' +
+      opts.map(function (v) {
+        return '<option value="' + A.esc(v) + '"' + (v === cur ? ' selected' : '') + '>' +
+          A.esc(v) + '</option>';
+      }).join('') + '</select>';
+  }
+
+  /* العنوان الخارجي للمنظمات والشركات المعتمدة وحدها: المهندس والشركة
+     والمكتب السوريان مقارّهم داخل سوريا، وإظهار الحقل لهم يجرّ إدخالاً
+     في غير محله. أما الفرع والمحافظة فلكل الأنواع منذ ترحيلة ٠٢٤. */
   function syncKindFields(host) {
     var kind = host.querySelector('#f-kind').value;
-    host.querySelector('#w-branch').style.display = kind === 'engineer' ? '' : 'none';
-    host.querySelector('#w-abroad').style.display = kind === 'engineer' ? 'none' : '';
+    var abroad = kind === 'org' || kind === 'company';
+    host.querySelector('#w-abroad').style.display = abroad ? '' : 'none';
   }
 
   function readFields(host) {
@@ -313,10 +374,14 @@
       cert_no: A.toAr(g('f-cert')),
       cert_date: g('f-date') || null,
       field: g('f-field'),
-      branch: kind === 'engineer' ? (g('f-branch') || null) : null,
+      /* الفرع والمحافظة لكل الأنواع (ترحيلة ٠٢٤) — كان الفرع يُصفَّر لغير
+         المهندسين فيمحو الحفظُ فرعَ الشركة الذي أدخلته الإدارة للتو */
+      branch: g('f-branch') || null,
+      governorate: g('f-gov') || null,
       address_sy: g('f-addr-sy') || null,
-      address_abroad: kind === 'engineer' ? null : (g('f-addr-ab') || null),
+      address_abroad: (kind === 'org' || kind === 'company') ? (g('f-addr-ab') || null) : null,
       website: g('f-site') || null,
+      email: g('f-email') ? g('f-email').toLowerCase() : null,
       phone: g('f-phone') || null,
       sort: parseInt(g('f-sort'), 10) || 0,
       active: !!host.querySelector('#f-active').checked
@@ -333,6 +398,11 @@
         if (!f.name || f.name.length < 2) { return Promise.reject(new Error('الاسم مطلوب.')); }
         if (!f.cert_no) { return Promise.reject(new Error('رقم شهادة الاعتماد مطلوب.')); }
         if (!f.field || f.field.length < 2) { return Promise.reject(new Error('مجال الاعتماد مطلوب.')); }
+        /* فحص البريد هنا يعيد رسالة عربية بدل خطأ Postgres الإنجليزي من
+           قيد accr_email_shape — والشكل نفسه في الطرفين فلا يمرّ ما يُرفض */
+        if (f.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email)) {
+          return Promise.reject(new Error('صيغة البريد الإلكتروني غير صحيحة — مثال: office@example.org'));
+        }
         /* رقم الشهادة معرّف رسمي لا يتكرر داخل سجل النوع — الفحص هنا يعيد
            رسالة عربية بدل خطأ Postgres الإنجليزي من قيد الفرادة.
            المقارنة بعد التطبيع: صفوف قديمة قد تحمل الرقم بأرقام هندية. */
@@ -361,9 +431,13 @@
   function togglePublish(r) {
     if (!r) { return; }
     var next = !r.active;
+    /* الحمولة كاملة عمداً: save يكتب الحقول المذكورة فيها وحدها، وأي حقل
+       يسقط منها يُحفَظ فارغاً — فكان زر «سحب» وحده كفيلاً بمحو المحافظة
+       والبريد من البند. أي عمود يُضاف للجدول لاحقاً يُضاف هنا معه. */
     API.accredit.save({
       id: r.id, kind: r.kind, name: r.name, cert_no: r.cert_no,
       cert_date: r.cert_date, field: r.field, branch: r.branch,
+      governorate: r.governorate, email: r.email,
       address_sy: r.address_sy, address_abroad: r.address_abroad,
       website: r.website, phone: r.phone, sort: r.sort, active: next
     }).then(function () {

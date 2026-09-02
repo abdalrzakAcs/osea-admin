@@ -4,7 +4,7 @@
 window.OSEA_FREE_TRIAL = true;
 
 /* رمز إصدار التطبيق — يُطابق versionCode في build.gradle ويُرفع مع كل إصدار */
-window.OSEA_VERSION_CODE = 14;
+window.OSEA_VERSION_CODE = 15;
 
 /* ⚠️ النطاق الذي تُنشر عليه المنصة فعلياً.
    هذا العنوان يُطبع داخل رمز QR على كل شهادة، والشهادة المطبوعة لا يتغيّر رمزها بعدها.

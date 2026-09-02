@@ -89,6 +89,75 @@
 .up-fill{height:100%;width:0;background:var(--navy-600);transition:width 140ms linear}
 .up-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .up-row .spacer{flex:1}
+
+/* ---------- معالج الإضافة: ثلاث خطوات داخل اللوحة نفسها ---------- */
+/* مؤشّر الخطوة لاصق أعلى جسم اللوحة: الخطوة الثالثة تطول بقائمة المجلدات
+   و«خيارات متقدمة»، فيغيب المؤشّر تحت التمرير ويضيع معه معنى زر «رجوع».
+   الإزاحة السالبة بمقدار حشوة الجسم كي لا يظهر المحتوى فوقه في الفجوة */
+.wz-ind{position:sticky;inset-block-start:-20px;z-index:3;margin:0;
+  padding:9px 13px;border:1px solid var(--border);border-radius:var(--radius-tool);
+  background:var(--navy-25);font-size:13px;color:var(--text-secondary)}
+.wz-ind b{color:var(--navy-800)}
+.wz-step{display:grid;gap:16px}
+.wz-q{margin:0;font-family:var(--font-display);font-size:19px;color:var(--navy-800)}
+
+/* بطاقات النوع: ثلاث بطاقات كبيرة تُنقر — لا قائمة منسدلة */
+.pick-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:560px){.pick-grid{grid-template-columns:1fr}}
+.pick{display:grid;gap:6px;justify-items:center;text-align:center;font:inherit;
+  padding:20px 12px;cursor:pointer;color:var(--text-primary);
+  border:1.5px solid var(--border);border-radius:var(--radius-tool);
+  background:var(--surface);transition:border-color 140ms var(--ease-std),
+  background-color 140ms var(--ease-std),box-shadow 140ms var(--ease-std)}
+.pick:hover{border-color:var(--gold-400);box-shadow:var(--shadow-hover)}
+.pick:focus-visible{outline:none;border-color:var(--navy-600);
+  box-shadow:0 0 0 3px rgba(0,52,113,.18)}
+.pick[aria-pressed="true"]{border-color:var(--gold-500);background:var(--cream-50)}
+.pick .ico{font-size:30px;line-height:1}
+.pick .ttl{font-weight:700;font-size:15px;color:var(--navy-800)}
+.pick .sub{font-size:12.5px;line-height:1.7;color:var(--text-secondary)}
+
+/* منطقة الإفلات في الخطوة الثانية أكبر: هي عمل الخطوة كلّه */
+#wz2 .drop{padding:30px 18px}
+/* سطر تأكيد ما استُخرج من الملف — تحت اسم الملف وحجمه.
+   الذهبي على الكريمي للمستخرَج فعلاً، والرمادي على النيلي الفاتح للانتظار
+   أو للتعذّر: الفرق يُرى بلمحة بلا قراءة السطر */
+.fx-meta{display:flex;gap:9px;align-items:center;flex-wrap:wrap;font-size:13.5px;
+  padding:10px 13px;border:1px solid var(--gold-400);border-radius:var(--radius-tool);
+  background:var(--cream-50)}
+.fx-meta.wait{background:var(--navy-25);border-color:var(--border)}
+
+/* بطاقات المجلدات: راديو ظاهر داخل بطاقة كاملة قابلة للنقر */
+.fold-list{display:grid;gap:9px}
+.fold{display:flex;gap:11px;align-items:flex-start;cursor:pointer;
+  padding:12px 13px;border:1.5px solid var(--border);
+  border-radius:var(--radius-tool);background:var(--surface)}
+.fold:hover{border-color:var(--gold-400)}
+.fold input{flex:none;margin-block-start:3px;width:17px;height:17px;
+  accent-color:var(--navy-700);cursor:pointer}
+.fold .nm{display:block;font-weight:700;font-size:14.5px;color:var(--navy-800)}
+.fold .sb{display:block;margin-block-start:3px;font-size:12.5px;color:var(--text-secondary)}
+.fold.on{border-color:var(--gold-500);background:var(--cream-50)}
+
+/* نموذج المجلد الجديد داخل اللوحة نفسها — لا انتقال إلى صفحة أخرى */
+.nf-box{display:grid;gap:14px;padding:14px;background:var(--cream-50);
+  border:1.5px dashed var(--gold-400);border-radius:var(--radius-tool)}
+.nf-box .price-fs{background:var(--surface)}
+.nf-r{display:flex;gap:9px;align-items:center;cursor:pointer;font-size:14px}
+.nf-r input{width:17px;height:17px;accent-color:var(--navy-700);cursor:pointer}
+
+/* «خيارات متقدمة»: مطويّة ابتداءً ولا يلزم لمسها في الحالة المعتادة */
+.adv{border:1px solid var(--border);border-radius:var(--radius-tool);
+  background:var(--navy-25)}
+.adv>summary{padding:12px 14px;cursor:pointer;font-weight:700;font-size:14px;
+  color:var(--navy-800);list-style:none}
+.adv>summary::-webkit-details-marker{display:none}
+.adv>summary::before{content:'\25B8';display:inline-block;
+  margin-inline-end:8px;color:var(--warm-500)}
+.adv[open]>summary::before{content:'\25BE'}
+.adv>summary:focus-visible{outline:none;border-radius:var(--radius-tool);
+  box-shadow:0 0 0 3px rgba(0,52,113,.18)}
+.adv-in{display:grid;gap:16px;padding:0 14px 14px}
 </style>
 </head>
 <body>
@@ -279,6 +348,9 @@
      قديمة) يعطّل كتلة «الوصول والتسعير» ولا يُرسِل مفاتيحها عند الحفظ إطلاقاً —
      كي لا يُدهَس وصول مضبوط بقيمة افتراضية، ولا يفشل الحفظ على عمود غائب */
   var accessOk = false;
+  /* عمود الحماية/التنزيل يصل من admin_content بعد ترحيلة ٠٢٥ فقط —
+     غيابه يعطّل حقل الخيار ويمنع إرسال مفتاحه (نمط accessOk حرفياً) */
+  var dlOk = false;
 
   var $ = function (id) { return document.getElementById(id); };
   var tbody, filtersEl;
@@ -345,6 +417,10 @@
       accessOk = !items.length || items.some(function (it) {
         return it.access !== undefined;
       });
+      /* نمط accessOk نفسه: فهرس فارغ يُصدَّق، وصفوف كلها بلا المفتاح ⇒ ٠٢٥ غائبة */
+      dlOk = !items.length || items.some(function (it) {
+        return it.downloadable !== undefined;
+      });
       /* صفوف موجودة ولا واحد منها يحمل مجالاً ⇒ العمود لا يصل من دالة القراءة
          (القاعدة تفرض قيمة غير فارغة، فالغياب التام دليل قصور في الدالة لا في البيانات) */
       $('domainNotice').hidden = !items.length || items.some(function (it) {
@@ -377,7 +453,7 @@
       acc += it.accesses | 0;
     });
     $('kpis').innerHTML =
-      kpiCard('الكتب', n.book, 'ملفات مرجعية في سلة التخزين الخاصة') +
+      kpiCard('الكتب', n.book, 'ملفات معتمدة في سلة التخزين الخاصة') +
       kpiCard('الاستمارات', n.form, 'استمارات التقييم الميداني') +
       kpiCard('الدروس', n.lesson, 'دروس مرئية مفهرسة') +
       kpiCard('العناصر المعطّلة', off,
@@ -422,6 +498,12 @@
       var d = (it.domain == null ? '' : String(it.domain)).trim();
       if (d && out.indexOf(d) === -1) { out.push(d); }
     });
+    /* الأقسام تعيش على المجلدات أيضاً: قسم أُنشئ فيه مجلد ولم يحمل بنداً بعد
+       يغيب عن القائمة فتُعيد الإدارة كتابته ⟵ قسم مكرّر بالاسم نفسه */
+    folders.forEach(function (f) {
+      var d = (f && f.domain == null ? '' : String(f.domain)).trim();
+      if (d && out.indexOf(d) === -1) { out.push(d); }
+    });
     if (out.indexOf(DOMAIN_DEFAULT) === -1) { out.push(DOMAIN_DEFAULT); }
     out.sort(function (a, b) { return a.localeCompare(b, 'ar'); });
     return out;
@@ -429,6 +511,17 @@
 
   /* شارة الوصول المضغوطة في الجدول: موروث/مجاني/بحساب/مدفوع + أول سعر معرَّف.
      العمود غائب من دالة القراءة ⇒ يُعرض شرط الحساب القديم كما كان لا تخميناً */
+  /* وسم انحراف الحماية عن افتراضي النوع (ترحيلة ٠٢٥): كتابٌ فُتح تنزيله
+     أو استمارة حُميت يستحقان لفت النظر — والموافق لافتراضي نوعه يبقى
+     صامتاً كي لا يمتلئ الجدول بوسوم لا تُخبر شيئاً */
+  function dlMark(it) {
+    if (typeof it.downloadable !== 'boolean') { return ''; }
+    if (it.downloadable === (it.kind === 'form')) { return ''; }
+    return it.downloadable
+      ? '<span class="tag tag--gold" title="فتحت الإدارة تنزيل هذا البند ملفاً كاملاً بلا علامة مائية">تنزيل مفتوح</span>'
+      : '<span class="tag tag--gold" title="حمت الإدارة هذا البند: قراءة داخل القارئ حصراً بعلامة مائية">محمي</span>';
+  }
+
   function accessCell(it) {
     if (it.access === undefined) {
       return it.requires_account
@@ -496,7 +589,7 @@
         '<td class="dom">' + (dom
           ? '<span class="strong">' + A.esc(dom) + '</span>'
           : '<span class="adm-sub" style="margin:0">—</span>') + '</td>' +
-        '<td><span class="tag ' + k.cls + '">' + A.esc(k.label) + '</span></td>' +
+        '<td><span class="tag ' + k.cls + '">' + A.esc(k.label) + '</span>' + dlMark(it) + '</td>' +
         '<td class="wrap"><span class="strong">' + A.esc(it.title) + '</span>' +
           (it.subtitle ? '<span class="adm-sub">' + A.esc(it.subtitle) + '</span>' : '') +
           '<span class="adm-sub adm-mono" dir="ltr">' + A.esc(it.id) + '</span>' +
@@ -819,21 +912,217 @@
       'على الملف القديم' + (alt ? '. اختر مساراً آخر مثل ' + alt : '. اختر مساراً آخر') + '.';
   }
 
-  function fileHTML(hint) {
+  /* ------------------------------------------- ما يُشتق تلقائياً فلا يُسأل عنه */
+  /* المعرّف حقل لاتيني والعنوان عربي، فلا يُشتقّ منه: ستة محارف عشوائية بعد
+     اسم النوع. crypto حين يتوفّر (توزيع أعدل)، وMath.random بديلاً — والتصادم
+     مع معرّف قائم يُعاد التوليد بعده لأن الكتابة upsert تدهس صفّ المطابق. */
+  function randId(kind) {
+    var abc = 'abcdefghijklmnopqrstuvwxyz0123456789', out = '', i, buf;
+    try {
+      if (window.crypto && window.crypto.getRandomValues && window.Uint8Array) {
+        buf = new window.Uint8Array(6);
+        window.crypto.getRandomValues(buf);
+        for (i = 0; i < 6; i++) { out += abc.charAt(buf[i] % 36); }
+      }
+    } catch (e) { out = ''; }
+    if (out.length !== 6) {
+      out = '';
+      for (i = 0; i < 6; i++) {
+        out += abc.charAt(Math.floor(Math.random() * 36));
+      }
+    }
+    return kind + '-' + out;
+  }
+  function idTaken(id) {
+    for (var i = 0; i < items.length; i++) { if (items[i].id === id) return true; }
+    return false;
+  }
+  function freshId(kind) {
+    var id = randId(kind), n = 0;
+    while (idTaken(id) && n < 60) { id = randId(kind); n++; }
+    return id;
+  }
+
+  /* عنوان مقترَح من اسم الملف: يُحذف الامتداد، وتصير _ و- مسافاتٍ، وتُقلَّم
+     الأرقام الطليعية («٠٣ - دليل التقييم» ⟵ «دليل التقييم»). التقليم لا يبتلع
+     الاسم كلّه: اسمٌ كلّه أرقام يعود كما هو بدل أن يصير عنواناً فارغاً. */
+  function titleFromName(name) {
+    var s = String(name == null ? '' : name);
+    s = s.replace(/\.[A-Za-z0-9]{1,8}$/, '');
+    s = s.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    var t = s.replace(/^[\s\d.)\]٠-٩۰-۹-]+/, '').trim();
+    return t || s;
+  }
+
+  /* المجال الافتراضي للبند بلا مجلد: «منظومة تقييم الأضرار» ما دام مجالاً
+     قائماً أو الفهرس فارغاً، وإلا فأول مجال موجود فعلاً — كي لا يُنشأ مجال
+     جديد صامتاً في قاعدة صار محتواها كلّه في مجال آخر */
+  function defaultDomain() {
+    var l = [];
+    items.forEach(function (it) {
+      var d = domOf(it);
+      if (d && l.indexOf(d) === -1) { l.push(d); }
+    });
+    if (!l.length || l.indexOf(DOMAIN_DEFAULT) !== -1) return DOMAIN_DEFAULT;
+    l.sort(function (a, b) { return a.localeCompare(b, 'ar'); });
+    return l[0];
+  }
+
+  /* الترتيب المشتقّ: أكبر sort ضمن المجال والنوع نفسيهما زائد واحد — فالبند
+     الجديد يقع آخر مجموعته لا في وسطها. المجموعة نفسها التي يحرسها سحبُ
+     الترتيب (sameGroup) كي لا يتناقض المشتقّ مع ما يسمح به الجدول. */
+  function nextSort(domain, kind) {
+    var d = String(domain == null ? '' : domain).trim(), mx = 0;
+    items.forEach(function (it) {
+      if (it.kind !== kind || domOf(it) !== d) return;
+      var n = parseInt(it.sort, 10);
+      if (!isNaN(n) && n > mx) { mx = n; }
+    });
+    return mx + 1;
+  }
+  /* ترتيب المجلد الجديد داخل مجاله ونوعه — قياساً على ترتيب البنود */
+  function nextFolderSort(domain, kind) {
+    var mx = 0;
+    folders.forEach(function (f) {
+      if (!f || f.kind !== kind || f.domain !== domain) return;
+      var n = parseInt(f.sort, 10);
+      if (!isNaN(n) && n > mx) { mx = n; }
+    });
+    return mx + 1;
+  }
+
+  /* ----------------------------------- استخراج الصفحات والمدة من الملف نفسه */
+  /* pdf.js يُحمَّل عند الحاجة لا مع الصفحة: ثلث ميغابايت لا تُنزَّل على كل
+     فتحة للفهرس، وشاشة الإدارة تُفتح أكثر مما يُضاف بندٌ فيها.
+     ⚠ حزمة الإدارة يجب أن تحمل assets/vendor/pdf.min.js و pdf.worker.min.js. */
+  var pdfLib = null;
+  function loadPdfJs() {
+    if (pdfLib) return pdfLib;
+    pdfLib = new Promise(function (resolve, reject) {
+      var g = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
+      if (g) { resolve(g); return; }
+      var s = document.createElement('script');
+      s.src = 'assets/vendor/pdf.min.js';
+      s.onload = function () {
+        var lib = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
+        if (lib) { resolve(lib); } else { reject(new Error('pdf.js لم يُعرَّف')); }
+      };
+      s.onerror = function () { reject(new Error('تعذّر تحميل pdf.js')); };
+      document.head.appendChild(s);
+    });
+    /* الفشل لا يُخزَّن نهائياً: محاولة تالية بعد عودة الشبكة تستحق فرصة */
+    pdfLib['catch'](function () { pdfLib = null; });
+    return pdfLib;
+  }
+
+  /* البايتات تُقرأ إلى الذاكرة ثم تُسلَّم إلى pdf.js بـ{data} لا بـ{url: blob}:
+     ترويسة الموقع تحصر connect-src في 'self'، وblob: ليس منها — فقراءة
+     الملف عبر رابط blob تُردّ من السياسة على الموقع الحيّ وإن نجحت محلياً.
+     (media-src وحده يسمح بـblob:، ولذلك يبقى الفيديو على createObjectURL.)
+     وحدٌّ للحجم يحرس الذاكرة: ما فوقه لا يُقرأ أصلاً ويُترك الحقل فارغاً. */
+  var PDF_PROBE_CAP = 220 * 1024 * 1024;
+  /* عدد صفحات ملف PDF. الفشل (ملف تالف، أو محمي بكلمة، أو pdf.js غائب)
+     يعيد null بلا إزعاج: الصفحات حقل اختياري يُملأ يدوياً من المتقدمة. */
+  function probePdfPages(file, cb) {
+    var task = null, closed = false;
+    function done(v) {
+      if (closed) return;
+      closed = true;
+      try { if (task && task.destroy) { task.destroy(); } } catch (e) {}
+      cb(v);
+    }
+    if (!file || file.size > PDF_PROBE_CAP || typeof window.FileReader !== 'function') {
+      cb(null);
+      return;
+    }
+    /* ملف لا يُفكّ ترميزه قد يُبقي الوعد معلّقاً: مهلة تُنهي الانتظار */
+    window.setTimeout(function () { done(null); }, 45000);
+    var fr = new window.FileReader();
+    fr.onerror = function () { done(null); };
+    fr.onload = function () {
+      var buf = fr.result;
+      if (closed || !buf) { done(null); return; }
+      loadPdfJs().then(function (lib) {
+        if (closed) return;
+        try {
+          lib.GlobalWorkerOptions.workerSrc = 'assets/vendor/pdf.worker.min.js';
+          task = lib.getDocument({ data: new window.Uint8Array(buf) });
+        } catch (e) { done(null); return; }
+        task.promise.then(function (doc) {
+          var n = doc && doc.numPages;
+          done(typeof n === 'number' && n > 0 ? n : null);
+        }, function () { done(null); });
+      }, function () { done(null); });
+    };
+    try { fr.readAsArrayBuffer(file); } catch (e2) { done(null); }
+  }
+
+  /* مدة الفيديو بالثواني عبر عنصر video مؤقت وحدث loadedmetadata */
+  function probeVideoDur(file, cb) {
+    var url = null, v = null, closed = false;
+    function done(val) {
+      if (closed) return;
+      closed = true;
+      try { if (v) { v.removeAttribute('src'); v.load(); } } catch (e) {}
+      try { if (url) { window.URL.revokeObjectURL(url); } } catch (e2) {}
+      v = null;
+      cb(val);
+    }
+    try { url = window.URL.createObjectURL(file); } catch (e3) { done(null); return; }
+    v = document.createElement('video');
+    v.preload = 'metadata';
+    v.muted = true;
+    v.addEventListener('loadedmetadata', function () {
+      var d = v ? v.duration : 0;
+      done(typeof d === 'number' && isFinite(d) && d > 0 ? Math.round(d) : null);
+    });
+    v.addEventListener('error', function () { done(null); });
+    window.setTimeout(function () { done(null); }, 45000);
+    v.src = url;
+  }
+
+  /* موجّه واحد: PDF ⟵ صفحات، فيديو ⟵ مدة، وما عداهما لا يُستخرج منه شيء.
+     cb(kind, value) حيث kind: 'pages' أو 'dur' أو '' حين لا استخراج. */
+  var VIDEO_EXT = ['mp4', 'm4v', 'webm', 'ogv', 'ogg', 'mov', 'mkv', 'avi', '3gp'];
+  /* الامتداد قبل نوع MIME: بعض المتصفحات تُسلّم ملفاً بلا type أصلاً */
+  function probeKind(file) {
+    var ex = fileExt(file && file.name, '');
+    var type = String((file && file.type) || '');
+    if (ex === 'pdf' || type === 'application/pdf') return 'pages';
+    if (VIDEO_EXT.indexOf(ex) !== -1 || type.indexOf('video/') === 0) return 'dur';
+    return '';
+  }
+  function probeFile(file, cb) {
+    var k = probeKind(file);
+    if (k === 'pages') { probePdfPages(file, function (n) { cb('pages', n); }); return; }
+    if (k === 'dur') { probeVideoDur(file, function (n) { cb('dur', n); }); return; }
+    cb('', null);
+  }
+
+  /* منطقة الإفلات وحدها، منفصلةً عن تنبيه الامتداد: في معالج الإضافة يقع
+     اختيار الملف في خطوة، ويقع تحرير المسار في «خيارات متقدمة» بخطوة أخرى —
+     فلو بقي التنبيه ملتصقاً بالمنطقة لظهر في خطوة لا يراها أحد وقتها */
+  function dropHTML(hint, label) {
     return '' +
-      '<div class="field"><label for="fFile">ملف البند</label>' +
+      '<div class="field"><label for="fFile">' + (label || 'ملف البند') + '</label>' +
         '<div class="drop" id="fDrop">' + ICON_UP +
           '<span class="nm" id="fFileNm">اسحب الملف إلى هنا أو اخترْه من جهازك</span>' +
           '<button type="button" class="btn btn-outline btn-sm" id="fPick" data-write>اختر ملفاً</button>' +
           '<input type="file" id="fFile" hidden>' +
         '</div>' +
-        '<span class="hint">' + hint + '</span></div>' +
+        '<span class="hint">' + hint + '</span></div>';
+  }
+
+  function extHTML() {
+    return '' +
       '<div class="notice notice--error" id="fExt" hidden>' + A.ICONS.bad +
-        '<span><strong>امتداد الملف يخالف امتداد المسار.</strong> ' +
+        '<span><strong>تحقّق من امتداد الملف والمسار.</strong> ' +
           '<span id="fExtMsg"></span> ' +
           'الملف يُرفع باسم المسار كما هو، فقد يفشل فتحه في التطبيق — صحّح المسار ' +
           '(من «تعديل» إن كنت تستبدل ملفاً) أو اختر ملفاً من النوع نفسه.</span></div>';
   }
+
+  function fileHTML(hint) { return dropHTML(hint) + extHTML(); }
 
   function upHTML() {
     return '' +
@@ -862,7 +1151,10 @@
           '</span></span></div>';
   }
 
-  /* o = { kind: دالة، id: دالة، fixedPath: مسار ثابت أو null } — يعيد {file} */
+  /* o = { kind: دالة، id: دالة، fixedPath: مسار ثابت أو null،
+           onPick: دالة اختيارية تُنادى بالملف المختار أو بـnull }
+     يعيد { file, suggest } — وsuggest يُنادى من خارج الدالة حين يتغيّر
+     النوع أو المعرّف برمجياً (لا بكتابة الإدارة) فيلحق المسارُ المقترَح بهما */
   function wireFile(host, o) {
     var st = { file: null };
     var inp = host.querySelector('#fFile');
@@ -886,11 +1178,14 @@
       if (!extBox) return;
       var p = o.fixedPath || (pathEl ? pathEl.value : '');
       var a = fileExt(st.file && st.file.name, ''), b = fileExt(p, '');
-      var on = !!(st.file && a && b && a !== b);
+      /* الملف بلا امتداد لاتيني (اسم عربي مثلاً) يأخذ امتداد النوع الافتراضي
+         صامتاً — يُقال ذلك صراحةً بدل أن يُكتشف بعد الرفع */
+      var on = !!(st.file && b && a !== b);
       extBox.hidden = !on;
       if (on) {
-        host.querySelector('#fExtMsg').textContent =
-          'الملف المختار من نوع ' + a + ' والمسار ينتهي بـ' + b + '.';
+        host.querySelector('#fExtMsg').textContent = a
+          ? 'الملف المختار من نوع ' + a + ' والمسار ينتهي بـ' + b + '.'
+          : 'اسم الملف بلا امتداد لاتيني، والمسار سيأخذ ' + b + ' افتراضاً.';
       }
     }
     function pick(f) {
@@ -900,6 +1195,7 @@
         : 'اسحب الملف إلى هنا أو اخترْه من جهازك';
       suggest();
       warnExt();
+      if (o.onPick) { o.onPick(st.file); }
     }
     host.querySelector('#fPick').addEventListener('click', function () { inp.click(); });
     inp.addEventListener('change', function () {
@@ -925,6 +1221,9 @@
     var kindEl = host.querySelector('#fKind');
     if (kindEl) { kindEl.addEventListener('change', suggest); }
     if (pathEl) { pathEl.addEventListener('input', warnExt); }
+    /* المعالج يغيّر النوع ببطاقة لا بقائمة، والمعرّف يُولَّد برمجياً: لا حدث
+       input ولا change يقع، فيُتاح الاقتراح نداءً مباشراً */
+    st.suggest = function () { suggest(); warnExt(); };
     return st;
   }
 
@@ -1186,6 +1485,21 @@
        فيفشل كل حفظٍ وتعطيلٍ قبل أن يبلغ القاعدة */
     return API.admin.saveContentItem(row).catch(function (e) {
       var m = String((e && e.message) || e || '');
+      /* عمود الحماية غائب وحده (٠٢٥ لم تُطبَّق): يسقط مفتاحه ويُعاد النداء
+         عبر saveItem نفسه كي يبقى احتياط أعمدة ٠٢٢ أدناه سارياً — التكرار
+         محدود بندبة واحدة لأن الصف الثاني بلا المفتاح أصلاً */
+      if (row.downloadable !== undefined && /downloadable/.test(m) &&
+          /column|42703|PGRST204|schema cache/i.test(m)) {
+        dlOk = false;
+        var r1 = {};
+        Object.keys(row).forEach(function (k) {
+          if (k !== 'downloadable') { r1[k] = row[k]; }
+        });
+        return saveItem(r1).then(function (res) {
+          A.toast('حُفظ البند بلا خيار الحماية/التنزيل — ترحيلة ٠٢٥ لم تُطبَّق على القاعدة بعد.', 'bad', 5200);
+          return res;
+        });
+      }
       var missing = /access|price_month|price_year|price_once/.test(m) &&
         /column|42703|PGRST204|schema cache/i.test(m);
       if (!missing) { throw e; }
@@ -1403,78 +1717,151 @@
     apply(false);
   }
 
-  /* حقول التحرير المشتركة بين «تعديل» و«إضافة» */
+  /* ---------------------------------------------------------- جذاذات الحقول */
+  /* كل حقل جذاذة مفردة: نموذج التعديل يجمعها كاملةً، ومعالج الإضافة يوزّعها
+     على خطواته و«خيارات متقدمة» — فلا يُكتب حقل واحد في موضعين ولا تفترق
+     صياغته بينهما. القارئ (readFields) واحد لا يتغيّر: كل مُعرّف يظهر مرة. */
+  function fldTitle(it) {
+    return '<div class="field"><label for="fTitle">العنوان</label>' +
+      '<input class="input" id="fTitle" maxlength="200" value="' + A.esc(it.title || '') + '"></div>';
+  }
+  function fldSub(it) {
+    return '<div class="field"><label for="fSub">العنوان الفرعي</label>' +
+      '<input class="input" id="fSub" maxlength="200" value="' + A.esc(it.subtitle || '') + '"></div>';
+  }
+  function fldCat(it) {
+    return '<div class="field"><label for="fCat">التصنيف</label>' +
+      '<input class="input" id="fCat" maxlength="80" value="' + A.esc(it.category || '') + '">' +
+      '<span class="hint">تصنيف داخلي للعرض والفرز — مثل «المرجع الأساسي» أو رقم المرحلة.</span></div>';
+  }
+  function fldFolder(it) {
+    return '<div class="field"><label for="fFolder">المجلد الفرعي</label>' +
+      (foldersOk
+        ? '<select class="input" id="fFolder">' +
+            folderOptionsHTML(it.kind || 'book',
+              (it.domain == null ? '' : String(it.domain)).trim(),
+              it.folder_id || null) +
+          '</select>' +
+          '<span class="hint">بنود المجلد الواحد تُجمع في بطاقة داخل نوعها بالمكتبة — ' +
+            'مثل «الكتابان المعتمدان للمنظومة»، والمجلد يحدّد طريقة الوصول ' +
+            '(مجاني/بحساب/مدفوع). «بلا مجلد» = بند مباشر. ' +
+            '<a href="admin-folders.html">إدارة المجلدات والتسعير ←</a></span>'
+        /* القائمة لم تصل: حقل معطّل لا يُرسَل عند الحفظ — الربط القائم لا يُمَس */
+        : '<select class="input" id="fFolder" disabled>' +
+            '<option value="" selected>تعذّر تحميل قائمة المجلدات</option></select>' +
+          '<span class="hint">ربط البند بمجلده الحالي يبقى كما هو عند الحفظ. ' +
+            'لإدارة الربط أعد تحميل الصفحة بعد عودة الاتصال — ' +
+            'وإن استمر الخطأ فتأكد من تطبيق ترحيل القاعدة ٠٢١.</span>') +
+      '</div>';
+  }
+  function fldCode(it) {
+    return '<div class="field"><label for="fCode">الرمز</label>' +
+      '<input class="input" id="fCode" dir="ltr" maxlength="40" value="' + A.esc(it.code || '') + '"></div>';
+  }
+  function fldPath(it) {
+    return '<div class="field"><label for="fPath">مسار التخزين</label>' +
+      '<input class="input adm-mono" id="fPath" dir="ltr" maxlength="200" value="' +
+        A.esc(it.storage_path || '') + '">' +
+      '<span class="hint">المسار داخل سلة <span dir="ltr">osea-content</span> — مثل ' +
+        '<span dir="ltr">books/book1.pdf</span>. مسار خاطئ يعني فشل فتح العنصر في التطبيق. ' +
+        'يُشتقّ تلقائياً من النوع والمعرّف وامتداد الملف المختار ما دام فارغاً، ويبقى قابلاً ' +
+        'للتحرير. وتغييره وحده لا ينقل ملفاً مرفوعاً على المسار القديم.</span></div>';
+  }
+  function fldSpan(it, auto) {
+    return '<div class="sheet-pair">' +
+        '<div class="field"><label for="fPages">الصفحات</label>' +
+          '<input class="input" id="fPages" inputmode="numeric" value="' +
+            (it.pages == null ? '' : A.esc(it.pages)) + '"></div>' +
+        '<div class="field"><label for="fDur">مدة الدرس بالثواني</label>' +
+          '<input class="input" id="fDur" inputmode="numeric" value="' +
+            (it.duration_s == null ? '' : A.esc(it.duration_s)) + '"></div>' +
+      '</div>' +
+      '<span class="hint" style="margin-block-start:-8px">الصفحات للكتب والاستمارات، ' +
+        'ومدة الدرس بالثواني للدروس المصوّرة (٩٠٠ ثانية = ١٥ دقيقة) — ' +
+        (auto ? 'ويُستخرجان من الملف تلقائياً عند اختياره.'
+              : 'ولا يُستخرجان هنا: إن استبدلت الملف فصحّح الرقم بيدك.') + '</span>';
+  }
+  function fldSort(it) {
+    return '<div class="field"><label for="fSort">الترتيب</label>' +
+      '<input class="input" id="fSort" inputmode="numeric" value="' +
+        A.esc(it.sort == null ? 0 : it.sort) + '">' +
+      '<span class="hint">الأصغر يظهر أولاً داخل نوعه ومجاله.</span></div>';
+  }
+  function fldReq(it) {
+    return '<div class="field"><label style="display:flex;align-items:center;gap:9px;cursor:pointer">' +
+      '<input class="adm-check" type="checkbox" id="fReq"' +
+        (it.requires_account ? ' checked' : '') + '>يتطلب حساباً موافَقاً عليه</label>' +
+      '<span class="hint">عند التفعيل لا يُصدَر رابط الفتح إلا لحساب حالته «موافَق عليه». ' +
+        'يسري هذا الشرط حين تكون طريقة الوصول «موروث من المجلد» والبند بلا مجلد.</span>' +
+      '<span class="hint" id="fReqAuto" hidden>يُضبَط تلقائياً من طريقة الوصول الصريحة ' +
+        'أعلاه — اختيار «موروث من المجلد» يعيده للتحرير اليدوي.</span></div>';
+  }
+  function fldActive(it) {
+    return '<div class="field"><label style="display:flex;align-items:center;gap:9px;cursor:pointer">' +
+      '<input class="adm-check" type="checkbox" id="fActive"' +
+        (it.active === false ? '' : ' checked') + '>نشط</label>' +
+      '<span class="hint">العنصر غير النشط يختفي من التطبيق ولا يُصدَر له رابط.</span></div>';
+  }
+
+  /* «خيارات متقدمة»: كتلة مطويّة ابتداءً — details/summary بلا سطر برمجي.
+     ما فيها نادر الاستعمال، فلا يُثقل الشاشة على من لا يحتاجه. */
+  function advHTML(inner) {
+    return '<details class="adv"><summary>خيارات متقدمة</summary>' +
+      '<div class="adv-in">' + inner + '</div></details>';
+  }
+  /* رسالةُ خطأٍ عن حقلٍ مطويّ لا يراه أحد: تُفتح الكتلة قبل إظهارها */
+  function openAdv(host) {
+    var d = host.querySelector('.adv');
+    if (d && !d.open) { d.open = true; }
+  }
+
+  /* حماية البند (ترحيلة ٠٢٥): محمي داخل القارئ أم ملف كامل للتنزيل.
+     الدرس خارج الخيار — يُعرض في شاشة الدروس المصوّرة لا في القارئ. */
+  function dlHTML(it) {
+    if (it.kind === 'lesson') { return ''; }
+    if (!dlOk) {
+      /* العمود لا يصل من دالة القراءة: حقل معطّل لا يُرسَل عند الحفظ —
+         قيمة الحماية المخزّنة لا تُمَس (نمط كتلة الوصول الغائبة حرفياً) */
+      return '' +
+        '<div class="field" id="fDlWrap"><label>حماية الملف والتنزيل</label>' +
+          '<select class="input" disabled>' +
+            '<option selected>تعذّرت قراءة خيار الحماية</option></select>' +
+          '<span class="hint">الخيار لا يُقرأ من القاعدة بعد — تأكد من تطبيق ' +
+            'ترحيلة القاعدة ٠٢٥ ثم أعد تحميل الصفحة. الحفظ يُبقي القيمة ' +
+            'المخزّنة كما هي.</span>' +
+        '</div>';
+    }
+    var dl = (typeof it.downloadable === 'boolean') ? it.downloadable : it.kind === 'form';
+    return '' +
+      '<div class="field" id="fDlWrap"><label for="fDl">حماية الملف والتنزيل</label>' +
+        '<select class="input" id="fDl">' +
+          '<option value="protected"' + (dl ? '' : ' selected') + '>محمي — يُقرأ داخل القارئ بعلامة مائية شخصية، بلا تنزيل</option>' +
+          '<option value="download"' + (dl ? ' selected' : '') + '>قابل للتنزيل — يُسلَّم ملفاً كاملاً بلا علامة مائية</option>' +
+        '</select>' +
+        '<span class="hint">القرار لكل بند على حدة: افتراضي الاستمارات التنزيل ' +
+          'وافتراضي الكتب الحماية — وتغييره يسري على أجهزة الأعضاء فور الحفظ.</span>' +
+      '</div>';
+  }
+
+  /* حقول التحرير المشتركة بين «تعديل» و«إضافة» — النادر منها مطويّ */
   function fieldsHTML(it) {
     return '' +
-      '<div class="field"><label for="fTitle">العنوان</label>' +
-        '<input class="input" id="fTitle" maxlength="200" value="' + A.esc(it.title || '') + '"></div>' +
-      '<div class="field"><label for="fSub">العنوان الفرعي</label>' +
-        '<input class="input" id="fSub" maxlength="200" value="' + A.esc(it.subtitle || '') + '"></div>' +
-      /* المجال قبل التصنيف: كلاهما تسمية، لكن المجال مجلد حقيقي في التطبيق
-         والتصنيف نص داخلي — وبقاؤه بعد العنوان يُبقي أول تركيز على العنوان */
+      fldTitle(it) +
+      /* المجال قبل المجلد: كلاهما موضع، والمجال هو الأعلى — واختيار المجلد
+         يصفّي قائمته على المجال المختار (wireFolderSel) */
       domainHTML(it) +
-      '<div class="field"><label for="fCat">التصنيف</label>' +
-        '<input class="input" id="fCat" maxlength="80" value="' + A.esc(it.category || '') + '">' +
-        '<span class="hint">تصنيف داخلي للعرض والفرز — مثل «المرجع الأساسي» أو رقم المرحلة.</span></div>' +
-      '<div class="field"><label for="fFolder">المجلد الفرعي</label>' +
-        (foldersOk
-          ? '<select class="input" id="fFolder">' +
-              folderOptionsHTML(it.kind || 'book',
-                (it.domain == null ? '' : String(it.domain)).trim(),
-                it.folder_id || null) +
-            '</select>' +
-            '<span class="hint">بنود المجلد الواحد تُجمع في بطاقة داخل نوعها بالمكتبة — ' +
-              'مثل «الكتابان المعتمدان للمنظومة»، والمجلد يحدّد طريقة الوصول ' +
-              '(مجاني/بحساب/مدفوع). «بلا مجلد» = بند مباشر. ' +
-              '<a href="admin-folders.html">إدارة المجلدات والتسعير ←</a></span>'
-          /* القائمة لم تصل: حقل معطّل لا يُرسَل عند الحفظ — الربط القائم لا يُمَس */
-          : '<select class="input" id="fFolder" disabled>' +
-              '<option value="" selected>تعذّر تحميل قائمة المجلدات</option></select>' +
-            '<span class="hint">ربط البند بمجلده الحالي يبقى كما هو عند الحفظ. ' +
-              'لإدارة الربط أعد تحميل الصفحة بعد عودة الاتصال — ' +
-              'وإن استمر الخطأ فتأكد من تطبيق ترحيل القاعدة ٠٢١.</span>') +
-        '</div>' +
+      fldFolder(it) +
       accessHTML(it) +
-      '<div class="field"><label for="fCode">الرمز</label>' +
-        '<input class="input" id="fCode" dir="ltr" maxlength="40" value="' + A.esc(it.code || '') + '"></div>' +
-      '<div class="field"><label for="fPath">مسار التخزين</label>' +
-        '<input class="input adm-mono" id="fPath" dir="ltr" maxlength="200" value="' +
-          A.esc(it.storage_path || '') + '">' +
-        '<span class="hint">المسار داخل سلة <span dir="ltr">osea-content</span> — مثل ' +
-          '<span dir="ltr">books/book1.pdf</span>. مسار خاطئ يعني فشل فتح العنصر في التطبيق. ' +
-          'يُقترَح تلقائياً من النوع والمعرّف عند اختيار ملف ما دام فارغاً، ويبقى قابلاً ' +
-          'للتحرير. وتغييره وحده لا ينقل ملفاً مرفوعاً على المسار القديم.</span></div>' +
-      /* الملف بعد المسار مباشرةً: اختياره يملأ المسار الفارغ، فترتيبهما
-         على الشاشة هو ترتيب المنطق نفسه */
+      dlHTML(it) +
       fileHTML('يُرفع الملف بعد حفظ صف البند مباشرةً إلى سلة ' +
         '<span class="adm-mono" dir="ltr">osea-content</span> الخاصة، ثم يُضبَط الحجم ' +
         'ويرتفع رقم النسخة. اتركه فارغاً إن أردت تحرير الصف وحده بلا رفع.') +
       upHTML() +
       retryHTML() +
-      '<div class="sheet-pair">' +
-        '<div class="field"><label for="fPages">الصفحات</label>' +
-          '<input class="input" id="fPages" inputmode="numeric" value="' +
-            (it.pages == null ? '' : A.esc(it.pages)) + '"></div>' +
-        '<div class="field"><label for="fDur">المدة بالثواني</label>' +
-          '<input class="input" id="fDur" inputmode="numeric" value="' +
-            (it.duration_s == null ? '' : A.esc(it.duration_s)) + '"></div>' +
-      '</div>' +
-      '<span class="hint" style="margin-block-start:-8px">الصفحات للكتب والاستمارات، والمدة للدروس.</span>' +
-      '<div class="field"><label for="fSort">الترتيب</label>' +
-        '<input class="input" id="fSort" inputmode="numeric" value="' +
-          A.esc(it.sort == null ? 0 : it.sort) + '">' +
-        '<span class="hint">الأصغر يظهر أولاً داخل نوعه.</span></div>' +
-      '<div class="field"><label style="display:flex;align-items:center;gap:9px;cursor:pointer">' +
-        '<input class="adm-check" type="checkbox" id="fReq"' +
-          (it.requires_account ? ' checked' : '') + '>يتطلب حساباً موافَقاً عليه</label>' +
-        '<span class="hint">عند التفعيل لا يُصدَر رابط الفتح إلا لحساب حالته «موافَق عليه». ' +
-          'يسري هذا الشرط حين تكون طريقة الوصول «موروث من المجلد» والبند بلا مجلد.</span>' +
-        '<span class="hint" id="fReqAuto" hidden>يُضبَط تلقائياً من طريقة الوصول الصريحة ' +
-          'أعلاه — اختيار «موروث من المجلد» يعيده للتحرير اليدوي.</span></div>' +
-      '<div class="field"><label style="display:flex;align-items:center;gap:9px;cursor:pointer">' +
-        '<input class="adm-check" type="checkbox" id="fActive"' +
-          (it.active === false ? '' : ' checked') + '>نشط</label>' +
-        '<span class="hint">العنصر غير النشط يختفي من التطبيق ولا يُصدَر له رابط.</span></div>';
+      advHTML(
+        fldCode(it) + fldSub(it) + fldCat(it) +
+        fldPath(it) + fldSpan(it) + fldSort(it) +
+        fldReq(it) + fldActive(it));
   }
 
   function readFields(host) {
@@ -1521,6 +1908,15 @@
         f.requires_account = f.access === 'account' || f.access === 'paid';
       }
     }
+    /* حماية البند (٠٢٥) — الكتلة الغائبة أو المعطّلة أو المخفية (درس)
+       لا تُرسل المفتاح: rowPayload يُبقي المخزّن كما هو */
+    if (dlOk) {
+      var dlWrap = host.querySelector('#fDlWrap');
+      var dlSel = host.querySelector('#fDl');
+      if (dlWrap && !dlWrap.hidden && dlSel && !dlSel.disabled) {
+        f.downloadable = dlSel.value === 'download';
+      }
+    }
     return f;
   }
 
@@ -1556,9 +1952,14 @@
       onOk: function (host, close) {
         var f = readFields(host);
         if (!f.title) return Promise.reject(new Error('العنوان مطلوب'));
-        if (!f.storage_path) return Promise.reject(new Error('مسار التخزين مطلوب'));
+        /* المسار في «خيارات متقدمة»: رسالةٌ عنه بلا فتحها تُرسل الإدارة تبحث
+           عن حقل مطويّ لا تراه — فتُفتح الكتلة مع الرسالة */
+        if (!f.storage_path) {
+          openAdv(host);
+          return Promise.reject(new Error('مسار التخزين مطلوب — حرّره في «خيارات متقدمة»'));
+        }
         var te = pathTakenError(f.storage_path, it.id, it.kind, st ? st.file : null);
-        if (te) return Promise.reject(new Error(te));
+        if (te) { openAdv(host); return Promise.reject(new Error(te)); }
         if (f.domain === null) return Promise.reject(new Error('اكتب اسم المجال الجديد'));
         var pe = accessError(f);
         if (pe) return Promise.reject(new Error(pe));
@@ -1584,75 +1985,622 @@
     guardSheet(s);
   }
 
+  /* ------------------------------------- معالج الإضافة: ثلاث خطوات لا لوحة */
+  /* شكوى الإدارة كانت أن الإضافة تسأل عن ثمانية عشر حقلاً دفعةً واحدة. الأسئلة
+     هنا ثلاثة لا غير: النوع، ثم الملف والعنوان، ثم مكان الحفظ — وكل ما عداها
+     يُشتقّ (المعرّف، المسار، المجال، الترتيب، الحالة) أو يُستخرج من الملف
+     (الصفحات، المدة، الحجم). النادر يبقى متاحاً مطويّاً تحت «خيارات متقدمة». */
+  var WZ_Q = ['شو بدك تضيف؟', 'الملف والعنوان', 'وين يتحفّظ؟'];
+  var WZ_PICK = [
+    ['book',   '📕', 'كتاب معتمد',    'ملف PDF يُقرأ داخل التطبيق'],
+    ['form',   '📄', 'استمارة رسمية', 'استمارة تقييم تُملأ ميدانياً'],
+    ['lesson', '🎬', 'درس مصوّر',     'فيديو يُشاهَد في المكتبة']
+  ];
+  var FOLD_ACC = {
+    free: 'مجاني للجميع', account: 'يتطلب حساباً', paid: 'مدفوع بالاشتراك'
+  };
+
+  function pickCardsHTML() {
+    return '<div class="pick-grid">' + WZ_PICK.map(function (k) {
+      return '<button type="button" class="pick" data-kind="' + k[0] + '" aria-pressed="false">' +
+        '<span class="ico" aria-hidden="true">' + k[1] + '</span>' +
+        '<span class="ttl">' + A.esc(k[2]) + '</span>' +
+        '<span class="sub">' + A.esc(k[3]) + '</span></button>';
+    }).join('') + '</div>';
+  }
+
+  /* نموذج المجلد الجديد داخل اللوحة نفسها: «إمكانية لإضافة مجلدات وأقسام» —
+     المجلد هو المجلد الفرعي، والقسم هو المجال. معرّفاته تبدأ بـnf كي لا
+     تلتبس بحقول البند نفسه (fName ⟵ nfName) فيقرأ readFields حقلاً غريباً. */
+  function nfHTML() {
+    var opts = domainList().map(function (d) {
+      return '<option value="' + A.esc(d) + '">' + A.esc(d) + '</option>';
+    }).join('');
+    opts += '<option value="' + A.esc(DOMAIN_NEW) + '">＋ قسم (مجال) جديد…</option>';
+    var pr = function (id, label) {
+      return '<div class="field" style="margin:0"><label for="' + id + '">' + A.esc(label) + '</label>' +
+        '<input class="input" id="' + id + '" inputmode="numeric" placeholder="—"></div>';
+    };
+    return '' +
+      '<div class="nf-box" id="wzNF" hidden>' +
+        '<div class="field"><label for="nfName">اسم المجلد</label>' +
+          '<input class="input" id="nfName" maxlength="80" ' +
+            'placeholder="مثال: الكتابان المعتمدان للمنظومة"></div>' +
+        '<div class="field"><label for="nfDomain">القسم (المجال)</label>' +
+          '<select class="input" id="nfDomain">' + opts + '</select>' +
+          '<span class="hint">القسم هو المجلد الأعلى في مكتبة التطبيق: المستخدم يدخل ' +
+            'القسم ثم النوع ثم المجلدات وبنودها.</span></div>' +
+        '<div class="field" id="nfDomainNewWrap" hidden>' +
+          '<label for="nfDomainNew">اسم القسم الجديد</label>' +
+          '<input class="input" id="nfDomainNew" maxlength="80" placeholder="مثال: السلامة من الحريق">' +
+          '<span class="hint">يُكتب كما سيظهر للمستخدم — اختلاف حرف واحد ينشئ قسماً ثانياً.</span></div>' +
+        '<fieldset class="price-fs"><legend>طريقة الاشتراك</legend>' +
+          '<div style="display:grid;gap:8px">' +
+            '<label class="nf-r"><input type="radio" name="nfAccess" value="free" checked>مجاني للجميع</label>' +
+            '<label class="nf-r"><input type="radio" name="nfAccess" value="account">يتطلب حساباً موافَقاً</label>' +
+            '<label class="nf-r"><input type="radio" name="nfAccess" value="paid">مدفوع بالاشتراك</label>' +
+          '</div>' +
+          '<fieldset class="price-fs" id="nfPrices" disabled style="margin-block-start:12px">' +
+            '<legend>أسعار المجلد (ل.س جديدة)</legend>' +
+            '<div class="price-grid">' +
+              pr('nfPriceM', 'شهري') + pr('nfPriceY', 'سنوي') + pr('nfPriceO', 'دائم') +
+            '</div>' +
+            '<span class="hint">الحقل الفارغ يعني أن هذه الطريقة غير متاحة — ويلزم سعر ' +
+              'واحد على الأقل للمجلد المدفوع، والحد الأقصى ' + A.num(PRICE_CAP) + '.</span>' +
+          '</fieldset>' +
+        '</fieldset>' +
+        '<div class="up-row">' +
+          '<button type="button" class="btn btn-primary btn-sm" id="nfSave" data-write>حفظ المجلد</button>' +
+          '<button type="button" class="btn btn-outline btn-sm" id="nfCancel">إلغاء</button>' +
+          '<span class="spacer"></span></div>' +
+        '<span class="hint" style="margin:0">إنشاء المجلدات صلاحية مدير، وغيرُه يُردّ من ' +
+          'القاعدة برسالة. وللإدارة الكاملة (الترتيب والتعطيل والحذف): ' +
+          '<a href="admin-folders.html">المجلدات والتسعير ←</a></span>' +
+      '</div>';
+  }
+
   function openAdd() {
-    var st = null;
-    var s = A.sheet({
+    var st = null, s = null, okBtn = null, backBtn = null, indEl = null;
+    /* autoId/autoTitle/autoSort: آخر قيمة اقترحها المعالج — ما دام الحقل عليها
+       فهو مشتقّ يتبع الاختيارات، وأول تعديل من الإدارة يجمّده على ما كتبته.
+       probe: رقم قراءةٍ للملف — نتيجةُ قراءةٍ سبقها اختيارُ ملفٍ آخر تُهمَل. */
+    var W = { step: 1, kind: null, autoId: '', autoTitle: '', autoSort: '',
+              autoPages: '', autoDur: '', probe: 0,
+              /* المعرّف الذي نجح حفظ صفّه في هذه الجلسة: إعادة الضغط بعد فشل
+                 الرفع تُعيد نفس الصف لا تطالب بمعرّف جديد فتُنشئ مكرّراً */
+              savedId: null,
+              /* قراءةُ ملفٍ جارية — التقدّم موقوف حتى تنتهي */
+              reading: false };
+
+    function el(id) { return s.el.querySelector('#' + id); }
+
+    function folderById(id) {
+      if (!id) return null;
+      for (var i = 0; i < folders.length; i++) {
+        if (folders[i] && folders[i].id === id) return folders[i];
+      }
+      return null;
+    }
+
+    /* ------------------------------------------------------ حركة الخطوات */
+    function focusStep(n) {
+      var t = n === 1 ? s.el.querySelector('.pick')
+            : n === 2 ? ((st && st.file) ? el('fTitle') : el('fPick'))
+            : s.el.querySelector('#wzFolds input');
+      if (t && t.focus) { try { t.focus(); } catch (e) {} }
+      var body = s.el.querySelector('.adm-sheet-body');
+      if (body) { body.scrollTop = 0; }
+    }
+
+    function goStep(n) {
+      n = n < 1 ? 1 : (n > 3 ? 3 : n);
+      W.step = n;
+      el('wz1').hidden = n !== 1;
+      el('wz2').hidden = n !== 2;
+      el('wz3').hidden = n !== 3;
+      indEl.innerHTML = 'الخطوة <b>' + A.toAr(n) + '</b> من ' + A.toAr(3) +
+        ' — ' + A.esc(WZ_Q[n - 1]);
+      /* الخطوة الأولى تتقدّم بنقر البطاقة نفسها، فزر «التالي» فيها زائد */
+      okBtn.hidden = n === 1;
+      okBtn.textContent = n === 3 ? 'إضافة العنصر' : 'التالي';
+      backBtn.hidden = n === 1;
+      focusStep(n);
+    }
+
+    /* ------------------------------------------------- المشتقّات من النوع */
+    function applySort() {
+      var e = el('fSort');
+      if (!e) return;
+      /* رقمٌ كتبته الإدارة لا يُدهَس — كالمسار في wireFile حرفياً */
+      var cur = e.value.trim();
+      if (cur && cur !== W.autoSort) return;
+      var ds = el('fDomain');
+      var d = ds ? ds.value : DOMAIN_DEFAULT;
+      if (d === DOMAIN_NEW) {
+        var dn = el('fDomainNew');
+        d = dn ? dn.value.trim() : '';
+      }
+      W.autoSort = String(nextSort(d, W.kind || 'book'));
+      e.value = W.autoSort;
+    }
+
+    /* المجال يتبع المجلد: القاعدة تزامنه من المجلد على أي حال، فإظهارُه
+       موافقاً هنا يمنع مفاجأة «اخترتُ مجالاً فحُفظ غيره» */
+    function setDomain(d) {
+      var sel = el('fDomain'), i, o;
+      if (!sel || !d) return;
+      for (i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === d) { break; }
+      }
+      if (i >= sel.options.length) {
+        o = document.createElement('option');
+        o.value = d;
+        o.textContent = d;
+        /* قبل «مجال جديد…» كي يبقى هو ذيل القائمة */
+        sel.insertBefore(o, sel.options[sel.options.length - 1] || null);
+      }
+      sel.value = d;
+      var w = el('fDomainNewWrap');
+      if (w) { w.hidden = true; }
+      applySort();
+    }
+
+    /* ---------------------------------------------------- بطاقات المجلدات */
+    function foldCard(v, nm, sb, on) {
+      return '<label class="fold' + (on ? ' on' : '') + '">' +
+        '<input type="radio" name="wzFold" value="' + A.esc(v) + '"' + (on ? ' checked' : '') + '>' +
+        '<span><span class="nm">' + A.esc(nm) + '</span>' +
+        '<span class="sb">' + A.esc(sb) + '</span></span></label>';
+    }
+
+    /* تعيد الاختيار السارِيَ فعلاً بعد إعادة الرسم: تغيير النوع قد يُسقط
+       مجلداً منتقىً من نوع آخر، فيجب أن يتبعه المجالُ والقائمةُ المخفيّة —
+       وإلا بقيت #fFolder على مجلد لا تُظهره البطاقات فحُفظ ربطٌ لا يُرى */
+    function paintFolds() {
+      var host = el('wzFolds'), sel = el('fFolder');
+      var cur = sel ? sel.value : '';
+      if (!foldersOk) {
+        host.innerHTML = '<div class="notice notice--error">' + A.ICONS.bad +
+          '<span><strong>تعذّر تحميل قائمة المجلدات.</strong> يُضاف البند بلا مجلد، ' +
+          'ويُربط لاحقاً من «تعديل» بعد عودة الاتصال — وإن استمر الخطأ فتأكد من ' +
+          'تطبيق ترحيل القاعدة ٠٢١.</span></div>';
+        return '';
+      }
+      var list = folders.filter(function (f) { return f && f.kind === W.kind; });
+      list.sort(function (a, b) {
+        if (a.domain !== b.domain) return String(a.domain).localeCompare(String(b.domain), 'ar');
+        return (a.sort | 0) - (b.sort | 0);
+      });
+      /* المجلد المنتقى قد لا يكون من نوع البند بعد رجوعٍ وتغييرِ نوع */
+      if (cur && !list.some(function (f) { return f.id === cur; })) { cur = ''; }
+      var h = foldCard('', 'بلا مجلد (بند مباشر)',
+        'يظهر البند مباشرةً داخل نوعه في قسمه، بلا بطاقة مجلد ولا بوابة اشتراك.', cur === '');
+      list.forEach(function (f) {
+        h += foldCard(f.id, f.name + (f.active === false ? ' (معطّل)' : ''),
+          f.domain + ' · ' + (FOLD_ACC[f.access || 'free'] || 'مجاني للجميع') +
+          ' · ' + A.count(f.items | 0, 'بند واحد', 'بندان', 'بنود', 'بنداً'), cur === f.id);
+      });
+      host.innerHTML = h;
+      return cur;
+    }
+
+    function checkFold(id) {
+      s.el.querySelectorAll('#wzFolds .fold').forEach(function (l) {
+        var i = l.querySelector('input');
+        if (!i) return;
+        i.checked = i.value === id;
+        l.className = 'fold' + (i.checked ? ' on' : '');
+      });
+    }
+
+    /* القائمة المخفيّة #fFolder هي ما يقرأه readFields — البطاقات تقودها */
+    function applyFolder(id) {
+      var sel = el('fFolder');
+      var f = folderById(id);
+      if (sel) { sel.innerHTML = '<option value="' + A.esc(id || '') + '" selected></option>'; }
+      setDomain(f ? f.domain : defaultDomain());
+    }
+
+    function setKind(k) {
+      var was = W.kind;
+      W.kind = k;
+      s.el.querySelectorAll('.pick').forEach(function (b) {
+        b.setAttribute('aria-pressed', b.getAttribute('data-kind') === k ? 'true' : 'false');
+      });
+      var idEl = el('fId');
+      if (idEl && (!idEl.value.trim() || idEl.value.trim() === W.autoId)) {
+        W.autoId = freshId(k);
+        idEl.value = W.autoId;
+      }
+      applyFolder(paintFolds());
+      /* حماية البند تتبع النوع ما لم تُغيَّر يدوياً: الدرس بلا الخيار أصلاً،
+         والاستمارة افتراضها التنزيل والكتاب الحماية. قيمة بقيت على افتراضي
+         النوع السابق تُعدَّل لافتراضي الجديد — والاختيار الصريح لا يُداس */
+      var dlWrap = s.el.querySelector('#fDlWrap');
+      var dlSel = s.el.querySelector('#fDl');
+      if (dlWrap) { dlWrap.hidden = k === 'lesson'; }
+      if (dlSel) {
+        var prevDef = was === 'form' ? 'download' : 'protected';
+        var nextDef = k === 'form' ? 'download' : 'protected';
+        if (dlSel.value === prevDef) { dlSel.value = nextDef; }
+      }
+      /* المسار يتبع النوع والمعرّف: كلاهما تغيّر برمجياً بلا حدث يلتقطه wireFile */
+      if (st && st.suggest) { st.suggest(); }
+      /* الصفحات والمدة مشتقّتان من الملف والنوع معاً: تبديل النوع يعيد حسابهما
+         وسطرَ التأكيد، وإلا حُفظ عددُ صفحاتٍ لملف فيديو أو مدةٌ لملف PDF */
+      if (was && was !== k) { onPick(st ? st.file : null); }
+    }
+
+    /* ------------------------------------- ما يُستخرج من الملف بعد اختياره */
+    function onPick(f) {
+      var meta = el('wzMeta'), ex = el('wzExtract'), t = el('fTitle');
+      W.probe++;
+      var tok = W.probe;
+      W.reading = false;
+      if (!f) {
+        if (meta) { meta.hidden = true; }
+        if (ex) { ex.textContent = ''; }
+        return;
+      }
+      /* العنوان مقترَح لا مفروض: ما كتبته الإدارة لا يُدهَس */
+      if (t && (!t.value.trim() || t.value.trim() === W.autoTitle)) {
+        var sug = titleFromName(f.name);
+        if (sug) { W.autoTitle = sug; t.value = sug; }
+      }
+      /* الصفحات والمدة مشتقّتان من الملف: قيمةٌ خلّفها ملفٌ سابق تُمحى مع كل
+         تبديل، وإلا حُفظ عددُ صفحاتٍ لملف فيديو أو مدةٌ لملف PDF. وما كتبته
+         الإدارة بيدها ينجو — الشرط هو أن تكون القيمة هي المشتقّة نفسها. */
+      var pg0 = el('fPages'), du0 = el('fDur');
+      if (pg0 && pg0.value === W.autoPages) { pg0.value = ''; }
+      if (du0 && du0.value === W.autoDur) { du0.value = ''; }
+      W.autoPages = ''; W.autoDur = '';
+
+      if (!meta || !ex) return;
+      var pk = probeKind(f);
+      meta.hidden = false;
+      meta.className = 'fx-meta wait';
+      ex.textContent = pk
+        ? 'جارٍ قراءة الملف لاستخراج ' + (pk === 'dur' ? 'مدة الدرس' : 'عدد الصفحات') + '…'
+        : 'لا صفحات ولا مدة تُستخرَج من ملفٍ بهذا الامتداد.';
+      W.reading = !!pk;   /* لا انتظار لملفٍ لا يُستخرَج منه شيء */
+      probeFile(f, function (what, val) {
+        /* ملفٌ آخر اختير أثناء القراءة ⇒ نتيجةٌ متأخّرة لا تخصّ المعروض */
+        if (tok !== W.probe) return;
+        W.reading = false;
+        var pg = el('fPages'), du = el('fDur');
+        if (what === 'pages' && val) {
+          W.autoPages = String(val);
+          if (pg) { pg.value = W.autoPages; }
+          meta.className = 'fx-meta';
+          ex.textContent = 'استُخرج من الملف: ' + A.toAr(val) + ' صفحة.';
+        } else if (what === 'dur' && val) {
+          W.autoDur = String(val);
+          if (du) { du.value = W.autoDur; }
+          meta.className = 'fx-meta';
+          ex.textContent = 'استُخرجت من الملف: ' + A.secDur(val) + ' دقيقة.';
+        } else {
+          /* الفشل لا يُزعج ولا يمنع الحفظ: الحقل يبقى فارغاً ويُكتب يدوياً */
+          meta.className = 'fx-meta wait';
+          ex.textContent = what === 'pages'
+            ? 'تعذّرت قراءة عدد الصفحات من الملف — يُكتب يدوياً في «خيارات متقدمة» إن لزم.'
+            : what === 'dur'
+              ? 'تعذّرت قراءة مدة الفيديو من الملف — تُكتب يدوياً في «خيارات متقدمة» إن لزم.'
+              : 'لا صفحات ولا مدة تُستخرَج من ملفٍ بهذا الامتداد.';
+        }
+      });
+    }
+
+    /* --------------------------------- إنشاء مجلد جديد بلا مغادرة اللوحة */
+    /* قسمٌ أُنشئ للتوّ لا يوجد في قائمة أقسام النموذج: يُدرَج كي يُتاح لمجلدٍ
+       ثانٍ في الجلسة نفسها بلا كتابته من جديد (وكتابته ثانيةً بحرف مختلف
+       تنشئ قسماً ثالثاً بلا قصد) */
+    function addNfDomain(d) {
+      var nd = el('nfDomain'), i, o;
+      if (!nd || !d) return;
+      for (i = 0; i < nd.options.length; i++) {
+        if (nd.options[i].value === d) return;
+      }
+      o = document.createElement('option');
+      o.value = d;
+      o.textContent = d;
+      nd.insertBefore(o, nd.options[nd.options.length - 1] || null);
+    }
+
+    function saveNewFolder() {
+      var btn = el('nfSave');
+      var name = txt(s.el, 'nfName');
+      if (!name) {
+        A.toast('اسم المجلد مطلوب', 'bad');
+        if (el('nfName')) { el('nfName').focus(); }
+        return;
+      }
+      var dom = el('nfDomain').value;
+      if (dom === DOMAIN_NEW) {
+        dom = txt(s.el, 'nfDomainNew');
+        if (!dom) {
+          A.toast('اكتب اسم القسم الجديد', 'bad');
+          if (el('nfDomainNew')) { el('nfDomainNew').focus(); }
+          return;
+        }
+      }
+      var accEl = s.el.querySelector('[name="nfAccess"]:checked');
+      var access = accEl ? accEl.value : 'free';
+      var pm = null, py = null, po = null;
+      if (access === 'paid') {
+        pm = readInt(s.el, 'nfPriceM');
+        py = readInt(s.el, 'nfPriceY');
+        po = readInt(s.el, 'nfPriceO');
+        var bad = function (v) { return v !== null && (isNaN(v) || v < 0 || v > PRICE_CAP); };
+        if (bad(pm) || bad(py) || bad(po)) {
+          A.toast('أسعار المجلد أرقام صحيحة من صفر حتى ' + A.num(PRICE_CAP) +
+            ' — أو تُترك فارغة', 'bad', 5200);
+          return;
+        }
+        if (pm === null && py === null && po === null) {
+          A.toast('المجلد المدفوع يحتاج سعراً واحداً على الأقل: شهري أو سنوي أو دائم', 'bad', 5200);
+          return;
+        }
+      }
+      var p = {
+        name: name, domain: dom, kind: W.kind || 'book', access: access,
+        price_month: pm, price_year: py, price_once: po, note: null,
+        sort: nextFolderSort(dom, W.kind || 'book'), active: true
+      };
+      btn.disabled = true;
+      API.admin.saveFolder(p).then(function (r) {
+        if (r && r.id) { folders.push(r); return r; }
+        /* الدالة لم تُعِد الصف: تُقرأ القائمة كاملةً ثم يُلتقط المطابق */
+        return API.admin.folders().then(function (d) {
+          folders = (d && d.folders) || folders;
+          var m = null;
+          folders.forEach(function (f) {
+            if (f && f.name === p.name && f.domain === p.domain && f.kind === p.kind) { m = f; }
+          });
+          return m;
+        });
+      }).then(function (nf) {
+        btn.disabled = false;
+        el('wzNF').hidden = true;
+        el('wzNewBtn').hidden = false;
+        /* الاسم وحده يُصفَّر: نقرةُ سهوٍ ثانيةٌ كانت تُنشئ المجلد نفسه مرتين،
+           أما القسم وطريقة الاشتراك فالأرجح أن يتكرّرا لمجلد تالٍ */
+        el('nfName').value = '';
+        addNfDomain(p.domain);
+        el('nfDomain').value = p.domain;
+        el('nfDomainNewWrap').hidden = true;
+        el('nfDomainNew').value = '';
+        paintFolds();
+        if (nf && nf.id) { checkFold(nf.id); applyFolder(nf.id); }
+        A.toast('أُنشئ مجلد «' + p.name + '»' +
+          (nf && nf.id ? ' واختير للبند.' : ' — أعد تحميل الصفحة لاختياره.'), 'ok', 5200);
+      }).catch(function (e) {
+        btn.disabled = false;
+        A.toast(A.errText(e), 'bad', 6000);
+      });
+    }
+
+    /* ------------------------------------------------------ بناء اللوحة */
+    s = A.sheet({
       title: 'إضافة عنصر إلى الفهرس',
-      okLabel: 'إضافة العنصر',
+      okLabel: 'التالي',
       body:
-        '<div class="notice">' + A.ICONS.info + '<span>' +
-          'املأ صف البند واختر ملفه من الحقل أدناه: يُحفَظ الصف أولاً ثم يُرفع الملف ' +
-          'إلى سلة التخزين الخاصة <span class="adm-mono" dir="ltr">osea-content</span>. ' +
-          'الحجم يُضبَط من الملف نفسه ولا يُدخَل يدوياً.' +
-        '</span></div>' +
-        '<div class="field"><label for="fId">المعرّف</label>' +
-          '<input class="input adm-mono" id="fId" dir="ltr" maxlength="60" placeholder="book-04">' +
-          '<span class="hint">أحرف لاتينية صغيرة وأرقام وشرطات فقط، ولا يمكن تغييره بعد الحفظ.</span></div>' +
-        '<div class="field"><label for="fKind">النوع</label>' +
-          '<select class="input" id="fKind">' +
-            '<option value="book">كتاب</option>' +
-            '<option value="form">استمارة</option>' +
-            '<option value="lesson">درس</option>' +
-          '</select></div>' +
-        /* البند الجديد لا مجال سابقاً له يُحفَظ، فيُبذَر بالافتراضي صراحةً
-           ولا يظهر له خيار «يُترك كما هو» */
-        fieldsHTML({ sort: (items.length + 1), active: true, domain: DOMAIN_DEFAULT }),
+        '<p class="wz-ind" id="wzInd" role="status" aria-live="polite"></p>' +
+
+        '<div class="wz-step" id="wz1">' +
+          '<p class="wz-q">شو بدك تضيف؟</p>' +
+          pickCardsHTML() +
+          '<span class="hint" style="margin:0">النوع يحدّد مكان البند في المكتبة ' +
+            'وامتداد ملفه المتوقّع، ولا يُغيَّر بعد الحفظ من هذه الشاشة.</span>' +
+        '</div>' +
+
+        '<div class="wz-step" id="wz2" hidden>' +
+          '<p class="wz-q">الملف والعنوان</p>' +
+          dropHTML('يُرفع بعد حفظ صف البند إلى سلة ' +
+            '<span class="adm-mono" dir="ltr">osea-content</span> الخاصة، والحجم يُضبَط منه. ' +
+            'عدد صفحات الـPDF ومدة الفيديو يُستخرجان من الملف نفسه بلا إدخال يدوي.') +
+          '<div class="fx-meta" id="wzMeta" hidden><span id="wzExtract"></span></div>' +
+          fldTitle({}) +
+          '<span class="hint" style="margin-block-start:-8px">يُقترَح من اسم الملف — ' +
+            'عدّله كما يجب أن يظهر للمستخدم في المكتبة.</span>' +
+          '<div class="notice">' + A.ICONS.info + '<span>' +
+            '<strong>بلا ملف؟</strong> تبقى الإضافة ممكنة: اكتب «مسار التخزين» يدوياً في ' +
+            '«خيارات متقدمة» بالخطوة التالية — لملفٍ رُفع إلى السلة من قبل. ' +
+            'وبغير ذلك اختيارُ الملف مطلوب.</span></div>' +
+        '</div>' +
+
+        '<div class="wz-step" id="wz3" hidden>' +
+          '<p class="wz-q">وين يتحفّظ؟</p>' +
+          '<div class="fold-list" id="wzFolds"></div>' +
+          '<div class="up-row">' +
+            '<button type="button" class="btn btn-outline btn-sm" id="wzNewBtn" data-write>＋ مجلد جديد</button>' +
+            '<span class="spacer"></span></div>' +
+          nfHTML() +
+          /* قائمة المجلد المخفيّة: البطاقات تقودها، وreadFields يقرأها وحدها */
+          '<select id="fFolder" hidden></select>' +
+          extHTML() +
+          upHTML() +
+          retryHTML() +
+          advHTML(
+            '<div class="field"><label for="fId">المعرّف</label>' +
+              '<input class="input adm-mono" id="fId" dir="ltr" maxlength="60">' +
+              '<span class="hint">يُولَّد تلقائياً: اسم النوع وستة محارف عشوائية. ' +
+                'أحرف لاتينية صغيرة وأرقام وشرطات فقط، ولا يُغيَّر بعد الحفظ.</span></div>' +
+            fldCode({}) + fldSub({}) + fldCat({}) +
+            domainHTML({ domain: defaultDomain() }) +
+            fldPath({}) + fldSpan({}, true) + fldSort({ sort: '' }) +
+            accessHTML({}) + fldReq({}) + fldActive({})) +
+        '</div>',
       onOk: function (host, close) {
+        /* الخطوتان الأوليان تتقدّمان ولا تحفظان: لا وعد يُعاد فلا تُغلق اللوحة */
+        if (W.step === 1) return;
+        /* قراءة الملف جارية: التقدّم الآن يحفظ صفحاتٍ أو مدةً فارغة، ونتيجة
+           القراءة تُكتب بعدها في عنصرٍ غادر الصفحة — ننتظرها، وهي ثوانٍ */
+        if (W.reading) {
+          A.toast('جارٍ قراءة الملف — لحظة واحدة.', 'bad');
+          return;
+        }
+        if (W.step === 2) {
+          if (!txt(host, 'fTitle')) {
+            A.toast('العنوان مطلوب', 'bad');
+            if (el('fTitle')) { el('fTitle').focus(); }
+            return;
+          }
+          goStep(3);
+          return;
+        }
         var id = txt(host, 'fId');
         var f = readFields(host);
+        var file = st ? st.file : null;
         if (!/^[a-z0-9-]+$/.test(id)) {
-          return Promise.reject(new Error('المعرّف يقبل الأحرف اللاتينية الصغيرة والأرقام والشرطات فقط'));
+          openAdv(host);
+          return Promise.reject(new Error(
+            'المعرّف يقبل الأحرف اللاتينية الصغيرة والأرقام والشرطات فقط'));
         }
-        /* upsert لا يشتكي من معرّف موجود بل يستبدل صفه — الفحص هنا يمنع دهس عنصر قائم */
-        if (items.some(function (x) { return x.id === id; })) {
+        /* upsert لا يشتكي من معرّف موجود بل يستبدل صفه — الفحص هنا يمنع دهس عنصر قائم.
+           استثناء: صفٌّ حفظناه نحن في هذه الجلسة ثم فشل رفع ملفه — إعادة الضغط
+           تُعيد الصف نفسه وتعيد المحاولة، ولا تطالب بمعرّف جديد فتُنشئ مكرّراً */
+        if (id !== W.savedId && items.some(function (x) { return x.id === id; })) {
+          openAdv(host);
           return Promise.reject(new Error('المعرّف مستعمل في الفهرس — اختر معرّفاً آخر'));
         }
-        if (!f.title) return Promise.reject(new Error('العنوان مطلوب'));
-        if (!f.storage_path) return Promise.reject(new Error('مسار التخزين مطلوب'));
-        var te = pathTakenError(f.storage_path, id,
-          host.querySelector('#fKind').value, st ? st.file : null);
-        if (te) return Promise.reject(new Error(te));
-        if (f.domain === null) return Promise.reject(new Error('اكتب اسم المجال الجديد'));
+        if (!f.title) {
+          goStep(2);
+          return Promise.reject(new Error('العنوان مطلوب'));
+        }
+        /* الملف مطلوب في الإضافة — والمخرج الوحيد منه مسارٌ يُكتب يدوياً
+           لملفٍ رُفع إلى السلة من قبل. يُقال صراحةً لا مسكوتاً عنه. */
+        if (!file && !f.storage_path) {
+          return Promise.reject(new Error(
+            'الملف مطلوب في الإضافة — ارجع إلى الخطوة السابقة واختر ملف البند، ' +
+            'أو اكتب «مسار التخزين» يدوياً في «خيارات متقدمة» إن كان الملف مرفوعاً ' +
+            'إلى السلة من قبل'));
+        }
+        if (!f.storage_path) {
+          openAdv(host);
+          return Promise.reject(new Error('مسار التخزين مطلوب — حرّره في «خيارات متقدمة»'));
+        }
+        var te = pathTakenError(f.storage_path, id, W.kind, file);
+        if (te) { openAdv(host); return Promise.reject(new Error(te)); }
+        if (f.domain === null) {
+          openAdv(host);
+          return Promise.reject(new Error('اكتب اسم المجال الجديد'));
+        }
         var pe = accessError(f);
-        if (pe) return Promise.reject(new Error(pe));
-        var row = rowPayload({ id: id, kind: host.querySelector('#fKind').value }, f);
+        if (pe) { openAdv(host); return Promise.reject(new Error(pe)); }
+        var row = rowPayload({ id: id, kind: W.kind }, f);
         row.size_bytes = null;
         return runSave(host, {
           id: id,
           path: f.storage_path,
-          file: st ? st.file : null,
+          file: file,
           isNew: true,
           okMsg: 'أُضيف «' + f.title + '» إلى الفهرس',
           close: close,
-          save: function () { return API.admin.saveContentItem(row); }
+          save: function () {
+          /* saveItem لا saveContentItem: هو الاحتياط حين لا تحمل القاعدة أعمدة ٠٢٢ */
+          return saveItem(row).then(function (r) { W.savedId = id; return r; });
+        }
         });
       }
     });
+
+    /* ------------------------------------------------------ ربط الأحداث */
+    okBtn = s.el.querySelector('[data-ok]');
+    indEl = el('wzInd');
+    /* زر «رجوع» يُدسّ في قدم اللوحة الجاهز: خطواتٌ بلا طريق عودة تحبس الإدارة */
+    backBtn = document.createElement('button');
+    backBtn.type = 'button';
+    backBtn.className = 'btn btn-outline';
+    backBtn.textContent = 'رجوع';
+    backBtn.hidden = true;
+    okBtn.parentNode.insertBefore(backBtn, okBtn.nextSibling);
+    backBtn.addEventListener('click', function () {
+      /* حفظٌ جارٍ (الزر معطَّل) أو رفعٌ جارٍ: الرجوع يخفي حقولاً يقرأها الجاري */
+      if (uploading || okBtn.disabled) {
+        A.toast('الحفظ أو الرفع جارٍ — انتظر انتهاءه أو ألغِ الرفع.', 'bad', 4000);
+        return;
+      }
+      goStep(W.step - 1);
+    });
+
+    s.el.querySelectorAll('.pick').forEach(function (b) {
+      b.addEventListener('click', function () {
+        setKind(b.getAttribute('data-kind'));
+        goStep(2);
+      });
+    });
+
+    el('wzFolds').addEventListener('change', function (e) {
+      var r = up(e.target, 'input[name="wzFold"]');
+      if (!r) return;
+      checkFold(r.value);
+      applyFolder(r.value);
+    });
+
+    el('wzNewBtn').addEventListener('click', function () {
+      if (!foldersOk) {
+        A.toast('قائمة المجلدات لم تصل — أعد تحميل الصفحة قبل إنشاء مجلد.', 'bad', 4800);
+        return;
+      }
+      /* القسم الحالي للبند هو الأرجح للمجلد الجديد: يُنتقى ابتداءً بدل أول
+         أقسام القائمة أبجدياً — وإلا أُنشئ المجلد في قسم لم يقصده أحد */
+      var ds = el('fDomain'), nd = el('nfDomain');
+      if (ds && nd && ds.value && ds.value !== DOMAIN_NEW) {
+        /* القسم قد يغيب عن قائمة النموذج المصغّر — يُدرَج ثم يُنتقى،
+           وإلا بقي المختار قسماً آخر صامتاً فأُنشئ المجلد في غير موضعه */
+        addNfDomain(ds.value);
+        nd.value = ds.value;
+      }
+      el('wzNF').hidden = false;
+      el('wzNewBtn').hidden = true;
+      if (el('nfName')) { el('nfName').focus(); }
+    });
+    el('nfCancel').addEventListener('click', function () {
+      el('wzNF').hidden = true;
+      el('wzNewBtn').hidden = false;
+      el('wzNewBtn').focus();
+    });
+    el('nfDomain').addEventListener('change', function () {
+      var on = el('nfDomain').value === DOMAIN_NEW;
+      el('nfDomainNewWrap').hidden = !on;
+      if (on) { el('nfDomainNew').focus(); }
+    });
+    s.el.querySelectorAll('[name="nfAccess"]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        el('nfPrices').disabled = !(r.checked && r.value === 'paid');
+        if (!el('nfPrices').disabled) { el('nfPriceM').focus(); }
+      });
+    });
+    el('nfSave').addEventListener('click', saveNewFolder);
+
     wireDomain(s.el);
-    wireFolderSel(s.el, null);
     wireAccess(s.el);
+    /* قسمٌ يُبدَّل يدوياً في المتقدمة وقد اختير مجلدٌ من قسم آخر: القاعدة تفرض
+       قسم المجلد على البند، فإبقاء الاثنين مختلفَين حفظٌ يخالف ما يُرى */
+    var domSel = el('fDomain');
+    if (domSel) {
+      domSel.addEventListener('change', function () {
+        var sel = el('fFolder');
+        var f = folderById(sel ? sel.value : '');
+        if (f && domSel.value !== f.domain) {
+          if (sel) { sel.innerHTML = '<option value="" selected></option>'; }
+          checkFold('');
+          A.toast('غُيّر القسم — فأُلغي اختيار المجلد لأنه يتبع قسماً آخر.', 'bad', 4800);
+        }
+        applySort();
+      });
+    }
     st = wireFile(s.el, {
-      kind: function () {
-        var k = s.el.querySelector('#fKind');
-        return k ? k.value : 'book';
-      },
+      kind: function () { return W.kind || 'book'; },
       id: function () {
-        var e = s.el.querySelector('#fId');
+        var e = el('fId');
         return e ? e.value.trim() : '';
       },
-      fixedPath: null
+      fixedPath: null,
+      onPick: onPick
     });
     guardSheet(s);
+    goStep(1);
   }
 
   function toggle(it, btn) {

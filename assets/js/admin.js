@@ -84,7 +84,8 @@
   /* مطابقة العدد للمعدود — «٠ حساباً» خطأ نحوي، والصواب «لا حسابات» */
   function count(n, one, two, few, many) {
     n = Number(n) || 0;
-    if (n === 0) return 'لا ' + (many || few || two || one);
+    /* الصفر يأخذ جمع القلّة لا صيغة التمييز المنصوبة: «لا بنود» لا «لا بنداً» */
+    if (n === 0) return 'لا ' + (few || two || one || many);
     if (n === 1) return one;
     if (n === 2) return two || one;
     if (n % 100 >= 3 && n % 100 <= 10) return num(n) + ' ' + (few || two || one);

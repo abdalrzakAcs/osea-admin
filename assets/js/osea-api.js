@@ -519,7 +519,31 @@
      الجهات المعتمدة لدى النقابة: مهندسون ومنظمات وشركات. سجل علني بطبيعته
      كسجل الشهادات: يقرؤه الجميع بلا حساب، وتحرّره لوحة الإدارة وحدها (RLS).
      ترحيلة 018. */
+  /* المحافظات السورية — مصدر واحد تقرؤه شاشات التطبيق ولوحة الإدارة معاً،
+     بدل قائمتين متطابقتين اليوم متباعدتين بعد أول تعديل. الترتيب إداري لا
+     هجائي (نفس ترتيب قائمة الفرع في شاشة استكمال الملف)، والأسماء نفسها
+     تصلح فروعاً للنقابة لأن الفرع يُسمّى بمحافظته. */
+  var GOVERNORATES = [
+    'دمشق', 'ريف دمشق', 'حلب', 'حمص', 'حماة', 'اللاذقية', 'طرطوس',
+    'دير الزور', 'الرقة', 'الحسكة', 'درعا', 'السويداء', 'القنيطرة', 'إدلب'
+  ];
+
+  /* أنواع بنود السجل — المفاتيح هي قيم عمود kind في القاعدة (قيد ترحيلة ٠٢٤).
+     مصدر واحد كي لا يتباعد اسم النوع بين اللوحة والتطبيق، ولا يظهر نوع في
+     أحدهما دون الآخر كما كاد يحدث مع السجلين السوريين. */
+  var ACCREDIT_KINDS = [
+    { k: 'engineer',   label: 'مهندس',              plural: 'المهندسون المعتمدون' },
+    { k: 'org',        label: 'منظمة',              plural: 'المنظمات المعتمدة' },
+    { k: 'company',    label: 'شركة معتمدة',        plural: 'الشركات المعتمدة' },
+    { k: 'sy_company', label: 'شركة هندسية سورية',  plural: 'الشركات الهندسية السورية' },
+    { k: 'sy_office',  label: 'مكتب هندسي سوري',    plural: 'المكاتب الهندسية السورية' }
+  ];
+
   var accredit = {
+    /* الأنواع والمحافظات مرفقتان بالواجهة نفسها: من يقرأ السجل يحتاجهما */
+    KINDS: ACCREDIT_KINDS,
+    GOVERNORATES: GOVERNORATES,
+
     /* الواجهة العلنية: المنشور من نوع واحد، أو السجل كله بلا وسيط
        (شاشة المدخل تعدّ الأنواع الثلاثة من نداء واحد) */
     list: function (kind) {
@@ -554,10 +578,16 @@
         cert_no: row.cert_no == null ? null : toAr(String(row.cert_no)).trim(),
         cert_date: row.cert_date || null,
         field: row.field,
+        /* الفرع صار لكل الأنواع لا للمهندسين وحدهم (ترحيلة ٠٢٤): للشركة
+           والمكتب فرعٌ تسجّل فيه، وعليه تقوم فلترة السجل في التطبيق */
         branch: row.branch || null,
+        governorate: row.governorate || null,
         address_sy: row.address_sy || null,
         address_abroad: row.address_abroad || null,
         website: row.website || null,
+        /* البريد يُطوى صغيراً قبل الحفظ: العناوين لا تفرّق بين حالتي الحرف،
+           وحفظه كما كُتب يترك نسختين للعنوان الواحد في السجل */
+        email: row.email ? String(row.email).trim().toLowerCase() : null,
         phone: row.phone || null,
         active: row.active !== false,
         sort: row.sort | 0
@@ -885,6 +915,7 @@
     member: member,
     admin: admin,
     checkUpdate: checkUpdate,
+    GOVERNORATES: GOVERNORATES,
     arDate: arDate,
     arDateTime: arDateTime,
     durSec: durSec,
