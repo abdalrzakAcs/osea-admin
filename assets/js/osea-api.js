@@ -100,8 +100,16 @@
     addPayment: function (p) {
       return sb.rpc('member_submit_payment', {
         p_account: p.account_id, p_op_no: p.op_no, p_amount: p.amount,
-        p_service: p.service || null, p_item: p.item_id || null
+        p_service: p.service || null, p_item: p.item_id || null,
+        /* القناة والموعد (ترحيلة ٠٢٦): شام كاش الافتراض، والموعد لحجز
+           دورة الارتقاء وحده — الوصل الواحد يجمع الدفع والحجز */
+        p_method: p.method || 'sham', p_slot: p.slot_at || null
       }).then(must);
+    },
+    /* فرع العضو يحدده بنفسه (طلب النقابة ٢ أيلول) — القائمة تُفرض خادمياً */
+    setBranch: function (id, branch) {
+      if (!LIVE) return Promise.reject(new Error('قاعدة النقابة غير متاحة'));
+      return sb.rpc('member_set_branch', { p_account: id, p_branch: branch }).then(must);
     },
     attempts: function () {
       return sb.from('attempts')
@@ -686,6 +694,8 @@
     },
     deleteAccount: function (id) { return rpc('admin_delete_account', { p_id: id }); },
     resetPassword: function (id, pw) { return rpc('admin_reset_password', { p_id: id, p_new: pw }); },
+    /* المرتبة الهندسية قرار الإدارة (ترحيلة ٠٢٦) — null تمسحها */
+    setGrade: function (id, grade) { return rpc('admin_set_account_grade', { p_id: id, p_grade: grade || null }); },
 
     /* الطاقم */
     staff:       function () { return rpc('admin_list_staff'); },

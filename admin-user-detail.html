@@ -374,6 +374,10 @@
       kv('الرقم النقابي', ltr(a.synd_no)),
       kv('رقم الهوية الوطنية', ltr(a.national_id)),
       kv('الفرع النقابي', A.esc(a.branch || '—')),
+      kv('المرتبة الهندسية', a.grade
+        ? A.esc(({ trainee: 'مهندس متدرب', associate: 'مهندس مشارك',
+                   practicing: 'مهندس ممارس', consultant: 'مهندس استشاري' })[a.grade] || a.grade)
+        : '<span class="adm-sub" style="margin:0">لم تُحدَّد</span>'),
       kv('وسيلة التواصل', ltr(contact),
          a.contact_method === 'email' ? 'وسيلة التأكيد: البريد الإلكتروني' : 'وسيلة التأكيد: الموبايل'),
       kv('تاريخ التسجيل', A.arDateTime(a.created_at)),
@@ -479,6 +483,13 @@
           '<input class="input" id="eNid" dir="ltr" value="' + A.esc(a.national_id || '') + '"></div>' +
         '<div class="field"><label for="eBranch">الفرع النقابي</label>' +
           '<select class="input" id="eBranch">' + branches + '</select></div>' +
+        '<div class="field"><label for="eGrade">المرتبة الهندسية</label>' +
+          '<select class="input" id="eGrade">' +
+            [['', 'لم تُحدَّد'], ['trainee', 'مهندس متدرب'], ['associate', 'مهندس مشارك'],
+             ['practicing', 'مهندس ممارس'], ['consultant', 'مهندس استشاري']].map(function (o) {
+              return '<option value="' + o[0] + '"' + ((a.grade || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+            }).join('') +
+          '</select></div>' +
         '<div class="field"><label for="ePhone">رقم الموبايل</label>' +
           '<input class="input" id="ePhone" dir="ltr" value="' + A.esc(a.phone || '') + '"></div>' +
         '<div class="field"><label for="eEmail">البريد الإلكتروني</label>' +
@@ -492,12 +503,21 @@
         '<div class="notice"><span>تغيير هذه الحقول يُسجَّل في سجل التدقيق باسمك، ويظهر أسفل هذه الصفحة.</span></div>',
       onOk: function (host) {
         var g = function (x) { return host.querySelector('#' + x).value.trim(); };
-        return API.admin.updateAccount(id, {
-          name: g('eName'), synd_no: g('eSynd'), national_id: g('eNid'),
-          branch: host.querySelector('#eBranch').value,
-          phone: g('ePhone'), email: g('eEmail'),
-          exempt: host.querySelector('#eExempt').checked,
-          note: g('eNote')
+        /* المرتبة تُحفظ بدالتها المستقلة (٠٢٦) قبل بقية الحقول — تغييرها
+           وحده لا يمر عبر admin_update_account التي لا تعرف العمود */
+        var gSel = host.querySelector('#eGrade');
+        var gNew = gSel ? (gSel.value || null) : null;
+        var gradeStep = (!gSel || gNew === (a.grade || null))
+          ? Promise.resolve()
+          : API.admin.setGrade(id, gNew);
+        return gradeStep.then(function () {
+          return API.admin.updateAccount(id, {
+            name: g('eName'), synd_no: g('eSynd'), national_id: g('eNid'),
+            branch: host.querySelector('#eBranch').value,
+            phone: g('ePhone'), email: g('eEmail'),
+            exempt: host.querySelector('#eExempt').checked,
+            note: g('eNote')
+          });
         }).then(function () {
           A.toast('حُفظت تعديلات «' + g('eName') + '».', 'ok');
           load();
