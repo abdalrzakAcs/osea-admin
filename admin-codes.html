@@ -129,6 +129,15 @@
 
   var state = { search: '' };
   var items = [], catItems = [], folders = [];
+  /* خيار المجلدات الفرعية لكل مجال (ترحيلة ٠٢٨): مجالٌ أُطفئ خياره لا يعرض
+     مجلداته في التطبيق، فكودُ اشتراكٍ بأحدها يمنح استحقاقاً لا بابَ إليه.
+     نصله بوسم على مربّع الاختيار — الخريطة بالاسم لأن الرابط نصّي، وغيابها
+     (قاعدة لم تصلها الترحيلة) يعني بلا وسوم وشاشةً كما كانت. */
+  var domainSubs = {};
+  function domainSubsOff(name) {
+    var k = 'd:' + String(name == null ? '' : name).trim();
+    return Object.prototype.hasOwnProperty.call(domainSubs, k) && domainSubs[k] === false;
+  }
   var $ = function (id) { return document.getElementById(id); };
   var tbody;
 
@@ -155,13 +164,24 @@
       API.content.catalog(),
       /* المجلدات لأكواد الاشتراك بمجلد — قراءة الطاقم تشمل المعطّل، وفشلها
          لا يُسقط الصفحة كلها (قبل تطبيق ترحيل 021 مثلاً) بل يترك اللائحة فارغة */
-      API.admin.folders().catch(function () { return { folders: [] }; })
+      API.admin.folders().catch(function () { return { folders: [] }; }),
+      /* والمجالات بالتسامح نفسه: فشلها (٠٢٨ غير مطبَّقة بعد) يترك الشاشة
+         كما هي بلا وسوم تحذير — لا يسقط إصدار الأكواد على ميزة عرض.
+         وحارس الوجود قبله لنسخة osea-api.js قديمة في ذاكرة المتصفح */
+      (API.admin.domains
+        ? API.admin.domains().catch(function () { return null; })
+        : Promise.resolve(null))
     ]).then(function (r) {
       items = r[0] || [];
       /* كل بنود الكتالوج الفعّالة لا الكتب وحدها — admin_issue_code (ترحيل
          022) يقبل أي بند، والاستحقاق kind='book' يفكّ الاستمارة والدرس أيضاً */
       catItems = (r[1] || []).filter(function (c) { return c.active !== false; });
       folders = ((r[2] || {}).folders) || [];
+      domainSubs = {};
+      ((r[3] && r[3].domains) || []).forEach(function (d) {
+        if (!d || !d.name) { return; }
+        domainSubs['d:' + String(d.name).trim()] = d.use_subfolders !== false;
+      });
       render();
     }).catch(function (err) {
       tbody.innerHTML = '<tr><td colspan="8">' + A.errorState(A.errText(err)) + '</td></tr>';
@@ -289,7 +309,13 @@
             ' <small style="color:var(--text-secondary)">' +
               A.esc((f.domain || '—') + ' · ' + (ACCESS_AR[f.access] || f.access || '—') +
                     (f.active === false ? ' · معطّل' : '')) +
-            '</small></label>';
+            '</small>' +
+            /* المجلد قائم في القاعدة ولا باب إليه في التطبيق: الكود يصدر
+               ويُفعَّل ولا يرى صاحبه شيئاً — فيُقال هنا قبل الإصدار */
+            (domainSubsOff(f.domain)
+              ? ' <span class="tag tag--gold">لا يظهر — المجال بلا مجلدات فرعية</span>'
+              : '') +
+            '</label>';
         }).join('')
         : '<span class="hint">لا مجلدات بعد — أنشئها من شاشة «المجلدات والرسوم» أولاً.</span>') +
         '</div></div>' +

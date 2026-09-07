@@ -41,6 +41,14 @@
 
       <div class="adm-bar" style="margin-block-start:-8px">
         <div class="adm-filters" id="filters" role="group" aria-label="تصفية بالحالة"></div>
+        <!-- طابور التوثيق (ترحيلة ٠٢٩): مجموعة ثانية مستقلة عن شرائح الحالة
+             عمداً — «موافَق عليه» حالةُ انتساب و«بانتظار التوثيق» حالةُ رقمٍ
+             أو مرتبة، فجمعهما في مجموعة واحدة يوحي بأنها قيمٌ لحقلٍ واحد
+             يُلغي بعضها بعضاً وهي في الحقيقة تتراكب. تبقى مخفيةً حتى يثبت أن
+             القاعدة تعرف p_verify: قاعدةٌ لم تصلها ٠٢٩ لا تُعرض عليها شرائح
+             لا تعمل. -->
+        <div class="adm-filters" id="vfilters" role="group"
+             aria-label="تصفية بطابور التوثيق" hidden></div>
       </div>
 
       <!-- شريط العمليات الجماعية -->
@@ -101,19 +109,35 @@
     rejected: { label: 'مرفوض',             cls: 'tag--error' }
   };
 
+  /* شريحتا طابور التوثيق (٠٢٩) — قيمتا p_verify اللتان تعرفهما الدالة.
+     التسميتان تقولان «بانتظار» صراحةً كي لا تُقرأ الشريحة تصفيةً على
+     «من له رقم نقابي» بدل «من ينتظر توثيقه». */
+  var VERIFY = [['synd', 'رقم نقابي بانتظار التوثيق', 'pending_synd'],
+                ['grade', 'مرتبة بانتظار البتّ',      'pending_grade']];
+
   /* الحالة الابتدائية تقبل ?status= — النظرة العامة تربط ببطاقة «بانتظار
-     الموافقة» مباشرةً، فلا يصح أن تفتح الصفحة على «الكل». */
+     الموافقة» مباشرةً، فلا يصح أن تفتح الصفحة على «الكل».
+     و?verify= بالمنطق نفسه: طابور التوثيق يجب أن يكون قابلاً للربط من أي
+     شاشة أو رسالة داخلية، لا أن يُبلَغ بضغطتين فقط. */
   var qs = new URLSearchParams(window.location.search);
   var q0 = qs.get('status');
+  var v0 = qs.get('verify');
   var state = { search: qs.get('q') || '',
                 status: ['pending', 'approved', 'rejected'].indexOf(q0) >= 0 ? q0 : 'all',
                 branch: 'all',
+                /* قيمتا الشريحتين وحدهما — الدالة تقبل 'any' أيضاً لكن لا
+                   شريحة لها، وحالةٌ مصفّاة بلا شريحة مضغوطة تكذب على القارئ */
+                verify: ['synd', 'grade'].indexOf(v0) >= 0 ? v0 : '',
                 sort: 'created_desc', limit: 50, offset: 0, total: 0 };
   var rows = [];
   var picked = Object.create(null);
 
+  /* هل تقبل الدالة في القاعدة وسيط p_verify؟ يُحسم عند أول نداء ولا يُسأل
+     بعده (تسامح الترحيلات: ٠٢٩ قد لا تُطبَّق أياماً بعد نشر الواجهة). */
+  var verifyOk = true;
+
   var $ = function (id) { return document.getElementById(id); };
-  var tbody, pagerEl, filtersEl, bulkBar, bulkCount;
+  var tbody, pagerEl, filtersEl, vfiltersEl, bulkBar, bulkCount;
 
   A.boot({
     page: 'users',
@@ -124,6 +148,7 @@
   }).then(function (st) {
     if (!st) return;
     tbody = $('rows'); pagerEl = $('pager'); filtersEl = $('filters');
+    vfiltersEl = $('vfilters');
     bulkBar = $('bulkBar'); bulkCount = $('bulkCount');
     if (state.search) { $('q').value = state.search; }
     wire();
@@ -156,12 +181,74 @@
   }
 
   /* ---------------------------------------------------------------- التحميل */
+
+  /* هل يقول الخطأ «الدالة لا تعرف p_verify»؟ PostgREST يختار الدالة بأسماء
+     المفاتيح المرسَلة، فمفتاحٌ خارج التوقيع يعني عنده «لا دالة بهذا الاسم»
+     (PGRST202) لا «وسيط يُتجاهَل» — وهذا بعينه ما يحدث قبل تطبيق ٠٢٩. */
+  function isVerifyUnsupported(e) {
+    var m = (e && (e.message || e.hint || e.details)) || '';
+    return !!(e && (e.code === 'PGRST202' || e.code === '42883')) ||
+           /p_verify|schema cache/i.test(m);
+  }
+
+  /* نداء ٠٠٨ كما كان — بلا p_verify — لقاعدة لم تصلها ٠٢٩ بعد.
+     ولِمَ نداء مباشر لا API.admin.accounts؟ لأن الأخيرة تُرسل p_verify في
+     كل نداء ولو فارغاً، فلا سبيل إلى حذف المفتاح من طريقها. وبلا هذا
+     المسار لا تتعطّل ميزةُ الطابور وحدها بل شاشةُ الحسابات كلها بين نشر
+     الواجهة وتطبيق الترحيلة. الترويسة على نمط content-url في osea-api.js:
+     apikey + رمز الجلسة — والرمز لازم لأن is_staff() تُقيَّم على المستخدم
+     الداخل لا على anon. */
+  function legacyAccounts(o) {
+    var cfg = window.OSEA_CONFIG || {};
+    if (!cfg.SUPABASE_URL || typeof fetch !== 'function') {
+      return Promise.reject(new Error('تعذّر الاتصال بقاعدة النقابة'));
+    }
+    return API.session().then(function (s) {
+      return fetch(cfg.SUPABASE_URL + '/rest/v1/rpc/admin_list_accounts', {
+        method: 'POST',
+        headers: {
+          apikey: cfg.SUPABASE_ANON_KEY,
+          Authorization: 'Bearer ' + ((s && s.access_token) || cfg.SUPABASE_ANON_KEY),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          p_search: o.search || null, p_status: o.status || null,
+          p_branch: o.branch || null, p_sort: o.sort || 'created_desc',
+          p_limit: o.limit || 50, p_offset: o.offset || 0
+        })
+      });
+    }).then(function (r) {
+      return r.json().catch(function () { return null; }).then(function (j) {
+        if (!r.ok) {
+          throw new Error((j && (j.message || j.hint)) ||
+                          ('تعذّر جلب الحسابات (' + r.status + ')'));
+        }
+        return j;
+      });
+    });
+  }
+
+  /* المدخل الوحيد إلى القائمة — الجدول والتصدير معاً، كي لا يبقى أحدهما
+     على المسار الجديد والآخر على القديم. */
+  function fetchAccounts(o) {
+    if (!verifyOk) { return legacyAccounts(o); }
+    return API.admin.accounts(o).catch(function (e) {
+      if (!isVerifyUnsupported(e)) { throw e; }
+      /* الترحيلة لم تصل القاعدة: نُسقط التصفية ونُخفي شريحتيها ونُكمل
+         بالسلوك القديم — لا شاشة خطأ على ميزةٍ إضافية. */
+      verifyOk = false;
+      state.verify = '';
+      return legacyAccounts(o);
+    });
+  }
+
   function load() {
     tbody.innerHTML = '<tr><td colspan="9"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
-    API.admin.accounts(state).then(function (d) {
+    fetchAccounts(state).then(function (d) {
       rows = d.rows || [];
       state.total = d.total | 0;
       paintFilters(d.counts || {});
+      paintVerify(d.counts || {});
       paintBranches(d.branches || []);
       $('totalTag').textContent = A.toAr(state.total) + ' حساب';
       paintRows();
@@ -189,6 +276,37 @@
     });
   }
 
+  /* شريحتا طابور التوثيق (٠٢٩) — على شاكلة paintFilters أعلاه، وتفترقان
+     عنها في ثلاثة أشياء مقصودة:
+       • العدّ يأتي من مفتاح مستقل عن قيمة الشريحة (counts.pending_synd لا
+         counts.synd) لأن مجاميع الطابور غير مجاميع حالة الحساب.
+       • لا شريحة «الكل» هنا: المحايد هو ألّا تُصفّى، فالضغط على شريحة
+         مفعّلة يُلغيها — ولولا ذلك لَما أمكن الخروج من الطابور إلا بتحديث
+         الصفحة، لأن الشريحتين تتراكبان مع شرائح الحالة ولا تُلغيانها.
+       • المجموعة كلها تختفي إن لم تعرف القاعدة p_verify (تسامح ٠٢٩):
+         حارسان لا واحد — الراية التي تحسمها أول محاولة نداء، وغيابُ
+         المجموع في الردّ لدالةٍ قديمة نجح نداؤها لسببٍ ما. */
+  function paintVerify(c) {
+    var ready = verifyOk && c.pending_synd !== undefined;
+    vfiltersEl.hidden = !ready;
+    if (!ready) { vfiltersEl.innerHTML = ''; return; }
+    vfiltersEl.innerHTML =
+      '<span style="align-self:center;font-size:12.5px;font-weight:700;' +
+        'color:var(--text-secondary)">طابور التوثيق</span>' +
+      VERIFY.map(function (d) {
+        return '<button class="adm-chip" data-v="' + d[0] + '" aria-pressed="' +
+          (state.verify === d[0]) + '">' + A.esc(d[1]) +
+          '<span class="n">' + A.toAr(c[d[2]] || 0) + '</span></button>';
+      }).join('');
+    vfiltersEl.querySelectorAll('[data-v]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var v = b.getAttribute('data-v');
+        state.verify = (state.verify === v) ? '' : v;
+        state.offset = 0; load();
+      });
+    });
+  }
+
   function paintBranches(list) {
     var sel = $('branch');
     if (sel.options.length > 1) return;            /* يُبنى مرة واحدة */
@@ -201,11 +319,13 @@
 
   function paintRows() {
     if (!rows.length) {
+      /* شريحة الطابور تصفيةٌ كسائرها: بدونها في الشرط كان طابورٌ فارغ
+         يقول «لا حسابات مسجّلة بعد» على منصةٍ فيها آلاف الحسابات. */
+      var filtered = !!(state.search || state.status !== 'all' ||
+                        state.branch !== 'all' || state.verify);
       tbody.innerHTML = '<tr><td colspan="9">' + A.emptyState(
-        state.search || state.status !== 'all' || state.branch !== 'all'
-          ? 'لا نتائج مطابقة'
-          : 'لا حسابات مسجّلة بعد',
-        state.search || state.status !== 'all' || state.branch !== 'all'
+        filtered ? 'لا نتائج مطابقة' : 'لا حسابات مسجّلة بعد',
+        filtered
           ? 'جرّب توسيع البحث أو إلغاء التصفية.'
           : 'ستظهر هنا طلبات الانتساب فور تسجيل المهندسين من التطبيق.'
       ) + '</td></tr>';
@@ -225,9 +345,18 @@
           (a.exempt ? '<span class="adm-sub"><span class="tag tag--gold">معفى من الرسوم</span></span>' : '') +
           (a.pass_hash === undefined && a.has_password === false
             ? '<span class="adm-sub">بلا كلمة مرور</span>' : '') + '</td>' +
-        '<td class="num strong">' + A.esc(a.synd_no) + '</td>' +
+        /* علامتا الطابور (ترحيلة ٠٢٩): admin_list_accounts تُعيد صف الحساب
+           كاملاً (to_jsonb(f) ناقص pass_hash)، فالحقلان يصلان بلا تعديل
+           خادمي — وقبل تطبيق الترحيلة يكونان undefined فلا تُرسم علامة
+           ولا يتأثر الجدول بشيء. الموضع بجانب الرقم والفرع لا في عمود
+           جديد: القرار يُتّخذ «وفقًا للرقم النقابي والفرع» فهناك تُقرأ. */
+        '<td class="num strong">' + A.esc(a.synd_no) +
+          (a.synd_no_status === 'pending'
+            ? '<span class="adm-sub"><span class="tag tag--gold">قيد التحقق</span></span>' : '') + '</td>' +
         '<td class="num">' + A.esc(a.national_id) + '</td>' +
-        '<td>' + A.esc(a.branch) + '</td>' +
+        '<td>' + A.esc(a.branch) +
+          (a.grade_req_status === 'pending'
+            ? '<span class="adm-sub"><span class="tag tag--gold">المرتبة قيد التحقق</span></span>' : '') + '</td>' +
         '<td class="num" dir="ltr" style="text-align:start">' + A.esc(contact) + '</td>' +
         '<td>' + A.arDate(a.created_at) + '</td>' +
         '<td><span class="tag ' + s.cls + '">' + A.esc(s.label) + '</span>' +
@@ -377,9 +506,12 @@
   function exportAll() {
     var btn = $('exportBtn');
     btn.disabled = true; btn.textContent = 'جارٍ التجهيز…';
-    /* التصدير يجلب كل السجل من الخادم لا الصفحة المعروضة فقط */
-    API.admin.accounts({ search: state.search, status: state.status, branch: state.branch,
-                         sort: state.sort, limit: 500, offset: 0 })
+    /* التصدير يجلب كل السجل من الخادم لا الصفحة المعروضة فقط —
+       وبالتصفية المعروضة نفسها: verify معها وإلا صدّر «تصدير Excel» فوق
+       طابورٍ مفتوح كلَّ الحسابات، وهو غير ما يراه الموظف أمامه. ويمرّ
+       بـfetchAccounts لا بالـAPI مباشرةً كي ينتفع بمسار التسامح نفسه. */
+    fetchAccounts({ search: state.search, status: state.status, branch: state.branch,
+                    verify: state.verify, sort: state.sort, limit: 500, offset: 0 })
       .then(function (d) {
         var all = d.rows || [];
         A.exportCsv('osea-accounts.csv',

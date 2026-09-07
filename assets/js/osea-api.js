@@ -111,6 +111,27 @@
       if (!LIVE) return Promise.reject(new Error('قاعدة النقابة غير متاحة'));
       return sb.rpc('member_set_branch', { p_account: id, p_branch: branch }).then(must);
     },
+    /* الرقم النقابي يكتبه العضو ولا يصير معتمداً بكتابته: الدالة تضعه
+       «قيد المراجعة» حتى تصادق عليه اللوحة، لأنه مفتاح الهوية الرسمي
+       ولو قُبل كما ورد لأمكن أن ينتحل عضوٌ رقم زميله ويرث محتواه. */
+    /* كلمة المرور وسيطٌ ثالث إلزامي: الرقم النقابي معرّف دخول (login_account
+       تبحث به)، وقاعدة المنصة منذ ٠٠٩ج أن تغيير معرّف دخول يمرّ بكلمة
+       المرور. والدالة تردّ { ok:false, error } عند خطأ كلمة المرور بدل
+       رفع استثناء — كي لا تُلغى زيادةُ عدّاد المحاولات مع المعاملة —
+       فعلى المستدعي فحصُ r.ok لا الاكتفاء بـ catch. */
+    setSyndNo: function (id, syndNo, password) {
+      if (!LIVE) return Promise.reject(new Error('قاعدة النقابة غير متاحة'));
+      return sb.rpc('member_set_synd_no', {
+        p_account: id, p_synd_no: syndNo, p_password: password
+      }).then(must);
+    },
+    /* المرتبة الهندسية طلبٌ لا إعلان (ترحيلة ٠٢٦): العضو يطلب متدرب/مشارك/
+       ممارس/استشاري، والإدارة وحدها تعتمد. الفصل واجب لأن المرتبة تفتح
+       محتوى ورسوماً، فلا تُترك بيد صاحب المصلحة فيها. */
+    setGradeRequest: function (id, grade) {
+      if (!LIVE) return Promise.reject(new Error('قاعدة النقابة غير متاحة'));
+      return sb.rpc('member_set_grade_request', { p_account: id, p_grade: grade }).then(must);
+    },
     attempts: function () {
       return sb.from('attempts')
         .select('*, accounts(name, branch)')
@@ -234,6 +255,24 @@
          و«*» تُرفض من Postgres حين ينقص امتياز عمودٍ واحد. */
       return sb.from('content_folders').select('id,name,domain,kind,access,price_month,price_year,price_once,sort,active').eq('active', true).order('sort').then(must);
     },
+    /* مجالات المحتوى: كان المجال نصّاً حرّاً داخل صف المجلد، فتعدّدت تهجئة
+       المجال الواحد وتفرّقت مجلداته إلى قسمين في شاشة المحتوى. صار جدولاً
+       يديره المدير ترتيباً وتسميةً، والقراءة العلنية للنشط وحده (RLS).
+       الإرجاع مغلَّف { domains } لا مصفوفة عارية: الشاشات تقرأ r.domains،
+       فيبقى الشكل واحداً لو رافق المجالات لاحقاً عدّادٌ أو إعداد عرض. */
+    domains: function () {
+      if (!LIVE) { return offline('مجالات المحتوى')(); }
+      /* أعمدة صريحة كنمط folders أعلاه: «*» تُرفض من Postgres حين ينقص
+         امتياز عمودٍ واحد على الجدول */
+      /* بلا ‎.eq('active', true)‎ عمداً: الخريطة يجب أن تكون كاملة. المجال
+         الموقوف لو غاب عن الردّ لعاد usesSubfolders إلى افتراضه (true)،
+         فينقلب مجالٌ ضُبط على «الكتاب مباشرةً» إلى شاشة المجلدات لحظة
+         إيقافه — انقلابٌ صامت في سلوك ضبطته الإدارة. الشاشة تقرأ active
+         وتخفي الموقوف بنفسها. */
+      return sb.from('content_domains').select('id,name,sort,use_subfolders,active')
+        .order('sort').order('name').then(must)
+        .then(function (rows) { return { domains: rows || [] }; });
+    },
     /* رابط موقّع قصير العمر — يُطلب لحظة الفتح ولا يُخزَّن.
        بمهلة صريحة: طلب معلّق بلا نهاية يترك الشاشة عالقة على المؤشر. */
     url: function (itemId, accountId) {
@@ -309,6 +348,202 @@
     if (!LIVE) { return offline('الرسوم')(); }
     return sb.from('products').select('*').eq('active', true).order('sort').then(must);
   }
+
+  /* ---------- الدفع الآلي عبر شام كاش (بوابة ePay) ----------
+     يُضاف **إلى جانب** المسار اليدوي لا بدلاً منه: المسار اليدوي (يحوّل
+     العضو بنفسه في تطبيق شام كاش ثم يكتب رقم العملية فتدقّقه الإدارة)
+     يبقى كما هو حرفاً بحرف — هو الاحتياط حين لا تكون البوابة مضبوطة بعد،
+     وهو الطريق الوحيد لسيريتل كاش.
+
+     🔒 المفتاح السري للبوابة لا يمرّ من هنا إطلاقاً ولا يصل الجهاز:
+     حزمة الأندرويد قابلة للفكّ، فالتشفير (JWE / A256GCM) وإنشاء الفاتورة
+     يجريان داخل دالة الحافّة sham-pay وحدها بمفاتيح من متغيّرات البيئة،
+     والمتصفح لا يرى إلا رابط الدفع الذي ردّته البوابة.
+
+     🔒 المبلغ لا يُرسل من العميل: الطلب يحمل «الخدمة» و«البند» فقط
+     وتحسب دالة الحافّة الرسم من جدول الرسوم. لو أُرسل المبلغ من الشاشة
+     لأمكن لأي عضو تعديل الطلب ودفع ليرة واحدة ثم قبض الاستحقاق كاملاً.
+
+     قاعدة المزوّد الملزمة: الفاتورة تُنشأ **لحظة ضغط زر الدفع النهائي**
+     لا قبله — عمرها عشر دقائق يبدأ من الإنشاء. فلا shamStart عند فتح
+     الشاشة ولا عند اختيار الخدمة؛ والمزوّد يمنع الاستطلاع الدوري لحالة
+     الفاتورة، فالحالة تُقرأ مرة عند العودة أو بضغطة «تحديث الحالة». */
+
+  /* سؤال التوافر قصير: الشاشة لا تنتظره وتبقى صالحة للدفع اليدوي بدونه */
+  var SHAM_PROBE_MS = 8000;
+  /* إنشاء الفاتورة يمرّ ببوابة خارجية (تشفير + نداء شبكي إلى شام كاش)
+     فيحتاج سعة أكبر من مهلة content-url؛ والانقطاع قبل الردّ لا يعني أن
+     الفاتورة لم تُنشأ — لذلك رسالة المهلة تنهى عن إعادة المحاولة فوراً */
+  var SHAM_START_MS = 25000;
+
+  function shamAbort(ms) {
+    var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    return { ctl: ctl, timer: setTimeout(function () { if (ctl) { ctl.abort(); } }, ms) };
+  }
+
+  var shamPay = {
+    /* هل المسار الآلي متاح؟ — سؤالٌ **لا يُنشئ فاتورة**.
+       الطلب GET عمداً: دالة الحافّة كأخواتها لا تقبل إلا POST، فأسوأ ما
+       يمكن أن يردّه هو 405 ولا يُنشأ رقم فاتورة بالخطأ مهما كان جسدها —
+       ولو سألنا بـPOST لخالفنا قاعدة «الفاتورة لحظة الضغط» من أول فتح.
+       القراءة:
+         • فشل شبكي أو 404 من بوابة الدوال ⇐ الدالة غير منشورة ⇐ لا مسار آلي.
+         • 200 مع configured:false ⇐ منشورة بلا مفاتيح ⇐ لا مسار آلي.
+         • أي ردّ آخر ⇐ الدالة موجودة فيُعرض الزر، وأخطاء الضبط تُترجم
+           لحظة الضغط — أهون من إخفاء ميزة عاملة بسبب ردّ لم نفهمه.
+       (اتفاق الواجهة: على sham-pay أن تردّ على GET ?probe=1 بـ
+        { configured: true|false } كي يكون الإخفاء دقيقاً لا استنتاجياً.)
+       والافتراض عند أي فشل هو false: تركيبٌ غير مضبوط يجب ألّا يفقد
+       القدرة على الدفع — يبقى المسار اليدوي وحده كما هو اليوم. */
+    shamAvailable: function () {
+      if (!LIVE || typeof fetch !== 'function') { return Promise.resolve(false); }
+      var a = shamAbort(SHAM_PROBE_MS);
+      return fetch(cfg.SUPABASE_URL + '/functions/v1/sham-pay?probe=1', {
+        signal: a.ctl ? a.ctl.signal : undefined,
+        method: 'GET',
+        headers: {
+          apikey: cfg.SUPABASE_ANON_KEY,
+          Authorization: 'Bearer ' + cfg.SUPABASE_ANON_KEY
+        }
+      }).then(function (r) {
+        clearTimeout(a.timer);
+        if (r.status === 404) { return false; }
+        return r.json().catch(function () { return null; }).then(function (j) {
+          return !(j && j.configured === false);
+        });
+      }).catch(function () {
+        clearTimeout(a.timer);
+        return false;
+      });
+    },
+
+    /* إنشاء الفاتورة وطلب رابط الدفع — يُستدعى لحظة الضغط النهائي فقط.
+       تُعيد { bill_no, payment_url, amount, raw } — والشاشة تنقل العضو
+       إلى payment_url. الرابط يُفحص https هنا لا في الشاشة: أي مخطط آخر
+       (javascript: أو intent:) يُنفَّذ داخل WebView أندرويد لو مُرِّر
+       إلى location.href، فالفحص واجب على كل مستدعٍ لا على واحد. */
+    shamStart: function (account, service, itemId) {
+      if (!LIVE) { return Promise.reject(new Error('قاعدة النقابة غير متاحة')); }
+      if (typeof fetch !== 'function') {
+        return Promise.reject(new Error(
+          'متصفح الجهاز لا يدعم الدفع الآلي — حوّل يدوياً عبر تطبيق شام كاش ثم سجّل رقم العملية أدناه.'));
+      }
+      var a = shamAbort(SHAM_START_MS);
+      return fetch(cfg.SUPABASE_URL + '/functions/v1/sham-pay', {
+        signal: a.ctl ? a.ctl.signal : undefined,
+        method: 'POST',
+        headers: {
+          apikey: cfg.SUPABASE_ANON_KEY,
+          Authorization: 'Bearer ' + cfg.SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json'
+        },
+        /* بلا مبلغ عمداً — انظر رأس المنطقة */
+        body: JSON.stringify({
+          action: 'start',
+          account: account || null,
+          service: service || null,
+          item: itemId || null,
+          /* عنوان العودة بعد الدفع: الصفحة نفسها التي بدأ منها العضو بلا
+             معاملات (رقم الفاتورة محفوظ على الجهاز وتسأل عنه الشاشة عند
+             العودة). https حصراً، ودالة الحافّة تتجاهله ما لم يطابق نطاق
+             المنصة المضبوط عندها — فلا يفتح هذا الحقل باب توجيهٍ إلى
+             غريب. وبدونه يعود العضو إلى العنوان الافتراضي وحده. */
+          redirect_url: (typeof location !== 'undefined' && location.protocol === 'https:')
+            ? (location.protocol + '//' + location.host + location.pathname) : null
+        })
+      }).then(function (r) {
+        clearTimeout(a.timer);
+        if (!r.ok) {
+          return r.json().catch(function () { return {}; }).then(function (e) {
+            /* رموز دالة الحافّة إنجليزية والشاشة تطبع الرسالة كما هي —
+               الترجمة هنا كنمط content.url كي تنتفع بها كل مستدعية */
+            var AR = {
+              'account required': 'الدفع يتطلب حساباً في المنصة — سجّل دخولك ثم أعد المحاولة.',
+              'not approved': 'حسابك قيد مراجعة إدارة النقابة — يُفتح الدفع فور الموافقة.',
+              'service required': 'اختر الخدمة أولاً ثم أعد المحاولة.',
+              'item required': 'حدّد الكتاب أو المجلد المطلوب الاشتراك به.',
+              'not found': 'هذه الخدمة غير معروضة حالياً — أعد تحميل الشاشة.',
+              'price unavailable': 'تعذّر تحديد رسم هذه الخدمة على الخادم — استعمل التحويل اليدوي أدناه.',
+              'not configured': 'الدفع الآلي عبر شام كاش غير مفعّل بعد على المنصة — استعمل التحويل اليدوي أدناه.',
+              'agent invalid': 'حساب المنصة لدى شام كاش غير فعّال حالياً — استعمل التحويل اليدوي وأبلغ النقابة.',
+              'bill exists': 'أُنشئت فاتورتك سابقاً ولم تُلغَ — اضغط «تحديث الحالة» بدل إنشاء فاتورة ثانية.',
+              'gateway error': 'تعذّر الاتصال ببوابة شام كاش الآن — أعد المحاولة بعد قليل أو حوّل يدوياً أدناه.'
+            };
+            var code = (e && e.error) || '';
+            /* ترتيب مقصود: نصوصنا مضبوطة على شاشة الدفع وتحيل إلى التحويل
+               اليدوي، ثم رسالة الخادم العربية لما لم نغطّه، ثم الرمز خاماً
+               (قد يكون عربياً أصلاً فالخادم يضع العربية في error أحياناً) */
+            var srv = (e && e.message) || '';
+            var err = new Error(AR[code] ||
+              (/[؀-ۿ]/.test(srv) ? srv : '') || code ||
+              ('تعذّر إنشاء فاتورة الدفع (' + r.status + ')'));
+            /* 🔴 رقم الفاتورة يرافق أخطاء البوابة (١٧٠٤ «الرقم مستعمل»
+               خاصةً، وانقطاع الاتصال بعد الإنشاء): معناه أن الفاتورة
+               أُنشئت فعلاً. القاعدة الملزمة من المزوّد أن تُصالَح على
+               رقمها لا أن تُولَّد من جديد — فيُمرَّر الرقم إلى الشاشة
+               لتحفظه وتسأل عن حالته بدل ضغطةٍ ثانية تُنشئ فاتورتين. */
+            if (e && e.bill_no) { err.bill_no = String(e.bill_no); }
+            throw err;
+          });
+        }
+        return r.json();
+      }).then(function (j) {
+        var url = (j && (j.payment_url || j.paymentUrl)) || '';
+        if (!/^https:\/\//i.test(url)) {
+          throw new Error('ردّت البوابة برابط دفع غير صالح — لا تُتابع، واستعمل التحويل اليدوي وأبلغ النقابة.');
+        }
+        return {
+          bill_no: (j.bill_no || j.billNo || ''),
+          payment_url: url,
+          amount: (j.amount == null ? null : j.amount),
+          raw: j
+        };
+      }).catch(function (e) {
+        clearTimeout(a.timer);
+        /* المهلة هنا ليست فشلاً مؤكداً: قد تكون الفاتورة أُنشئت لدى شام
+           كاش وضاع الردّ في الطريق. إعادة الضغط فوراً تُنشئ ثانية —
+           والنص يوجّه إلى «تحديث الحالة» أولاً كما يشترط المزوّد. */
+        var out = new Error(e && e.name === 'AbortError'
+          ? 'انتهت مهلة إنشاء الفاتورة — قد تكون أُنشئت فعلاً. اضغط «تحديث الحالة» قبل إعادة المحاولة كي لا تُنشأ فاتورة ثانية.'
+          : ((e && e.message) || 'تعذّر إنشاء فاتورة الدفع'));
+        /* الرقم يعبر طبقة الالتقاط سليماً — بدونه يضيع مفتاح المصالحة */
+        if (e && e.bill_no) { out.bill_no = e.bill_no; }
+        throw out;
+      });
+    },
+
+    /* حالة الفاتورة — نداءٌ واحد عند العودة أو بضغطة «تحديث الحالة».
+       ⛔ لا استطلاع دوري: المزوّد يمنعه صراحةً ويُلزم الاعتماد على الـwebhook.
+       الرقم إلزامي: sham_bill_status (ترحيلة ٠٣٠) محصورةٌ بصاحب الفاتورة
+       وتطابق الحساب بالرقم في شرط الاستعلام نفسه، فبلا رقمٍ ترفع «الفاتورة
+       غير موجودة». يُرفض النداء الفارغ هنا برسالة تقول ما ينقص فعلاً بدل
+       أن يعود العضو بجوابٍ يوهمه أن فاتورته اختفت. */
+    shamStatus: function (account, billNo) {
+      if (!LIVE) { return Promise.reject(new Error('قاعدة النقابة غير متاحة')); }
+      var no = String(billNo == null ? '' : billNo).trim();
+      if (!no) {
+        return Promise.reject(new Error(
+          'لا رقم فاتورة محفوظاً على هذا الجهاز — أنشئ فاتورة جديدة، أو راجع النقابة إن كنت دفعت فعلاً.'));
+      }
+      return sb.rpc('sham_bill_status', {
+        p_account: account || null,
+        p_bill_no: no
+      }).then(must);
+    },
+
+    /* دفتر الفواتير لصفوف لوحة الإدارة — رقم حركة شام كاش (tranId).
+       يسكن sham_bills لا payments، وشاشة المدفوعات تحتاجه للمطابقة مع
+       كشف المزوّد. القراءة بسياسة الطاقم (sham_bills_staff_read في ٠٣٠)
+       فلا تعمل لغير جلسة طاقم — وهو المقصود. إثراء عرضٍ لا أكثر: فشلُه
+       لا يجوز أن يُسقط جدول المدفوعات، فيُردّ فارغاً عند تعذّره. */
+    shamBills: function (billNos) {
+      if (!LIVE || !billNos || !billNos.length) { return Promise.resolve([]); }
+      return sb.from('sham_bills')
+        .select('bill_no, tran_id, status_id, amount, settled_at, payment_id')
+        .in('bill_no', billNos).then(must);
+    }
+  };
+
 
   /* ---------- مصادقة الأعضاء ----------
      الأعضاء ليسوا auth.users: التحقق بـbcrypt داخل القاعدة عبر دوال
@@ -429,7 +664,14 @@
     setAvatar: function (id, url) {
       if (!LIVE) { return Promise.reject(new Error('قاعدة النقابة غير متاحة')); }
       return sb.rpc('member_set_avatar', { p_account: id, p_url: url == null ? '' : url }).then(must);
-    }
+    },
+
+    /* اسمٌ ثانٍ لدالتَي الهوية عن قصد: شاشات الحساب اتُّفق أن تناديهما
+       member.setSyndNo / member.setGradeRequest، بينما جارتهما التاريخية
+       setBranch تُنادى من الجذر (account.html:802). التفويض إلى live بدل
+       نسخ الجسم يمنع منطقين للعملية الواحدة يتباعدان بعد أول تعديل. */
+    setSyndNo: function (id, syndNo, password) { return live.setSyndNo(id, syndNo, password); },
+    setGradeRequest: function (id, grade) { return live.setGradeRequest(id, grade); }
   };
 
   /* ---------- طبقة لوحة الإدارة ----------
@@ -536,6 +778,26 @@
     'دير الزور', 'الرقة', 'الحسكة', 'درعا', 'السويداء', 'القنيطرة', 'إدلب'
   ];
 
+  /* مفتاح الفرع: الفرع الواحد مكتوب في السجلات «حلب» تارة و«فرع حلب» تارة،
+     فتنقسم قائمة الفلترة إلى خيارين لواقعٍ واحد ويختفي نصف السجل عن من اختار
+     أحدهما. التطبيع هنا لا في الشاشة كي تشترك فيه قائمة التطبيق ولوحة
+     الإدارة معاً؛ والتشذيب قبل الحذف وبعده لأن القيمة ذات المسافة السابقة
+     كانت تفلت من التعبير النمطي فتبقى بتهجئتها الثانية. */
+  /* يطابق public.accr_clean في ترحيلة ٠٢٧ حرفاً بحرف — وهذا شرطٌ لا تجميل:
+     الفلترة في التطبيق تقارن نصّاً بنصّ، فلو نظّفت القاعدة محرفاً لا تنظّفه
+     الواجهة (أو العكس) لعاد المنسدل ينقسم على فرعٍ واحد وهو العطل نفسه.
+     الصنف يشمل كل الفراغات (بما فيها CR الوارد من استيراد Excel) والمسافات
+     الخفية والوصلات الصفرية وعلامة ترتيب البايتات، واللاحقة + تدمج
+     المتتاليات فلا تبقى «ريف  دمشق» بمسافتين قيمةً ثانية. */
+  var BLANKS = /[\s ​‌‍‎‏؜﻿]+/g;
+  function branchKey(b) {
+    var s = String(b == null ? '' : b).replace(BLANKS, ' ');
+    /* التشذيب باستبدال لا بـtrim: trim في المتصفحات القديمة لا يحذف
+       U+00A0، وقد استُبدلت أعلاه فصار الطرف مسافةً عادية على أي حال */
+    s = s.replace(/^ +/, '').replace(/ +$/, '');
+    return s.replace(/^فرع +/, '').replace(/^ +/, '');
+  }
+
   /* أنواع بنود السجل — المفاتيح هي قيم عمود kind في القاعدة (قيد ترحيلة ٠٢٤).
      مصدر واحد كي لا يتباعد اسم النوع بين اللوحة والتطبيق، ولا يظهر نوع في
      أحدهما دون الآخر كما كاد يحدث مع السجلين السوريين. */
@@ -551,6 +813,9 @@
     /* الأنواع والمحافظات مرفقتان بالواجهة نفسها: من يقرأ السجل يحتاجهما */
     KINDS: ACCREDIT_KINDS,
     GOVERNORATES: GOVERNORATES,
+    /* والتطبيع معهما: من يبني خيارات الفلترة من صفوف السجل يجب أن يبنيها
+       بالمفتاح الذي حُفظ به الفرع، وإلا عادت القائمة بخيارين متطابقين */
+    branchKey: branchKey,
 
     /* الواجهة العلنية: المنشور من نوع واحد، أو السجل كله بلا وسيط
        (شاشة المدخل تعدّ الأنواع الثلاثة من نداء واحد) */
@@ -587,8 +852,10 @@
         cert_date: row.cert_date || null,
         field: row.field,
         /* الفرع صار لكل الأنواع لا للمهندسين وحدهم (ترحيلة ٠٢٤): للشركة
-           والمكتب فرعٌ تسجّل فيه، وعليه تقوم فلترة السجل في التطبيق */
-        branch: row.branch || null,
+           والمكتب فرعٌ تسجّل فيه، وعليه تقوم فلترة السجل في التطبيق.
+           ويُطبَّع عند الحفظ كما يُطوى cert_no إلى اللاتيني والبريد إلى
+           الصغير أعلاه: القصد واحد — ألّا تعيش تهجئتان لقيمةٍ واحدة */
+        branch: branchKey(row.branch) || null,
         governorate: row.governorate || null,
         address_sy: row.address_sy || null,
         address_abroad: row.address_abroad || null,
@@ -670,9 +937,13 @@
     /* الحسابات: بحث وتصفية وفرز وترقيم على الخادم */
     accounts: function (o) {
       o = o || {};
+      /* p_verify: طابور التوثيق ('synd' أو 'grade' أو 'any') — ترحيلة ٠٢٩.
+         الإدارة تحتاج أن تجد المنتظِرين لا أن تتصفّح كل الحسابات بحثاً عن
+         وسمٍ ذهبي؛ والفهرسان الجزئيان في ٠٢٩ وُضعا لهذا الاستعلام بعينه. */
       return rpc('admin_list_accounts', {
         p_search: o.search || null, p_status: o.status || null, p_branch: o.branch || null,
         p_sort: o.sort || 'created_desc',
+        p_verify: o.verify || null,
         p_limit: o.limit || 50, p_offset: o.offset || 0
       });
     },
@@ -696,6 +967,18 @@
     resetPassword: function (id, pw) { return rpc('admin_reset_password', { p_id: id, p_new: pw }); },
     /* المرتبة الهندسية قرار الإدارة (ترحيلة ٠٢٦) — null تمسحها */
     setGrade: function (id, grade) { return rpc('admin_set_account_grade', { p_id: id, p_grade: grade || null }); },
+    /* تدقيق الرقم النقابي الذي أدخله العضو: القبول يثبّته والرفض يعيد الحقل
+       قابلاً للتعديل. السبب مكتوب لا اختياري في المعنى — بلا سبب يعيد العضو
+       إرسال الرقم نفسه فتدور المراجعة على نفسها بلا نهاية. */
+    verifySyndNo: function (id, approve, note) {
+      return rpc('admin_verify_synd_no', { p_id: id, p_approve: !!approve, p_note: note || null });
+    },
+    /* اعتماد المرتبة المطلوبة: المرتبة تُمرَّر صراحةً لا تُؤخذ من الطلب، كي
+       يعتمد المدقّق مرتبةً غير التي طُلبت (طلب «استشاري» يُقبل «ممارساً»)
+       بقرارٍ واحد بدل رفضٍ ثم طلبٍ ثانٍ من العضو. */
+    verifyGrade: function (id, approve, grade) {
+      return rpc('admin_verify_grade', { p_id: id, p_approve: !!approve, p_grade: grade || null });
+    },
 
     /* الطاقم */
     staff:       function () { return rpc('admin_list_staff'); },
@@ -710,6 +993,27 @@
     folders:      function ()   { return rpc('admin_folders'); },
     saveFolder:   function (p)  { return rpc('admin_save_folder', { p: p }); },
     deleteFolder: function (id) { return rpc('admin_delete_folder', { p_id: id }); },
+    /* مجالات المحتوى: قراءة للطاقم وحفظ/حذف للمدير — نفس تقسيم صلاحيات
+       المجلدات، فالمجال أعلى منها في الشجرة وتعديله يحرّك كل ما تحته */
+    domains:      function ()   { return rpc('admin_domains'); },
+    /* حمولة صريحة كنمط accredit.save: تمرير صف الجدول كما ورد يُدخل حقول
+       العرض التي تضيفها اللوحة (عدّاد المجلدات مثلاً) إلى jsonb الحفظ،
+       فيرفضها الخادم أو يخزّنها صامتاً — والحقول المسموح بها تُعرف هنا */
+    saveDomain:   function (row) {
+      row = row || {};
+      return rpc('admin_save_domain', {
+        p: {
+          id: row.id || null,
+          name: row.name,
+          sort: row.sort | 0,
+          /* الافتراض «يستخدم مجلدات» يحفظ سلوك اليوم: محتوى كل مجال قائمٌ
+             داخل مجلدات، وحفظ صفٍّ بلا الحقل كان سيُخفي مجلداته دفعةً واحدة */
+          use_subfolders: row.use_subfolders !== false,
+          active: row.active !== false
+        }
+      });
+    },
+    deleteDomain: function (id) { return rpc('admin_delete_domain', { p_id: id }); },
     /* رسوم الاختبار — جدول products (ترحيل 021) */
     products:    function () { return rpc('admin_products'); },
     saveProduct: function (p) {
@@ -837,6 +1141,9 @@
     /* ترتيب المجلدات والبنود بالسحب — موضع المعرّف في المصفوفة هو sort */
     reorderFolders: function (ids) { return rpc('admin_reorder_folders', { p_ids: ids }); },
     reorderContent: function (ids) { return rpc('admin_reorder_content', { p_ids: ids }); },
+    /* والمجالات كذلك: ترتيبها هو ترتيب أقسام شاشة المحتوى في التطبيق،
+       فتقديم مجال على آخر قرار عرضٍ تملكه الإدارة لا الترتيب الهجائي */
+    reorderDomains: function (ids) { return rpc('admin_reorder_domains', { p_ids: ids }); },
 
     /* حذف ملفٍ من السلة (لا يمسّ صف البند) — سياسات التخزين تحرسه */
     deleteContentFile: function (path) {
@@ -922,10 +1229,22 @@
     codes: codes,
     exam: exam,
     pricing: pricing,
+    /* الدفع الآلي عبر شام كاش — وسومٌ عربية عند غياب القاعدة كسائر
+       الكتابات. shamAvailable وحدها لا تفشل بل تُجيب false: هي سؤال قدرة
+       لا عملية عضو، وجوابها السلبي يُبقي الشاشة على مسارها اليدوي. */
+    pay: {
+      shamAvailable: LIVE ? shamPay.shamAvailable : function () { return Promise.resolve(false); },
+      shamStart:     LIVE ? shamPay.shamStart     : offline('الدفع الآلي عبر شام كاش'),
+      shamStatus:    LIVE ? shamPay.shamStatus    : offline('حالة الدفع عبر شام كاش'),
+      shamBills:     LIVE ? shamPay.shamBills     : function () { return Promise.resolve([]); }
+    },
     member: member,
     admin: admin,
     checkUpdate: checkUpdate,
     GOVERNORATES: GOVERNORATES,
+    /* على الجذر أيضاً لا في accredit وحده: قائمة الفروع في التطبيق وسجل
+       اللوحة يحتاجانه بلا سجل اعتمادات، ونسخة ثانية منه تفتح باب اختلافهما */
+    branchKey: branchKey,
     arDate: arDate,
     arDateTime: arDateTime,
     durSec: durSec,
@@ -937,6 +1256,11 @@
     setStatus:  LIVE ? live.setStatus  : offline('تحديث الحالة'),
     payments:   LIVE ? live.payments   : function () { return Promise.resolve(null); },
     addPayment: LIVE ? live.addPayment : function () { return Promise.resolve(null); },
+    setBranch:  LIVE ? live.setBranch  : offline('تحديث الفرع'),
+    /* هوية العضو النقابية: كتابةٌ من العضو واعتمادٌ من الإدارة — الوسم
+       بـoffline كسائر الكتابات كي يقرأ العضو سبب التعذّر لا صمتاً */
+    setSyndNo:  LIVE ? live.setSyndNo  : offline('تحديث الرقم النقابي'),
+    setGradeRequest: LIVE ? live.setGradeRequest : offline('طلب المرتبة الهندسية'),
     attempts:   LIVE ? live.attempts   : function () { return Promise.resolve(null); },
     addAttempt: LIVE ? live.addAttempt : function () { return Promise.resolve(null); },
     certs:      LIVE ? live.certs      : offline('الشهادات'),

@@ -23,6 +23,11 @@
    يتبعها صفٌّ فيه بطاقتان عريضتان بلا سبب */
 @media (min-width:961px){ .adm-kpis{grid-template-columns:repeat(3,1fr)} }
 .accr-where{white-space:nowrap}
+/* قائمتا المحافظة والفرع داخل شريط الرقائق نفسه: أربع عشرة محافظة ومثلها
+   فرعاً لا تُعرض رقائق — الشريط يبتلع الشاشة قبل أن يظهر أول صف من السجل.
+   والقياس على قياس الرقاقة لا على قياس حقل النموذج، وإلا ارتفع الشريط كله
+   عشرة بكسلات لأجل عنصرين. */
+.adm-filters .input{flex:0 1 190px;min-height:38px;font-size:13.5px;padding-inline:12px}
 </style>
 </head>
 <body>
@@ -131,7 +136,18 @@
   /* المحافظات من المصدر المشترك نفسه — قائمة القوائم المنسدلة في اللوحة */
   var GOVS = (API.accredit && API.accredit.GOVERNORATES) || [];
 
-  var state = { kind: 'all', status: 'all', search: '' };
+  /* مفتاح الفرع: «فرع حلب» و«حلب» فرعٌ واحد. يُستعمل هنا عند الحفظ وحده —
+     تُطوى القيمة قبل كتابتها فلا تولد الإدارةُ صيغةً ثانية لمكانٍ واحد،
+     وهي أصل الشكوى: الصيغتان كانتا تشطران خيار الفلترة في التطبيق.
+     المرجع الدالة المشتركة API.branchKey، والبديل أدناه حارسٌ لنسخة قديمة
+     من osea-api.js في كاش المتصفح لا نسخة ثانية من المنطق: بدونه ينكسر
+     حفظ البند كاملاً إن سبقت الصفحةُ تحديثَ الملف المشترك. */
+  function branchKey(b) {
+    if (API && typeof API.branchKey === 'function') { return API.branchKey(b); }
+    return String(b == null ? '' : b).trim().replace(/^فرع\s+/, '').trim();
+  }
+
+  var state = { kind: 'all', status: 'all', gov: 'all', branch: 'all', search: '' };
   var items = [];
   var $ = function (id) { return document.getElementById(id); };
   var tbody, filtersEl;
@@ -163,6 +179,17 @@
       else { state.status = b.getAttribute('data-status'); }
       render();
     });
+    /* الاستماع بالتفويض على الشريط لا على القائمتين: render() يعيد بناء
+       محتوى الشريط كاملاً عند كل تصفية، ومستمعٌ مربوط بعنصرٍ يُستبدل يموت
+       مع أول اختيار — فلا تعمل القائمة إلا مرة واحدة */
+    filtersEl.addEventListener('change', function (e) {
+      var s = e.target;
+      if (!s || s.nodeName !== 'SELECT') { return; }
+      if (s.id === 'fGov') { state.gov = s.value; }
+      else if (s.id === 'fBranch') { state.branch = s.value; }
+      else { return; }
+      render();
+    });
   }
 
   function load() {
@@ -174,11 +201,24 @@
     });
   }
 
+  /* قيمة الحقل كما تُقارَن في الفلترة: مقصوصة الأطراف، والفارغة نصٌّ فارغ
+     لا null — البند الناقص محافظته يسقط من أي فلترة بمحافظة، وهذا مقصود:
+     هو نفسه سلوك التطبيق، وله مؤشر «ناقص المحافظة أو الفرع» يفضحه */
+  function place(r, key) {
+    return String(r[key] == null ? '' : r[key]).trim();
+  }
+
   function visible() {
     return items.filter(function (r) {
       if (state.kind !== 'all' && r.kind !== state.kind) { return false; }
       if (state.status === 'live' && !r.active) { return false; }
       if (state.status === 'draft' && r.active) { return false; }
+      /* المقارنة بالقيمة الخام لا بالمفتاح المطويّ: خيارات القائمة تُبنى من
+         القيم المسجّلة فعلاً، فتظهر الصيغة القديمة «فرع حلب» خياراً مستقلاً
+         تُنتقى به صفوفها وحدها — وهذا هو المطلوب هنا بعكس التطبيق: اللوحة
+         مكان تصحيح الصيغ لا مكان إخفائها */
+      if (state.gov !== 'all' && place(r, 'governorate') !== state.gov) { return false; }
+      if (state.branch !== 'all' && place(r, 'branch') !== state.branch) { return false; }
       if (!state.search) { return true; }
       var hay = A.norm([r.name, r.cert_no, r.field, r.governorate, r.branch, r.email,
                         r.address_sy, r.address_abroad, r.phone, r.website].join(' '));
@@ -190,12 +230,48 @@
     return items.filter(function (r) { return r.kind === k; }).length;
   }
 
+  /* خيارات قائمتي التصفية: القائمة الرسمية متّحدةً مع القيم المسجّلة في
+     البنود فعلاً. الاتحاد لا القائمة الرسمية وحدها، وإلا سقطت من الفلترة
+     كلُّ قيمة قديمة أو مكتوبة بصيغة خاصة — وهي بعينها الصفوف التي تحتاج
+     الإدارة أن تصل إليها لتصحّحها. والقائمة الرسمية كاملةً حاضرة ولو خلا
+     السجل من محافظةٍ منها: الإدارة تفلتر لتتأكد أن المحافظة فارغة. */
+  function placeOptions(key) {
+    var out = GOVS.slice(), seen = {}, i;
+    for (i = 0; i < out.length; i++) { seen[out[i]] = 1; }
+    items.forEach(function (r) {
+      var v = place(r, key);
+      if (!v || Object.prototype.hasOwnProperty.call(seen, v)) { return; }
+      seen[v] = 1; out.push(v);
+    });
+    return out;
+  }
+
+  function placeFilter(id, label, allLabel, current, values) {
+    /* اختيارٌ قائم اختفت قيمته من السجل (حُذف آخر بند فيها) يُضاف خياراً
+       رغم ذلك: بدونه تعرض القائمة «الكل» بينما الحالة ما تزال تفلتر، فتبدو
+       اللوحة فارغةً بلا سبب ظاهر ولا سبيل لإلغاء الفلترة */
+    var opts = values.slice();
+    if (current !== 'all' && opts.indexOf(current) < 0) { opts.push(current); }
+    return '<select class="input" id="' + id + '" aria-label="' + A.esc(label) + '">' +
+      '<option value="all"' + (current === 'all' ? ' selected' : '') + '>' + A.esc(allLabel) + '</option>' +
+      opts.map(function (v) {
+        return '<option value="' + A.esc(v) + '"' + (v === current ? ' selected' : '') + '>' +
+          A.esc(v) + '</option>';
+      }).join('') + '</select>';
+  }
+
   function render() {
     var live = items.filter(function (r) { return r.active; }).length;
     /* عدد البنود الناقصة محافظتَها أو فرعها مؤشرٌ قائم بذاته: هي البنود
        التي تسقط من كل نتيجة مفلترة في التطبيق، والإدارة لا تراها ناقصة
        ما لم تُعدّ لها */
-    var noPlace = items.filter(function (r) { return !r.governorate || !r.branch; }).length;
+    /* البريد يُعدّ نقصاً أيضاً منذ ٧ أيلول: النقابة طلبته صراحةً في كل
+       القوائم، وفي تجربتها الفعلية رأت الحقل «غائباً» لأن التطبيق يخفي
+       القيمة الفارغة — والسبب أن لا بند واحد في السجل كان يحمل بريداً.
+       المؤشر يجب أن يفضح ذلك هنا قبل أن يراه العضو غياباً هناك. */
+    var noPlace = items.filter(function (r) {
+      return !r.governorate || !r.branch || !r.email;
+    }).length;
     $('kpis').innerHTML =
       kpi('إجمالي السجل', items.length, 'منشور منها ' + A.toAr(live)) +
       kpi('المهندسون', countKind('engineer'), 'مهندسون معتمدون') +
@@ -203,7 +279,7 @@
       kpi('الشركات المعتمدة', countKind('company'), 'شركات عربية وأجنبية ومحلية') +
       kpi('شركات ومكاتب سورية', countKind('sy_company') + countKind('sy_office'),
           A.toAr(countKind('sy_company')) + ' شركة · ' + A.toAr(countKind('sy_office')) + ' مكتب') +
-      kpi('ناقص المحافظة أو الفرع', noPlace, 'لا يظهر في نتائج الفلترة بالتطبيق');
+      kpi('ناقص المحافظة أو الفرع أو البريد', noPlace, 'يظهر ناقصاً في قوائم التطبيق أو يسقط من فلترتها');
 
     var kindChips = [['all', 'الكل', items.length]].concat(KINDS.map(function (K) {
       return [K.k, kindShort(K.k), countKind(K.k)];
@@ -221,9 +297,15 @@
       return '<button type="button" class="tag' + (on ? ' is-on' : '') + '" data-status="' + f[0] +
         '" aria-pressed="' + (on ? 'true' : 'false') + '">' + f[1] + ' (' + A.toAr(f[2]) + ')</button>';
     });
+    /* المحافظة والفرع قائمتين لا رقائق: «يجب تطبيق هذه الفلاتر على جميع
+       قوائم الاعتمادات» بطلب النقابة، وأربع عشرة رقاقة محافظةٍ ومثلها فرعاً
+       تدفن رقائق النوع والحالة القائمة */
     filtersEl.innerHTML = kindChips.join('') +
       '<span style="width:1px;align-self:stretch;background:var(--border);margin-inline:6px"></span>' +
-      statusChips.join('');
+      statusChips.join('') +
+      '<span style="width:1px;align-self:stretch;background:var(--border);margin-inline:6px"></span>' +
+      placeFilter('fGov', 'تصفية بالمحافظة', 'كل المحافظات', state.gov, placeOptions('governorate')) +
+      placeFilter('fBranch', 'تصفية بفرع النقابة', 'كل الفروع', state.branch, placeOptions('branch'));
 
     var rows = visible();
     $('totalTag').textContent = A.toAr(rows.length) + ' من ' + A.toAr(items.length);
@@ -245,8 +327,12 @@
       /* الخانة الفارغة تُوسم بشرطة حمراء خافتة لا بشرطة عادية: البند بلا
          محافظة أو فرع يسقط من فلترة التطبيق، والإدارة يجب أن تراه */
       var miss = '<span class="tag tag--error">ناقص</span>';
+      /* البريد الغائب وسمٌ تحت الاسم لا عمودٌ جديد: الجدول ضيّق أصلاً،
+         والنقابة رأت في تجربتها «القائمة بلا بريد» فطلبت ما كان أصلاً
+         حقلاً فارغاً — الوسم هنا يقود الموظّف إلى الخانة التي تنقص. */
+      var noMail = r.email ? '' : '<span class="tag tag--error">بلا بريد</span>';
       return '<tr>' +
-        '<td class="accr-name-cell"><b>' + A.esc(r.name) + '</b>' +
+        '<td class="accr-name-cell"><b>' + A.esc(r.name) + '</b> ' + noMail +
           (whereBits.length ? '<small>' + A.esc(whereBits.join(' · ')) + '</small>' : '') + '</td>' +
         '<td><span class="tag">' + A.esc(kindLabel(r.kind)) + '</span></td>' +
         '<td class="accr-where">' + (r.governorate ? A.esc(r.governorate) : miss) + '</td>' +
@@ -345,12 +431,16 @@
   function placeSelect(id, current) {
     var cur = String(current == null ? '' : current).trim();
     var opts = GOVS.slice();
+    /* القيمة خارج القائمة الرسمية تُوسم في نصّها لا في قيمتها: الوسم عرضٌ
+       للإدارة كي ترى أي الصفوف يحتاج تصحيحاً، وقيمة الخيار تبقى القيمة
+       المسجّلة نفسها فلا يبدّلها مجرّد فتح اللوحة وحفظها */
     if (cur && opts.indexOf(cur) < 0) { opts.push(cur); }
     return '<select class="input" id="' + id + '">' +
       '<option value=""' + (cur ? '' : ' selected') + '>— غير محدَّد —</option>' +
       opts.map(function (v) {
+        var legacy = GOVS.indexOf(v) < 0;
         return '<option value="' + A.esc(v) + '"' + (v === cur ? ' selected' : '') + '>' +
-          A.esc(v) + '</option>';
+          A.esc(v) + (legacy ? ' (صيغة قديمة)' : '') + '</option>';
       }).join('') + '</select>';
   }
 
@@ -375,8 +465,11 @@
       cert_date: g('f-date') || null,
       field: g('f-field'),
       /* الفرع والمحافظة لكل الأنواع (ترحيلة ٠٢٤) — كان الفرع يُصفَّر لغير
-         المهندسين فيمحو الحفظُ فرعَ الشركة الذي أدخلته الإدارة للتو */
-      branch: g('f-branch') || null,
+         المهندسين فيمحو الحفظُ فرعَ الشركة الذي أدخلته الإدارة للتو.
+         والفرع يُطوى عند الكتابة: تصحيح الصيغة عند مصدرها لا عند عرضها،
+         فلا تولد اللوحةُ صيغةً ثانية لفرعٍ واحد مهما اختير من القائمة —
+         والقيمة القديمة تبقى كما هي في القاعدة حتى يُعاد حفظ بندها. */
+      branch: branchKey(g('f-branch')) || null,
       governorate: g('f-gov') || null,
       address_sy: g('f-addr-sy') || null,
       address_abroad: (kind === 'org' || kind === 'company') ? (g('f-addr-ab') || null) : null,

@@ -68,6 +68,9 @@
 /* شريط حفظ الترتيب: .adm-pager تضبط display:flex فيلزم كبح hidden صراحةً */
 .ord-bar{background:var(--cream-50);border-block-start:2px solid var(--gold-600)}
 .ord-bar[hidden]{display:none}
+/* وسطر انتظار ترحيلة المجالات كذلك: .adm-sub تضبط display:block فتغلب
+   قاعدة hidden الافتراضية — والسطر كان سيظهر دائماً */
+#domWait[hidden],#domBar[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -124,8 +127,64 @@
         </div>
       </div>
 
+      <!-- ==================== المجالات (مجلدات الأكواد) ==================== -->
+      <!-- فوق المجلدات لا تحتها: المجال هو أبو المجلد في الشجرة، وقراره
+           (بمجلدات فرعية أم بالكتاب مباشرةً) يحكم ظهور مجلداته كلها -->
+      <div class="adm-bar" id="domBar" style="margin-block-start:28px">
+        <span><strong>المجالات (مجلدات الأكواد)</strong>
+          <span class="adm-sub">المستوى الأعلى في المكتبة — «كود الحريق» مثالاً.
+          المجال الذي لا يحتاج مجلدات فرعية يعرض كتبه واستماراته مباشرة بعد
+          الدخول إليه، بلا شاشة نوع ولا شاشة مجلدات.</span></span>
+        <span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" id="domAddBtn" data-write>مجال جديد</button>
+      </div>
+
+      <!-- بانتظار الترحيلة: سطر واحد هادئ بدل تعطيل الشاشة كلها -->
+      <p class="adm-sub" id="domWait" hidden
+         style="margin-block:-8px 24px;padding-inline-start:4px">
+        قسم المجالات بانتظار ترحيلة ٠٢٨ — باقي هذه الشاشة يعمل كما هو.</p>
+
+      <div class="adm-table-card" id="domCard" hidden style="margin-block-end:28px">
+        <div class="adm-table-head">
+          <h2>المجالات</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="domTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th class="drag-cell" data-write aria-label="مقبض الترتيب"></th>
+                <th>المجال</th>
+                <th>المجلدات الفرعية</th>
+                <th>مجلداته</th>
+                <th>بنوده</th>
+                <th>الترتيب</th>
+                <th>الحالة</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="domRows">
+              <tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="adm-pager ord-bar" id="domOrderBar" hidden data-write>
+          <span><strong>تغيّر ترتيب المجالات ولم يُحفظ بعد.</strong>
+          ترتيب المجالات هنا هو ترتيب بطاقاتها في مكتبة التطبيق.</span>
+          <span class="spacer"></span>
+          <button class="btn btn-outline btn-sm" id="domOrdUndo" data-write>تراجع</button>
+          <button class="btn btn-primary btn-sm" id="domOrdSave" data-write>حفظ الترتيب</button>
+        </div>
+        <div class="adm-pager">
+          <span>إطفاء «المجلدات الفرعية» لا يحذف مجلدات المجال ولا تسعيرها —
+          يخفيها من التطبيق فقط، وتعود بإعادة تشغيل الخيار. حذف المجال
+          مرفوض ما دام يحمل مجلداً أو بنداً؛ الإيقاف هو البديل.</span>
+        </div>
+      </div>
+
       <!-- ============================ المجلدات ============================ -->
-      <div class="adm-bar" style="margin-block-start:28px">
+      <div class="adm-bar">
         <div class="adm-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           <input class="input" id="q" type="search" autocomplete="off"
@@ -217,17 +276,26 @@
 
   var state = { search: '' };
   var folders = [], products = [];
+  /* المجالات (ترحيلة ٠٢٨). domainsOk يفرّق بين «لا مجالات بعد» و«الترحيلة
+     لم تُطبَّق»: الأولى حالة فارغة صادقة، والثانية تخفي القسم كله بسطر
+     انتظار — ولا تلمس المجلدات والرسوم فوقها وتحتها. */
+  var domains = [], domainsOk = false;
 
   /* ترتيب يدوي معلَّق: orderBackup لقطة من المصفوفة قبل أول حركة (للتراجع)،
      وorderDirty يحجب باقي الإجراءات لأنها كلها تنتهي بـload() فتبتلع الترتيب. */
   var orderBackup = null, orderDirty = false;
+  /* والمجالات ترتيبها المعلَّق مستقلّ بحالته: جدولان في شاشة واحدة، وخلط
+     اللقطتين كان يجعل تراجع أحدهما يمسح حركة الآخر */
+  var domOrderBackup = null, domOrderDirty = false;
   /* حالة السحب الجارية */
   var dragId = null, dropEl = null, dropAfter = false, crossWarned = false;
+  /* وسحب المجالات بحالته هو — لا مجموعات فيه، فالمجال ينتقل إلى أي موضع */
+  var domDragId = null, domDropEl = null, domDropAfter = false;
   /* المراقب لا يشغّل مفتاح الإنفاذ: الحقل مخفي بـdata-write لكن نقر نص الوسم
      يصل إليه — التعطيل يقطع ذلك أيضاً ويبقي الشرح ووسم الحالة ظاهرين */
   var readOnly = false;
   var $ = function (id) { return document.getElementById(id); };
-  var tbody, prodBody;
+  var tbody, prodBody, domBody;
 
   A.boot({
     page: 'folders',
@@ -238,7 +306,7 @@
   }).then(function (st) {
     if (!st) return;
     readOnly = st.role === 'viewer';
-    tbody = $('rows'); prodBody = $('prodRows');
+    tbody = $('rows'); prodBody = $('prodRows'); domBody = $('domRows');
     $('q').addEventListener('input', A.debounce(function () {
       state.search = $('q').value.trim();
       paintFolders();
@@ -259,8 +327,23 @@
     tbody.addEventListener('dragend', onDragEnd);
     $('ordSave').addEventListener('click', saveOrder);
     $('ordUndo').addEventListener('click', undoOrder);
+
+    /* المجالات: المكوّنات نفسها — صف، ولوحة جانبية، ومقبض سحب، وتأكيد حذف */
+    $('domAddBtn').addEventListener('click', function () {
+      if (blockedByOrder()) return;
+      openDomain(null);
+    });
+    domBody.addEventListener('click', onDomRowClick);
+    domBody.addEventListener('dragstart', onDomDragStart);
+    domBody.addEventListener('dragover', onDomDragOver);
+    domBody.addEventListener('dragleave', onDomDragLeave);
+    domBody.addEventListener('drop', onDomDrop);
+    domBody.addEventListener('dragend', onDomDragEnd);
+    $('domOrdSave').addEventListener('click', saveDomOrder);
+    $('domOrdUndo').addEventListener('click', undoDomOrder);
+
     window.addEventListener('beforeunload', function (e) {
-      if (!orderDirty) return;
+      if (!orderDirty && !domOrderDirty) return;
       e.preventDefault();
       e.returnValue = '';
       return '';
@@ -274,22 +357,43 @@
   function load() {
     /* أي تحميل يأتي بترتيب القاعدة — فالترتيب المحلي المعلَّق ينتهي هنا */
     orderBackup = null; orderDirty = false; paintOrderBar();
+    domOrderBackup = null; domOrderDirty = false; paintDomOrderBar();
     tbody.innerHTML = '<tr><td colspan="11"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
     prodBody.innerHTML = '<tr><td colspan="5"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    domBody.innerHTML = '<tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
     Promise.all([
       API.admin.folders(),
-      API.admin.products()
+      API.admin.products(),
+      /* الالتقاط هنا لا في نهاية السلسلة: الـcatch الأخير يرسم errorState على
+         الشاشة كلها، فاستدعاءٌ إلى دالةٍ لم تصل بعدُ إلى القاعدة (٠٢٨ تُطبَّق
+         بعد النشر بأيام) كان سيُسقط المجلدات والرسوم معها — وهو العطل نفسه
+         الذي اشتكت منه النقابة. null = «الترحيلة لم تُطبَّق».
+         وحارس الوجود قبله: نسخة osea-api.js قديمة في ذاكرة المتصفح لا تعرف
+         admin.domains، واستدعاء ما ليس دالةً يرمي قبل أن ينشأ وعدٌ يلتقطه */
+      (API.admin.domains
+        ? API.admin.domains().catch(function () { return null; })
+        : Promise.resolve(null))
     ]).then(function (r) {
       folders = (r[0] && r[0].folders) || [];
       products = r[1] || [];
+      domainsOk = r[2] !== null;
+      domains = (r[2] && r[2].domains) || [];
       paintKpis();
       paintProducts();
+      paintDomains();
       paintFolders();
     }).catch(function (e) {
       $('kpis').innerHTML = '';
       tbody.innerHTML = '<tr><td colspan="11">' + A.errorState(A.errText(e), 'retry') + '</td></tr>';
       var b = $('retry'); if (b) b.addEventListener('click', load);
       prodBody.innerHTML = '<tr><td colspan="5">' + A.emptyState('تعذّر تحميل الرسوم') + '</td></tr>';
+      /* عطل الشبكة ليس غياب ترحيلة: البطاقة تبقى ظاهرة برسالة تعذّر بدل سطر
+         «بانتظار ٠٢٨» الذي كان سيكذب على الإدارة ويرسلها إلى القاعدة بلا سبب */
+      $('domCard').hidden = false;
+      $('domBar').hidden = false;
+      $('domWait').hidden = true;
+      $('domTag').textContent = '—';
+      domBody.innerHTML = '<tr><td colspan="8">' + A.emptyState('تعذّر تحميل المجالات') + '</td></tr>';
     });
   }
 
@@ -447,6 +551,418 @@
     }
   }
 
+  /* ---------------------------------------------------------------- المجالات
+     «مجلد الكود» في طلب النقابة هو المجال، و«المجلدات الفرعية» هي مستوى
+     المجلدات أدناه بتسميته ومجانيته وطبيعة دفعه ومبلغه كما هي منذ ٠٢١ —
+     فالخيار الجديد يهبط على هذا الجدول وحده ولا يغيّر حرفاً من ذاك. */
+  function domRec(name) {
+    var n = String(name == null ? '' : name).trim();
+    for (var i = 0; i < domains.length; i++) {
+      if (String(domains[i].name).trim() === n) { return domains[i]; }
+    }
+    return null;
+  }
+  /* «بلا مجلدات فرعية» تُقال يقيناً لا ظنّاً: قبل تطبيق ٠٢٨ (أو لمجالٍ لا
+     صفَّ له بعد) الجواب سلبيّ دائماً — أي يبقى سلوك اليوم كما هو تماماً */
+  function domSubsOff(name) {
+    if (!domainsOk) return false;
+    var d = domRec(name);
+    return !!(d && d.use_subfolders === false);
+  }
+  /* و«المجال موقوف» بالحارس نفسه وللسبب نفسه: هذه حالةُ إخفاءٍ ثانية صار
+     التطبيق ينفّذها فعلاً (المجال الموقوف يسقط بمجلداته وبنوده ودروسه)،
+     وكان الجدول يسم الأولى ويسكت عن الثانية — فتظنّ الإدارة أن مجلداً
+     مسعَّراً يبلغه الأعضاء وهو غير مرئيّ أصلاً. وقبل تطبيق ٠٢٨ (أو لمجالٍ
+     لا صفَّ له بعد) الجواب سلبيّ دائماً: لا وسمَ إخفاءٍ على ظنّ. */
+  function domActiveOff(name) {
+    if (!domainsOk) return false;
+    var d = domRec(name);
+    return !!(d && d.active === false);
+  }
+
+  /* تسلّق عام إلى حامل السمة داخل جسم جدول. النسخ الثلاث في قسم المجلدات
+     (rowOf/handleOf/actOf) مكتوبة على tbody وحده، وتعميمها كان يعني تعديل
+     مسارات المجلدات العاملة بلا داعٍ — والحاجة هنا ثلاثة أسطر */
+  function climb(el, root, test) {
+    while (el && el !== root) {
+      if (el.nodeType === 1 && test(el)) { return el; }
+      el = el.parentNode;
+    }
+    return null;
+  }
+  function domRowOf(el) {
+    return climb(el, domBody, function (x) {
+      return x.tagName === 'TR' && x.getAttribute('data-id');
+    });
+  }
+  function domActOf(el) {
+    return climb(el, domBody, function (x) {
+      return x.hasAttribute && x.hasAttribute('data-act');
+    });
+  }
+  function domHandleOf(el) {
+    return climb(el, domBody, function (x) {
+      return x.hasAttribute && x.hasAttribute('data-drag');
+    });
+  }
+  function domById(id) {
+    for (var i = 0; i < domains.length; i++) { if (domains[i].id === id) return domains[i]; }
+    return null;
+  }
+
+  function paintDomains() {
+    /* الترحيلة لم تُطبَّق بعد: القسم كله يُخفى بسطر انتظار واحد، وباقي
+       الشاشة (المجلدات والرسوم والإنفاذ) يعمل كما كان قبل هذه الميزة */
+    $('domCard').hidden = !domainsOk;
+    $('domBar').hidden = !domainsOk;
+    $('domWait').hidden = domainsOk;
+    if (!domainsOk) return;
+
+    paintDomOrderBar();
+    $('domTag').textContent = A.count(domains.length, 'مجال واحد', 'مجالان', 'مجالات', 'مجالاً');
+
+    if (!domains.length) {
+      domBody.innerHTML = '<tr><td colspan="8">' + A.emptyState(
+        'لا مجالات بعد',
+        'أنشئ أول مجال بزر «مجال جديد» ثم اربط مجلداته وبنوده به.') + '</td></tr>';
+      return;
+    }
+
+    domBody.innerHTML = domains.map(function (d, i) {
+      var subsOn = d.use_subfolders !== false;
+      /* لا مجموعات هنا خلافاً للمجلدات: المجال ينتقل إلى أي موضع في القائمة،
+         فزرّا ↑/↓ يُعطَّلان على الطرفين فقط */
+      var upOk = i > 0, dnOk = i < domains.length - 1;
+      return '<tr data-id="' + A.esc(d.id) + '">' +
+        '<td class="drag-cell" data-write>' +
+          '<span class="drag-h" data-drag draggable="true" role="img" ' +
+            'aria-label="مقبض ترتيب المجال" title="اسحب لتغيير ترتيب المجالات">' + GRIP + '</span></td>' +
+        '<td class="wrap"><span class="strong">' + A.esc(d.name) + '</span></td>' +
+        '<td>' + (subsOn
+          ? '<span class="tag tag--navy">يحتاج مجلدات فرعية</span>'
+          : '<span class="tag tag--gold">الكتاب مباشرةً</span>') + '</td>' +
+        '<td class="num">' + A.toAr(d.folders | 0) + '</td>' +
+        '<td class="num">' + A.toAr(d.items | 0) + '</td>' +
+        '<td class="num">' + A.toAr(d.sort | 0) + '</td>' +
+        '<td>' + (d.active !== false
+          ? '<span class="tag tag--success">نشط</span>'
+          : '<span class="tag tag--error">معطّل</span>') + '</td>' +
+        '<td><span class="row-acts">' +
+          '<button class="btn btn-outline btn-sm ord-btn" data-act="up" data-write' +
+            (upOk ? '' : ' disabled') + ' aria-label="تحريك المجال لأعلى"' +
+            ' title="تحريك لأعلى">&#8593;</button>' +
+          '<button class="btn btn-outline btn-sm ord-btn" data-act="down" data-write' +
+            (dnOk ? '' : ' disabled') + ' aria-label="تحريك المجال لأسفل"' +
+            ' title="تحريك لأسفل">&#8595;</button>' +
+          '<button class="btn btn-outline btn-sm" data-act="subs" data-write>' +
+            (subsOn ? 'إظهار الكتاب مباشرة' : 'إظهار المجلدات الفرعية') + '</button>' +
+          '<button class="btn btn-outline btn-sm" data-act="edit" data-write>تعديل</button>' +
+          '<button class="btn btn-outline btn-sm" data-act="toggle" data-write>' +
+            (d.active !== false ? 'إيقاف' : 'تفعيل') + '</button>' +
+          '<button class="btn btn-danger btn-sm" data-act="del" data-write>حذف</button>' +
+        '</span></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function onDomRowClick(e) {
+    var btn = domActOf(e.target);
+    if (!btn) return;
+    var tr = domRowOf(btn);
+    if (!tr) return;
+    var d = domById(tr.getAttribute('data-id'));
+    if (!d) return;
+    var act = btn.getAttribute('data-act');
+    if (act === 'up') return nudgeDom(d.id, -1);
+    if (act === 'down') return nudgeDom(d.id, 1);
+    if (blockedByOrder()) return;
+    if (act === 'subs') return toggleSubs(d, btn);
+    if (act === 'edit') return openDomain(d);
+    if (act === 'toggle') return toggleDomain(d, btn);
+    if (act === 'del') return removeDomain(d);
+  }
+
+  /* ------------------------------------------------- ترتيب المجالات
+     نسخة مبسَّطة من ترتيب المجلدات أدناه: لا قيد مجموعة هنا (المجال أعلى
+     الشجرة فلا أب له)، ولم تُدمج الدالتان كي لا يُعاد كتابة مسار المجلدات
+     العامل الذي يفرض قيد «المجال + النوع». */
+  function domOrderIds() {
+    return domains.map(function (d) { return d.id; });
+  }
+  function sameAsDomBackup() {
+    if (!domOrderBackup || domOrderBackup.length !== domains.length) return false;
+    for (var i = 0; i < domains.length; i++) {
+      if (domOrderBackup[i].id !== domains[i].id) return false;
+    }
+    return true;
+  }
+  function moveDomain(fromId, targetId, after) {
+    if (readOnly || !fromId || !targetId || fromId === targetId) return false;
+    var fi = -1, ti = -1, i;
+    for (i = 0; i < domains.length; i++) {
+      if (domains[i].id === fromId) fi = i;
+      if (domains[i].id === targetId) ti = i;
+    }
+    if (fi < 0 || ti < 0) return false;
+    if (!domOrderBackup) { domOrderBackup = domains.slice(); }
+    var it = domains.splice(fi, 1)[0];
+    var t2 = -1;
+    for (i = 0; i < domains.length; i++) { if (domains[i].id === targetId) { t2 = i; break; } }
+    domains.splice(after ? t2 + 1 : t2, 0, it);
+    if (sameAsDomBackup()) { domOrderBackup = null; domOrderDirty = false; }
+    else { domOrderDirty = true; }
+    return true;
+  }
+  function nudgeDom(id, dir) {
+    if (readOnly) return;
+    var i = -1;
+    for (var k = 0; k < domains.length; k++) { if (domains[k].id === id) { i = k; break; } }
+    if (i < 0) return;
+    var j = dir < 0 ? i - 1 : i + 1;
+    if (j < 0 || j >= domains.length) return;
+    if (moveDomain(id, domains[j].id, dir > 0)) { paintDomains(); }
+  }
+  function paintDomOrderBar() {
+    var bar = $('domOrderBar');
+    if (bar) { bar.hidden = !domOrderDirty; }
+  }
+  function undoDomOrder() {
+    if (!domOrderBackup) return;
+    domains = domOrderBackup.slice();
+    domOrderBackup = null;
+    domOrderDirty = false;
+    paintDomains();
+    A.toast('أُلغي الترتيب الجديد وعادت المجالات كما كانت.', 'ok');
+  }
+  function saveDomOrder() {
+    if (!domOrderDirty) return;
+    var save = $('domOrdSave'), undo = $('domOrdUndo');
+    save.disabled = true; undo.disabled = true;
+    var prev = save.textContent;
+    save.textContent = 'جارٍ الحفظ…';
+    API.admin.reorderDomains(domOrderIds()).then(function () {
+      domOrderBackup = null; domOrderDirty = false;
+      A.toast('حُفظ ترتيب المجالات — تظهر بهذا الترتيب في مكتبة التطبيق.', 'ok');
+      load();
+    }).catch(function (e) {
+      A.toast(A.errText(e), 'bad');
+    }).then(function () {
+      save.disabled = false; undo.disabled = false;
+      save.textContent = prev;
+    });
+  }
+
+  /* سحب وإفلات المجالات — الأصناف والمظهر نفسها (drag-h / drop-before / drop-after) */
+  function clearDomDrop() {
+    if (domDropEl) {
+      domDropEl.classList.remove('drop-before', 'drop-after');
+      domDropEl = null;
+    }
+  }
+  function onDomDragStart(e) {
+    if (readOnly) { e.preventDefault(); return; }
+    var h = domHandleOf(e.target);
+    var tr = h && domRowOf(h);
+    if (!tr) { e.preventDefault(); return; }
+    domDragId = tr.getAttribute('data-id');
+    tr.classList.add('dragging');
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', domDragId); } catch (err) { /* IE */ }
+      if (e.dataTransfer.setDragImage) { e.dataTransfer.setDragImage(tr, 14, 14); }
+    }
+  }
+  function onDomDragOver(e) {
+    if (!domDragId) return;
+    var tr = domRowOf(e.target);
+    if (!tr) { clearDomDrop(); return; }
+    var id = tr.getAttribute('data-id');
+    if (id === domDragId) { clearDomDrop(); return; }
+    e.preventDefault();
+    if (e.dataTransfer) { e.dataTransfer.dropEffect = 'move'; }
+    var r = tr.getBoundingClientRect();
+    var after = (e.clientY - r.top) > (r.height / 2);
+    if (domDropEl !== tr || domDropAfter !== after) {
+      clearDomDrop();
+      domDropEl = tr; domDropAfter = after;
+      tr.classList.add(after ? 'drop-after' : 'drop-before');
+    }
+  }
+  function onDomDragLeave(e) {
+    if (!domDropEl) return;
+    var to = e.relatedTarget;
+    if (!to || !domBody.contains(to)) { clearDomDrop(); }
+  }
+  function onDomDrop(e) {
+    if (!domDragId || !domDropEl) return;
+    e.preventDefault();
+    var tid = domDropEl.getAttribute('data-id'), after = domDropAfter;
+    clearDomDrop();
+    var id = domDragId;
+    domDragId = null;
+    if (moveDomain(id, tid, after)) { paintDomains(); }
+  }
+  function onDomDragEnd() {
+    domDragId = null;
+    clearDomDrop();
+    var rows = domBody.querySelectorAll('tr.dragging');
+    for (var i = 0; i < rows.length; i++) { rows[i].classList.remove('dragging'); }
+  }
+
+  /* ------------------------------------------------- لوحة المجال وإجراءاته */
+  function domainBody(d) {
+    d = d || {};
+    var subsOn = d.use_subfolders !== false;
+    return '' +
+      '<div class="field"><label for="dName">اسم المجال</label>' +
+        '<input class="input" id="dName" maxlength="160" value="' + A.esc(d.name || '') + '">' +
+        '<span class="hint">كما يظهر للعضو في أعلى المكتبة — مثل «كود الحريق». ' +
+          'إعادة التسمية تنتقل آلياً إلى كل مجلداته وبنوده، فلا يُيتَّم محتوى.</span></div>' +
+      '<div class="field"><label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer">' +
+        '<input class="adm-check" type="checkbox" id="dSubs"' + (subsOn ? ' checked' : '') +
+          ' style="margin-block-start:3px">' +
+        '<span>يحتاج مجلدات فرعية</span></label>' +
+        '<span class="hint">مفعّلاً: الدخول إلى المجال يعرض الأنواع ثم المجلدات الفرعية ' +
+          'بتسميتها وتسعيرها (مجاني/بحساب/مدفوع شهرياً أو سنوياً أو لمرة واحدة). ' +
+          'مطفأً: يظهر الكتاب مباشرة بعد الدخول، وتبقى مجلدات المجال ' +
+          'وتسعيرها محفوظة في القاعدة بلا ظهور — والإعادة تُظهرها كما كانت.</span></div>' +
+      '<div class="field"><label for="dSort">الترتيب</label>' +
+        '<input class="input" id="dSort" inputmode="numeric" value="' +
+          A.esc(d.sort == null ? 0 : d.sort) + '">' +
+        '<span class="hint">الأصغر يظهر أولاً في المكتبة.</span></div>' +
+      '<div class="field"><label style="display:flex;align-items:center;gap:9px;cursor:pointer">' +
+        '<input class="adm-check" type="checkbox" id="dActive"' +
+          (d.active === false ? '' : ' checked') + '>فعّال</label>' +
+        '<span class="hint">المجال الموقوف يختفي من التطبيق بكل ما تحته — ' +
+          'ومحتواه يبقى في القاعدة كما هو.</span></div>';
+  }
+
+  function readDomain(host, d) {
+    var name = host.querySelector('#dName').value.trim();
+    if (!name) return Promise.reject(new Error('اسم المجال مطلوب'));
+    var sort = readInt(host, 'dSort');
+    if (sort !== null && isNaN(sort)) {
+      return Promise.reject(new Error('الترتيب رقم صحيح — أو يُترك فارغاً'));
+    }
+    var p = {
+      name: name,
+      sort: sort === null ? 0 : sort,
+      use_subfolders: host.querySelector('#dSubs').checked,
+      active: host.querySelector('#dActive').checked
+    };
+    if (d && d.id) { p.id = d.id; }
+    return Promise.resolve(p);
+  }
+
+  function openDomain(d) {
+    var isNew = !d;
+    A.sheet({
+      title: isNew ? 'مجال جديد' : 'تعديل «' + d.name + '»',
+      okLabel: isNew ? 'إنشاء المجال' : 'حفظ التعديلات',
+      body:
+        (isNew ? '' :
+          '<div class="notice">' + A.ICONS.info + '<span>' +
+            'للمجال ' + A.count(d.folders | 0, 'مجلد فرعي واحد', 'مجلدان فرعيان', 'مجلدات فرعية', 'مجلداً فرعياً') +
+            ' و' + A.count(d.items | 0, 'بند واحد', 'بندان', 'بنود', 'بنداً') + '. ' +
+            'إعادة التسمية تنتقل إليها كلها، وإطفاء «يحتاج مجلدات فرعية» ' +
+            'يخفي مجلداته من التطبيق ولا يحذف منها شيئاً.' +
+          '</span></div>') +
+        domainBody(d || { sort: domains.length + 1, active: true, use_subfolders: true }),
+      onOk: function (host) {
+        return readDomain(host, d).then(function (p) {
+          return API.admin.saveDomain(p).then(function () {
+            A.toast(isNew ? 'أُنشئ مجال «' + p.name + '».'
+                          : 'حُفظت تعديلات «' + p.name + '».', 'ok');
+            load();
+          });
+        });
+      }
+    });
+  }
+
+  /* تبديل المجلدات الفرعية من الصف مباشرة — الحمولة كاملة لا جزئية:
+     admin_save_domain يكتب الصف كله، فإرسال الحقل وحده كان يصفّر الباقي */
+  function toggleSubs(d, btn) {
+    var on = d.use_subfolders !== false;
+    var nf = d.folders | 0;
+    var go = function () {
+      btn.disabled = true;
+      API.admin.saveDomain({
+        id: d.id, name: d.name, sort: d.sort | 0,
+        use_subfolders: !on, active: d.active !== false
+      }).then(function () {
+        A.toast(on
+          ? 'مجال «' + d.name + '»: يظهر الكتاب مباشرة بعد الدخول' +
+            (nf ? ' — ومجلداته (' + A.toAr(nf) + ') لم تُحذف، لكنها لا تظهر في التطبيق.' : '.')
+          : 'مجال «' + d.name + '»: عادت المجلدات الفرعية إلى الظهور بتسميتها وتسعيرها.', 'ok');
+        load();
+      }).catch(function (e) {
+        btn.disabled = false;
+        A.toast(A.errText(e), 'bad');
+      });
+    };
+    /* الاستئذان في اتجاه الإخفاء وحده — نمط مفتاح إنفاذ الرسم أعلاه:
+       الإعادة تردّ ما كان، أما الإطفاء فيسحب مجلدات مسعَّرة من عين العضو */
+    if (on && nf > 0) {
+      A.confirm({
+        title: 'إظهار الكتاب مباشرة في «' + d.name + '»؟',
+        text: 'مجلدات هذا المجال (' + A.toAr(nf) + ') تختفي من التطبيق فوراً، '
+            + 'وتُعرض كتب المجال واستماراته في قائمة واحدة بعد الدخول إليه. '
+            + 'المجلدات وتسعيرها واشتراكات الأعضاء بها لا تُحذف ولا تُمَس، '
+            + 'والبند المدفوع يبقى مقفلاً بسعره في القائمة المسطّحة. '
+            + 'إعادة الخيار تُظهر المجلدات كما كانت.',
+        okLabel: 'إظهار الكتاب مباشرة', danger: true
+      }).then(function (r) {
+        if (r === null) return;
+        go();
+      });
+    } else {
+      go();
+    }
+  }
+
+  function toggleDomain(d, btn) {
+    var on = d.active !== false;
+    btn.disabled = true;
+    API.admin.saveDomain({
+      id: d.id, name: d.name, sort: d.sort | 0,
+      use_subfolders: d.use_subfolders !== false, active: !on
+    }).then(function () {
+      A.toast(on
+        ? 'أُوقف مجال «' + d.name + '» ولن يظهر في التطبيق.'
+        : 'فُعّل مجال «' + d.name + '».', 'ok');
+      load();
+    }).catch(function (e) {
+      btn.disabled = false;
+      A.toast(A.errText(e), 'bad');
+    });
+  }
+
+  function removeDomain(d) {
+    var nf = d.folders | 0, ni = d.items | 0;
+    /* الخادم يرفض حذف مجال يحمل محتوى (٠٢٨): الرابط بالمحتوى نصّي بالاسم
+       ولا قيمة بديلة، فالحذف كان يترك مجلدات وبنوداً بلا إعدادات. نقول
+       ذلك قبل النقر بدل أن نُظهر تأكيداً ينتهي إلى رفضٍ من القاعدة. */
+    if (nf || ni) {
+      A.toast('لا يُحذف مجال يحمل محتوى (' + A.toAr(nf) + ' مجلداً و' + A.toAr(ni) +
+        ' بنداً) — انقلها إلى مجال آخر، أو أوقف عرض المجال بزر «إيقاف».', 'bad', 6000);
+      return;
+    }
+    A.confirm({
+      title: 'حذف المجال',
+      danger: true,
+      okLabel: 'حذف المجال',
+      text: 'سيُحذف مجال «' + d.name + '» نهائياً. لا مجلدات ولا بنود تحته، '
+          + 'فلا يفقد المحتوى شيئاً — وإن كان الغرض إخفاءه مؤقتاً فالإيقاف أسلم.'
+    }).then(function (r) {
+      if (r === null) return;
+      API.admin.deleteDomain(d.id).then(function () {
+        A.toast('حُذف مجال «' + d.name + '».', 'ok');
+        load();
+      }).catch(function (e) { A.toast(A.errText(e), 'bad'); });
+    });
+  }
+
   /* ---------------------------------------------------------------- المجلدات */
   function priceLine(label, v) {
     return v == null
@@ -497,7 +1013,18 @@
           '<span class="drag-h" data-drag draggable="true" role="img" ' +
             'aria-label="مقبض ترتيب المجلد" title="اسحب لتغيير الترتيب ضمن «' +
             A.esc(grpName) + '»">' + GRIP + '</span></td>' +
-        '<td>' + A.esc(f.domain) + '</td>' +
+        /* مجلدٌ لا يُرى في التطبيق يقولها الجدولُ بنفسه: يبقى بتسعيره
+           واشتراكاته كما هو — وسكوتُ الجدول كان يجعل الإدارة تسعّر مجلداً
+           لا يبلغه أحد. والحالتان اثنتان لا واحدة: مجالٌ أُطفئت مجلداته
+           الفرعية (٠٢٨) فلا يُبلَغ المجلدُ من شاشة المجال، ومجالٌ أُوقف
+           فيسقط هو وكل ما تحته. والموقوف يغلب حين تجتمعان: نفيٌ للمجال
+           كلّه لا لطريق الوصول إليه وحده، فذكرُ الأضعف بجانبه يُلبس. */
+        '<td>' + A.esc(f.domain) +
+          (domActiveOff(f.domain)
+            ? ' <span class="tag tag--gold">لا يظهر — المجال موقوف</span>'
+            : (domSubsOff(f.domain)
+              ? ' <span class="tag tag--gold">لا يظهر — المجال بلا مجلدات فرعية</span>'
+              : '')) + '</td>' +
         '<td><span class="tag ' + k.cls + '">' + A.esc(k.label) + '</span></td>' +
         '<td class="wrap"><span class="strong">' + A.esc(f.name) + '</span>' +
           (f.note ? '<span class="adm-sub">' + A.esc(f.note) + '</span>' : '') + '</td>' +
@@ -622,10 +1149,18 @@
     if (moveFolder(id, list[j].id, dir > 0)) { paintFolders(); }
   }
 
+  /* الحارس يشمل الجدولين: كل إجراء ينتهي بـload() وهي تُعيد تحميل المجالات
+     والمجلدات معاً، فترتيب مجالات معلَّق يضيع بإجراءٍ على المجلدات أيضاً */
   function blockedByOrder() {
-    if (!orderDirty) return false;
-    A.toast('احفظ ترتيب المجلدات أو تراجع عنه أولاً — أي إجراء آخر يعيد تحميل الجدول.', 'bad');
-    return true;
+    if (orderDirty) {
+      A.toast('احفظ ترتيب المجلدات أو تراجع عنه أولاً — أي إجراء آخر يعيد تحميل الجدول.', 'bad');
+      return true;
+    }
+    if (domOrderDirty) {
+      A.toast('احفظ ترتيب المجالات أو تراجع عنه أولاً — أي إجراء آخر يعيد تحميل الجدول.', 'bad');
+      return true;
+    }
+    return false;
   }
 
   function paintOrderBar() {
@@ -742,6 +1277,13 @@
       var d = (f.domain == null ? '' : String(f.domain)).trim();
       if (d && out.indexOf(d) === -1) { out.push(d); }
     });
+    /* ومجالات جدول ٠٢٨ أيضاً: مجال أُنشئ من القسم أعلاه ولا مجلد له بعد كان
+       يغيب عن القائمة، فتُعيد الإدارة كتابة اسمه في «مجال جديد…» — وحرفٌ
+       واحد مختلف كان يصنع مجالاً ثانياً بالاسم نفسه تقريباً */
+    domains.forEach(function (d) {
+      var n = (d.name == null ? '' : String(d.name)).trim();
+      if (n && out.indexOf(n) === -1) { out.push(n); }
+    });
     if (out.indexOf(DOMAIN_DEFAULT) === -1) { out.push(DOMAIN_DEFAULT); }
     out.sort(function (a, b) { return a.localeCompare(b, 'ar'); });
     return out;
@@ -852,7 +1394,12 @@
 
     var domain = host.querySelector('#fDomain').value;
     if (domain === DOMAIN_NEW) {
-      domain = host.querySelector('#fDomainNew').value.trim();
+      /* التهجئة الموحَّدة نفسها التي تطبّقها القاعدة (admin_save_domain
+         ومحفّزا ٠٢٨): مسافة مكرّرة أو طرفية لا تُرى في الحقل كانت تصنع
+         مجالاً ثانياً بالاسم نفسه — والرابط بالمحتوى نصٌّ بالمساواة
+         التامة لا مفتاح أجنبي. ولا يُتّكل على المحفّز وحده: ٠٢٨ قد لا
+         تكون طُبِّقت على القاعدة الحيّة بعد. */
+      domain = host.querySelector('#fDomainNew').value.replace(/\s+/g, ' ').trim();
       if (!domain) return Promise.reject(new Error('اكتب اسم المجال الجديد'));
     }
 

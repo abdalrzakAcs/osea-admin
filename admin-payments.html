@@ -22,6 +22,12 @@
 /* قائمة اختيار الحساب: select متعدد الأسطر لا يقبل min-height الثابت في .input */
 .pay-pick { min-height: 0; height: 184px; padding: 6px; font-size: 14px; }
 .pay-pick option { padding: 7px 9px; }
+
+/* أرقام البوابة تحت رقم العملية: خليةُ رقم العملية كلها ltr، فالسطر
+   المضاف يُعاد إلى rtl لتُقرأ تسميته العربية، وقيمته وحدها تُعزل ltr.
+   بلا العزل ينزلق النقطتان إلى يسار الرقم ويقرأ الموظف سطراً مقلوباً. */
+.pay-sub-rtl { direction: rtl; }
+.pay-ref { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; letter-spacing: .3px; }
 </style>
 </head>
 <body>
@@ -63,6 +69,7 @@
                 <th>اسم الحساب</th>
                 <th>الفرع</th>
                 <th>رقم العملية</th>
+                <th>القناة</th>
                 <th>المبلغ</th>
                 <th>الخدمة</th>
                 <th>الحالة</th>
@@ -71,7 +78,7 @@
               </tr>
             </thead>
             <tbody id="rows">
-              <tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+              <tr><td colspan="9"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -121,7 +128,8 @@
   A.boot({
     page: 'payments',
     title: 'المدفوعات',
-    lead: 'سجل الدفعات المقيَّدة على المنصة — قيدٌ يدوي برقم العملية ومبلغ حرّ بالليرة، '
+    lead: 'سجل الدفعات المقيَّدة على المنصة بقناتيها — قيدٌ يدوي برقم العملية يدقّقه الطاقم، '
+        + 'ودفعٌ آلي عبر بوابة شام كاش تُسوّيه البوابة بنفسها بلا تدقيق. '
         + 'وإعفاء لمن استُثني من الرسوم، وحذفٌ لأي قيد خاطئ يُثبَّت في سجل التدقيق.',
     crumb: 'المدفوعات'
   }).then(function (st) {
@@ -154,6 +162,45 @@
     if (n === 1) return 'دفعة واحدة';
     if (n === 2) return 'دفعتان';
     return A.toAr(n) + (n >= 3 && n <= 10 ? ' دفعات' : ' دفعة');
+  }
+
+  /* ---------------------------------------------------------------- القناة
+     الدفع الآلي عبر بوابة شام كاش يُقيَّد من القاعدة لا من موظف: دالة الحافّة
+     تفتح الفاتورة في sham_bills، ثم يصل تأكيد الدفع من البوابة (webhook)
+     فتُنشئ sham_settle_bill صفَّ الدفعة **مصدَّقاً مباشرةً** (status
+     'verified' و method 'sham_auto') وتمنح الاستحقاق — بلا أي تدقيق إداري
+     ولا decided_by، لأنه لا مدقّق بشري وراء هذا القرار.
+
+     تمييزه عن التحويل اليدوي واجبٌ في هذا الجدول لا زينة: بدونه يقرأ
+     الموظف «مدقَّقة ومفعَّلة» فيظنّ أن زميلاً دقّقها بيده، ويطلب صاحبها
+     رقم عملية لا وجود له في الكشف اليدوي.
+
+     المعيار الأول والقاطع: method = 'sham_auto' (ترحيلة ٠٣٠). ورقم
+     الفاتورة مشتقٌّ من رقم العملية نفسه: sham_settle_bill تكتبه
+     'SA-' || bill_no، فلا يحتاج الجدول عموداً إضافياً. وتُقرأ أعمدةٌ
+     صريحة أيضاً إن أضافتها ترحيلة لاحقة — أعمّ من الاشتقاق ولا تُعطّله. */
+  var shamTrans = {};   /* bill_no ⟵ tranId، من دفتر sham_bills */
+  function billNoOf(r) {
+    if (!r) { return ''; }
+    if (r.sham_bill_no || r.bill_no) { return r.sham_bill_no || r.bill_no; }
+    var m = /^SA-(.+)$/.exec(String(r.op_no || ''));
+    return (r.method === 'sham_auto' && m) ? m[1] : '';
+  }
+  function tranIdOf(r) {
+    if (r && (r.sham_tran_id || r.tran_id)) { return r.sham_tran_id || r.tran_id; }
+    var b = billNoOf(r);
+    return (b && shamTrans[b] != null) ? String(shamTrans[b]) : '';
+  }
+  function isAuto(r)   { return !!r && (r.method === 'sham_auto' || !!r.sham_bill_no); }
+  function chanLabel(r) {
+    if (isAuto(r)) { return 'شام كاش — آلي'; }
+    if (r && r.method === 'syriatel') { return 'سيريتل كاش'; }
+    return 'شام كاش — يدوي';
+  }
+  /* سطر مرجعي تحت رقم العملية — يُطبع فقط حين توجد قيمة فعلاً */
+  function refLine(label, val) {
+    return val ? '<span class="adm-sub pay-sub-rtl">' + A.esc(label) + ': ' +
+      '<span class="pay-ref">' + A.esc(val) + '</span></span>' : '';
   }
 
   /* ---------------------------------------------------------------- المؤشرات */
@@ -193,7 +240,7 @@
 
   /* ---------------------------------------------------------------- الجدول */
   function loadRows() {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
     if (!Object.keys(bookTitles).length) {
       API.content.catalog().then(function (cat) {
         (cat || []).forEach(function (c) { bookTitles[c.id] = c.title; });
@@ -219,6 +266,27 @@
       });
       view = rows;
       paint();
+      /* رقم حركة شام كاش (tranId) يسكن دفتر sham_bills لا جدول payments:
+         يُجلب لصفوف الصفحة وحدها (لا لكل السجل) ثم تُعاد الرسمة. إثراء
+         عرضٍ لا شرط صحة — فشلُه يُسكَت عنه ويبقى الجدول كاملاً برقم
+         الفاتورة والقناة. */
+      var need = [], k;
+      for (k = 0; k < rows.length; k++) {
+        var bn = billNoOf(rows[k]);
+        if (bn && shamTrans[bn] == null) { need.push(bn); }
+      }
+      if (need.length && API.pay && API.pay.shamBills) {
+        API.pay.shamBills(need).then(function (bills) {
+          var got = false, j;
+          for (j = 0; j < (bills || []).length; j++) {
+            if (bills[j] && bills[j].bill_no && bills[j].tran_id != null) {
+              shamTrans[bills[j].bill_no] = bills[j].tran_id;
+              got = true;
+            }
+          }
+          if (got) { paintRows(); }
+        }).catch(function () { /* الجدول قائم بدونه */ });
+      }
       A.pager($('pagerEl'), state, function (off) {
         state.offset = off; loadRows();
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -226,7 +294,7 @@
     }).catch(function (e) {
       $('totalTag').textContent = '—';
       filtersEl.innerHTML = '';
-      tbody.innerHTML = '<tr><td colspan="8">' + A.errorState(A.errText(e), 'retry') + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9">' + A.errorState(A.errText(e), 'retry') + '</td></tr>';
       var r = $('retry'); if (r) r.addEventListener('click', loadRows);
     });
   }
@@ -261,7 +329,7 @@
   function paintRows() {
     if (!view.length) {
       var filtered = !!state.search || state.filter !== 'all';
-      tbody.innerHTML = '<tr><td colspan="8">' + A.emptyState(
+      tbody.innerHTML = '<tr><td colspan="9">' + A.emptyState(
         filtered ? 'لا نتائج مطابقة' : 'لا دفعات مسجّلة بعد',
         filtered
           ? 'جرّب توسيع البحث أو إلغاء التصفية.'
@@ -281,22 +349,47 @@
         '<td class="wrap">' + name +
           (acc.exempt ? '<span class="adm-sub">الحساب معفى من الرسوم</span>' : '') + '</td>' +
         '<td>' + A.esc(acc.branch || '—') + '</td>' +
-        '<td class="num adm-mono" dir="ltr" style="text-align:start">' + A.esc(r.op_no) + '</td>' +
+        '<td class="num adm-mono" dir="ltr" style="text-align:start">' + A.esc(r.op_no) +
+          /* أرقام البوابة تحت رقم العملية لا في عمودين إضافيين: بهما
+             يطابق الموظف الصف مع كشف شام كاش دون أن يتضخّم الجدول */
+          refLine('رقم الفاتورة', billNoOf(r)) +
+          refLine('عملية شام كاش', tranIdOf(r)) + '</td>' +
+        '<td class="wrap">' + (isAuto(r)
+          ? '<span class="tag tag--navy">شام كاش — آلي</span>'
+          : '<span class="tag">' + A.esc(chanLabel(r)) + '</span>') + '</td>' +
         '<td class="num strong">' + money + '</td>' +
         '<td class="wrap">' + (r.service
           ? A.esc(SVC[r.service] || r.service) +
             (r.item_id ? '<span class="adm-sub">' + A.esc(folderNames[r.item_id] || bookTitles[r.item_id] || r.item_id) + '</span>' : '')
           : (r.exempt ? '<span class="tag tag--gold">معفاة</span>' : '—')) + '</td>' +
+        /* الحالة تُسمّى بمصدرها: صفٌّ آلي «بانتظار تأكيد البوابة» لا
+           «قيد التدقيق» — لا شيء ينتظر الموظف فيه، والمسوَّى منه سوّته
+           البوابة لا يدُ أحد */
         '<td>' + (r.status === 'pending'
-            ? '<span class="tag tag--gold">قيد التدقيق</span>'
+            ? (isAuto(r)
+                ? '<span class="tag tag--gold">بانتظار تأكيد شام كاش</span>'
+                : '<span class="tag tag--gold">قيد التدقيق</span>')
             : r.status === 'rejected'
-              ? '<span class="tag tag--error">مرفوضة</span>'
-              : '<span class="tag tag--success">مدقَّقة ومفعَّلة</span>') + '</td>' +
+              ? '<span class="tag tag--error">' + (isAuto(r) ? 'مُغلقة كغير مدفوعة' : 'مرفوضة') + '</span>'
+              : (isAuto(r)
+                  ? '<span class="tag tag--success">مدفوعة آلياً</span>' +
+                    '<span class="adm-sub">سوّتها البوابة — بلا تدقيق إداري</span>'
+                  : '<span class="tag tag--success">مدقَّقة ومفعَّلة</span>')) + '</td>' +
         '<td>' + A.arDateTime(r.paid_at) + '</td>' +
+        /* الصف الآلي لا يدخل طابور التدقيق بزرّ «تدقيق وتفعيل» الأزرق:
+           تسويته بيد البوابة لا بيد الموظف. وبترحيلة ٠٣٠ لا يُخلق صفُّ
+           دفعةٍ آلية إلا مصدَّقاً أصلاً — الفاتورة غير المدفوعة تبقى في
+           sham_bills ولا تظهر هنا — فهذا الفرع حارسٌ لا علاج: لو صار
+           يوماً صفٌّ آلي معلّقاً (تدخّلٌ يدوي في القاعدة) وجب ألّا يُعرض
+           كأنه ينتظر تدقيقاً عادياً، بل بمخرجٍ استثنائي موسومٍ باسمه. */
         '<td class="adm-actions">' +
           (r.status === 'pending'
-            ? '<button class="btn btn-primary btn-sm" data-act="ok" data-write>تدقيق وتفعيل</button>' +
-              '<button class="btn btn-outline btn-sm" data-act="no" data-write>رفض</button>'
+            ? (isAuto(r)
+                ? '<span class="adm-sub">تُسوَّى تلقائياً عند تأكيد البوابة</span>' +
+                  '<button class="btn btn-outline btn-sm" data-act="ok" data-write>تفعيل يدوي استثنائي</button>' +
+                  '<button class="btn btn-outline btn-sm" data-act="no" data-write>إغلاق كغير مدفوعة</button>'
+                : '<button class="btn btn-primary btn-sm" data-act="ok" data-write>تدقيق وتفعيل</button>' +
+                  '<button class="btn btn-outline btn-sm" data-act="no" data-write>رفض</button>')
             : '<button class="btn btn-outline btn-sm" data-act="del" data-write>حذف</button>') +
         '</td>' +
       '</tr>';
@@ -310,18 +403,39 @@
        على مال حقيقي — يجب أن يرى أي بند وأي خطة سيمنحها قبل الضغط */
     var what = (r.service ? (SVC[r.service] || r.service) : 'دفعة بلا خدمة محددة')
       + (r.item_id ? ' — «' + (folderNames[r.item_id] || bookTitles[r.item_id] || r.item_id) + '»' : '');
+    /* نصّ التأكيد يتبع القناة: الصف الآلي ليس «رقم عملية يدوي يُطابَق»،
+       وتفعيله بيدٍ تجاوزٌ لتأكيد البوابة — يجب أن يقرأ الموظف ذلك صراحةً
+       قبل أن يضغط، لا أن يُسأل سؤال المسار اليدوي نفسه. */
+    var auto = isAuto(r);
+    var gref = billNoOf(r) ? 'فاتورة ' + billNoOf(r) : 'الفاتورة ' + r.op_no;
+    if (tranIdOf(r)) { gref += ' · عملية ' + tranIdOf(r); }
     A.confirm({
-      title: approve ? 'تدقيق وتفعيل الدفعة' : 'رفض الدفعة',
-      okLabel: approve ? 'تدقيق وتفعيل' : 'رفض الدفعة',
+      title: approve
+        ? (auto ? 'تفعيل يدوي استثنائي' : 'تدقيق وتفعيل الدفعة')
+        : (auto ? 'إغلاق الفاتورة كغير مدفوعة' : 'رفض الدفعة'),
+      okLabel: approve
+        ? (auto ? 'تفعيل استثنائي' : 'تدقيق وتفعيل')
+        : (auto ? 'إغلاق كغير مدفوعة' : 'رفض الدفعة'),
       text: approve
-        ? 'تأكدت من رقم العملية ' + r.op_no + ' في حساب شام كاش؟ بالموافقة يُمنح «' + who +
-          '» استحقاق: ' + what + ' — فوراً وتلقائياً، ويظهر في حسابه.'
-        : 'سترُفض دفعة «' + who + '» رقم ' + r.op_no + ' ولن يُمنح أي استحقاق. ' +
-          'الرفض يُسجَّل في سجل التدقيق باسمك.'
+        ? (auto
+            ? 'هذه دفعة آلية عبر بوابة شام كاش تُسوَّى بتأكيد البوابة لا بيدك (' + gref + '). ' +
+              'لا تفعّلها يدوياً إلا إن تأكدت من وصول المبلغ فعلاً في حساب النقابة لدى شام كاش ' +
+              'وتعذّر وصول التأكيد. بالموافقة يُمنح «' + who + '» استحقاق: ' + what + ' فوراً، ' +
+              'ويُسجَّل التجاوز في سجل التدقيق باسمك.'
+            : 'تأكدت من رقم العملية ' + r.op_no + ' في حساب شام كاش؟ بالموافقة يُمنح «' + who +
+              '» استحقاق: ' + what + ' — فوراً وتلقائياً، ويظهر في حسابه.')
+        : (auto
+            ? 'ستُغلق فاتورة «' + who + '» الآلية (' + gref + ') كغير مدفوعة ولن يُمنح أي استحقاق. ' +
+              'تحقق أولاً من عدم وصول المبلغ في حساب النقابة لدى شام كاش. ' +
+              'الإغلاق يُسجَّل في سجل التدقيق باسمك.'
+            : 'سترُفض دفعة «' + who + '» رقم ' + r.op_no + ' ولن يُمنح أي استحقاق. ' +
+              'الرفض يُسجَّل في سجل التدقيق باسمك.')
     }).then(function (ok) {
       if (ok === null || ok === false) return;
       API.admin.verifyPayment(r.id, approve).then(function () {
-        A.toast(approve ? 'دُقّقت الدفعة وفُعّل الاستحقاق.' : 'رُفضت الدفعة.', 'ok');
+        A.toast(approve
+          ? (auto ? 'فُعّل الاستحقاق يدوياً استثناءً.' : 'دُقّقت الدفعة وفُعّل الاستحقاق.')
+          : (auto ? 'أُغلقت الفاتورة كغير مدفوعة.' : 'رُفضت الدفعة.'), 'ok');
         loadRows(); loadKpis();
       }).catch(function (err) { A.toast(A.errText(err), 'bad'); });
     });
@@ -401,6 +515,8 @@
             'استبدله برقم عملية الدفع الفعلي إن وُجد.</span></div>' +
 
         '<div class="notice"><span>القيد يدوي: أدخله بعد التثبّت من وصول المبلغ فعلاً. ' +
+          'دفعات بوابة شام كاش الآلية تُقيَّد وتُسوَّى بنفسها ولا تُدخل من هنا — ' +
+          'هذه اللوحة للتحويلات اليدوية وحدها. ' +
           'الإدراج والحذف كلاهما يُسجَّل في سجل التدقيق باسم من نفّذه.</span></div>',
 
       onOk: function (host) {
@@ -510,12 +626,20 @@
   /* ---------------------------------------------------------------- التصدير */
   function exportView() {
     if (!view.length) { A.toast('لا صفوف لتصديرها.', 'bad'); return; }
+    /* القناة وأرقام البوابة في التصدير أيضاً: المطابقة مع كشف شام كاش
+       تجري في Excel لا على الشاشة، وبلا هذه الأعمدة يبقى الكشف بلا مفتاح */
     A.exportCsv('osea-payments.csv',
-      ['اسم الحساب', 'الفرع', 'رقم العملية', 'المبلغ (ل.س)', 'النوع', 'التوقيت'],
+      ['اسم الحساب', 'الفرع', 'رقم العملية', 'القناة', 'رقم الفاتورة',
+       'عملية شام كاش', 'المبلغ (ل.س)', 'النوع', 'الحالة', 'التوقيت'],
       view.map(function (r) {
         var acc = r.accounts || {};
-        return [acc.name || '', acc.branch || '', r.op_no || '', r.amount | 0,
-                r.exempt ? 'معفاة' : 'مدفوعة', r.paid_at || ''];
+        return [acc.name || '', acc.branch || '', r.op_no || '',
+                chanLabel(r), billNoOf(r), tranIdOf(r), r.amount | 0,
+                r.exempt ? 'معفاة' : 'مدفوعة',
+                r.status === 'pending' ? (isAuto(r) ? 'بانتظار تأكيد البوابة' : 'قيد التدقيق')
+                  : r.status === 'rejected' ? (isAuto(r) ? 'مُغلقة كغير مدفوعة' : 'مرفوضة')
+                  : (isAuto(r) ? 'مدفوعة آلياً' : 'مدقَّقة ومفعَّلة'),
+                r.paid_at || ''];
       }));
     A.toast('صُدّر الملف — ' + nPay(view.length) + '.', 'ok');
   }

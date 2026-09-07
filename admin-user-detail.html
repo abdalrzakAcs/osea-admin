@@ -75,6 +75,24 @@
           </div>
         </div>
 
+        <!-- توثيق الهوية النقابية (ترحيلة ٠٢٩): الرقم والمرتبة يُدخلهما
+             العضو من التطبيق، وتبتّ فيهما الإدارة «وفقًا للرقم النقابي
+             والفرع». بطاقة مستقلة لا صفوف في بطاقة الهوية لأن هذا فعلٌ لا
+             عرض، ولأن القرار يحتاج الرقم والفرع والمرتبة المطلوبة مجتمعةً
+             أمام عين المدقّق فلا يغادر الشاشة ليكمل قراره. -->
+        <div class="adm-table-card" id="verifyCard" hidden>
+          <div class="adm-table-head">
+            <h2>توثيق الهوية النقابية</h2>
+            <span class="spacer"></span>
+            <span class="tag" id="verifyTag" hidden></span>
+          </div>
+          <div class="prof-body">
+            <dl class="adm-kv" id="verifyKv"></dl>
+            <div class="prof-acts" id="verifyBtns" style="margin-block-start:16px"></div>
+            <p class="adm-sub" id="verifyNote" hidden></p>
+          </div>
+        </div>
+
         <!-- بطاقات الملخّص الأربع -->
         <div class="adm-kpis">
           <div class="adm-kpi">
@@ -263,6 +281,21 @@
   var BRANCHES = ['دمشق', 'ريف دمشق', 'حلب', 'حمص', 'حماة', 'اللاذقية', 'طرطوس',
                   'دير الزور', 'الرقة', 'الحسكة', 'درعا', 'السويداء', 'القنيطرة', 'إدلب'];
 
+  /* أسماء المراتب (٠٢٦) في نسخة واحدة: كانت مكتوبة في بطاقة الهوية وفي
+     لوحة التعديل، وثالثةٌ في بطاقة التوثيق كانت ستجعل تصحيح مصطلحٍ واحد
+     يمرّ بثلاثة مواضع — وأولها الذي يُنسى. */
+  var GRADE_AR = { trainee: 'مهندس متدرب', associate: 'مهندس مشارك',
+                   practicing: 'مهندس ممارس', consultant: 'مهندس استشاري' };
+  var GRADES = ['trainee', 'associate', 'practicing', 'consultant'];
+
+  /* حالتا التوثيق (٠٢٩) بصيغتَي التذكير والتأنيث: «المرتبة موثَّق» عيبٌ
+     ظاهر في شاشةٍ رسمية تقرؤها النقابة. */
+  var VSTATUS = {
+    pending:  ['قيد التحقق', 'قيد التحقق', 'tag--gold'],
+    verified: ['موثَّق',      'موثَّقة',     'tag--success'],
+    rejected: ['مرفوض',      'مرفوضة',     'tag--error']
+  };
+
   /* أفعال سجل التدقيق كما تكتبها القاعدة → عربية مقروءة */
   var ACTIONS = {
     'edit': 'تعديل بيانات', 'delete': 'حذف', 'revoke': 'سحب شهادة',
@@ -291,6 +324,7 @@
 
   function wire() {
     $('actBtns').addEventListener('click', onAction);
+    $('verifyBtns').addEventListener('click', onVerify);
     $('attemptRows').addEventListener('click', onAttemptClick);
     $('paymentRows').addEventListener('click', onPaymentClick);
     $('certRows').addEventListener('click', onCertClick);
@@ -317,6 +351,10 @@
       stateEl.innerHTML = '';
       wrap.hidden = false;
       paintHead();
+      /* الرسم الجديد داخل حارس: لو رمى (حقلٌ لم تعرفه قاعدةٌ لم تُرحَّل،
+         أو صنفٌ غاب) لسقط في ‎.catch‎ الوحيد أسفله فمحا الملف كله بدل أن
+         يفقد بطاقةً واحدة — وهو بعينه العطل الذي اشتكت منه النقابة. */
+      try { paintVerify(); } catch (e) { $('verifyCard').hidden = true; }
       paintActions();
       paintKpis();
       paintLessons();
@@ -351,6 +389,15 @@
     return v ? '<span class="adm-mono" dir="ltr">' + A.esc(v) + '</span>' : '—';
   }
 
+  /* شارة حالة التوثيق — الغياب يعني «ترحيلة ٠٢٩ لم تُطبَّق بعد» لا «لا
+     حالة»، وفي الحالتين لا تُرسم شارة: شارةٌ مخترعة على قاعدةٍ لا تعرف
+     الحقل تكذب على المدقّق، والصمت هنا أصدق. */
+  function vtag(st, fem) {
+    var s = VSTATUS[st || ''];
+    return s ? ' <span class="tag ' + s[2] + '">' + s[fem ? 1 : 0] + '</span>' : '';
+  }
+  function gradeAr(g) { return g ? (GRADE_AR[g] || g) : ''; }
+
   function paintHead() {
     var a = P.account;
     var s = STATUS[a.status] || { label: a.status, cls: '' };
@@ -371,13 +418,18 @@
 
     var contact = a.contact_method === 'email' ? a.email : a.phone;
     var parts = [
-      kv('الرقم النقابي', ltr(a.synd_no)),
+      /* الحالة إلى جانب القيمة لا في صفٍّ آخر: الرقم بلا حالته يستوي عند
+         القارئ المدقَّقُ والمكتوبُ اعتباطاً، وهي المشكلة التي جاءت ٠٢٩ لها */
+      kv('الرقم النقابي', ltr(a.synd_no) + vtag(a.synd_no_status)),
       kv('رقم الهوية الوطنية', ltr(a.national_id)),
       kv('الفرع النقابي', A.esc(a.branch || '—')),
-      kv('المرتبة الهندسية', a.grade
-        ? A.esc(({ trainee: 'مهندس متدرب', associate: 'مهندس مشارك',
-                   practicing: 'مهندس ممارس', consultant: 'مهندس استشاري' })[a.grade] || a.grade)
-        : '<span class="adm-sub" style="margin:0">لم تُحدَّد</span>'),
+      kv('المرتبة الهندسية', (a.grade
+        ? A.esc(gradeAr(a.grade))
+        : '<span class="adm-sub" style="margin:0">لم تُحدَّد</span>') + vtag(a.grade_req_status, true),
+        /* المطلوب يُذكر تحت المعتمد متى اختلفا: الإدارة قد تعتمد غير ما
+           طُلب، فبقاء الطلب مقروءاً هو أثر القرار لا ضجيجاً */
+        (a.grade_requested && a.grade_requested !== a.grade)
+          ? 'طلب العضو: ' + A.esc(gradeAr(a.grade_requested)) : null),
       kv('وسيلة التواصل', ltr(contact),
          a.contact_method === 'email' ? 'وسيلة التأكيد: البريد الإلكتروني' : 'وسيلة التأكيد: الموبايل'),
       kv('تاريخ التسجيل', A.arDateTime(a.created_at)),
@@ -410,6 +462,160 @@
         A.toAr(a.failed_logins | 0) + ' محاولة دخول فاشلة. ' +
         'إعادة تعيين كلمة المرور تُلغي الإيقاف فوراً.';
     }
+  }
+
+  /* ---------------------------------------------------------------- التوثيق */
+  /* بطاقة القرار: ما يحتاجه المدقّق ليقرّر (الرقم والفرع والمرتبة المطلوبة)
+     ثم الأزرار التي يقرّر بها — بهذا الترتيب لأن «وفقًا للرقم النقابي
+     والفرع» شرطُ قراءةٍ قبل أن يكون شرطَ قرار. */
+  function paintVerify() {
+    var a = P.account;
+    var card = $('verifyCard');
+    /* غياب المفاتيح كلها = ترحيلة ٠٢٩ غير مطبَّقة على هذه القاعدة، لأن
+       admin_account_profile تُعيد صف accounts كما هو (to_jsonb) فالعمود
+       الغائب مفتاحٌ غائب. حينها تبقى البطاقة ظاهرة بلا أزرار وتقول السبب:
+       إخفاؤها كان سيترك الطاقم يظن الميزة غير موجودة أصلاً. */
+    /* شرطان لا شرط: أن تكون القاعدة مُرحَّلة (الحقول واصلة في الحساب)،
+       وأن تكون نسخة osea-api.js المحمَّلة في المتصفح تعرف دالتَي التوثيق.
+       الثاني ليس تزيّداً: اللوحة تُنشر مبنيّةً وقد تبقى نسخة قديمة في
+       ذاكرة المتصفح بعد رفع الترحيلة، فتظهر الأزرار وتنفجر عند الضغط
+       بـTypeError لا يلتقطه catch الوعد لأنه يقع قبل نشوء الوعد أصلاً. */
+    var ready = ((a.synd_no_status !== undefined) || (a.grade_req_status !== undefined))
+      && !!(API.admin && API.admin.verifySyndNo && API.admin.verifyGrade);
+
+    var req = a.grade_requested || '';
+    $('verifyKv').innerHTML = [
+      kv('الرقم النقابي', ltr(a.synd_no) + vtag(a.synd_no_status),
+         a.synd_no_at ? 'آخر تغيير: ' + A.arDateTime(a.synd_no_at) : null),
+      kv('الفرع النقابي', A.esc(a.branch || '—')),
+      kv('المرتبة المثبَّتة', a.grade
+        ? A.esc(gradeAr(a.grade))
+        : '<span class="adm-sub" style="margin:0">لم تُحدَّد</span>'),
+      kv('المرتبة المطلوبة', req
+        ? A.esc(gradeAr(req)) + vtag(a.grade_req_status, true)
+        : '<span class="adm-sub" style="margin:0">لا طلب مسجَّل</span>',
+        a.grade_req_at && req ? 'تاريخ الطلب: ' + A.arDateTime(a.grade_req_at) : null)
+    ].join('');
+
+    /* شارة الترويسة تختصر الطابور: المدقّق يفتح عشرات الملفات في الجلسة
+       الواحدة، ويحتاج أن يعرف من الترويسة وحدها أفيه ما ينتظره أم لا */
+    var waiting = (a.synd_no_status === 'pending') || (a.grade_req_status === 'pending');
+    var vt = $('verifyTag');
+    vt.className = 'tag' + (waiting ? ' tag--gold' : '');
+    vt.textContent = waiting ? 'بانتظار قرارك' : 'لا طلبات معلّقة';
+    vt.hidden = !ready;
+
+    $('verifyBtns').innerHTML = verifyActions(a, ready);
+    var note = $('verifyNote');
+    note.textContent = ready ? '' :
+      'حالتا التوثيق غير متاحتين بعد — إمّا أن ترحيلة ٠٢٩ لم تُطبَّق على القاعدة، '
+      + 'وإمّا أن نسخة اللوحة في متصفحك أقدم من النشر (جرّب تحديث الصفحة بلا ذاكرة). '
+      + 'بقية الملف يعمل كما هو، والمرتبة تُضبط مؤقتاً من «تعديل البيانات».';
+    note.hidden = ready;
+    card.hidden = false;
+  }
+
+  function verifyActions(a, ready) {
+    if (!ready) { return ''; }
+    var b = [];
+    /* لا توثيق لرقمٍ غير موجود: «غير مسجّل» قيمةٌ حارسة تكتبها حسابات
+       التسجيل السريع، وتوثيقها يصنع سجلاً رسمياً لرقمٍ لا وجود له */
+    var hasNo = !!a.synd_no && a.synd_no !== 'غير مسجّل';
+    /* الأولوية البصرية للمعلّق: زرٌّ أساسي واحد على الشاشة يقود العين إلى
+       ما ينتظر قراراً فعلاً، وما عداه بديلٌ متاح لا مطلوب */
+    if (hasNo && a.synd_no_status !== 'verified') {
+      b.push('<button class="btn btn-' + (a.synd_no_status === 'pending' ? 'primary' : 'outline') +
+        ' btn-sm" data-vact="synd-ok" data-write>توثيق الرقم النقابي</button>');
+    }
+    if (hasNo && a.synd_no_status !== 'rejected') {
+      b.push('<button class="btn btn-outline btn-sm" data-vact="synd-no" data-write>رفض الرقم بسبب</button>');
+    }
+    b.push('<button class="btn btn-' + (a.grade_req_status === 'pending' ? 'primary' : 'outline') +
+      ' btn-sm" data-vact="grade-ok" data-write>اعتماد المرتبة</button>');
+    if (a.grade_req_status === 'pending') {
+      b.push('<button class="btn btn-outline btn-sm" data-vact="grade-no" data-write>رفض طلب المرتبة</button>');
+    }
+    return b.join('');
+  }
+
+  function onVerify(e) {
+    var btn = e.target.closest('[data-vact]');
+    if (!btn || !P) return;
+    var a = P.account, k = btn.getAttribute('data-vact');
+
+    if (k === 'synd-ok') {
+      return A.confirm({
+        title: 'توثيق الرقم النقابي', okLabel: 'توثيق الرقم',
+        text: 'سيُعتمد الرقم ' + (a.synd_no || '—') + ' لـ«' + a.name + '» في فرع ' +
+              (a.branch || '—') + '. بعد التوثيق يتعذّر على العضو تعديله من التطبيق.'
+      }).then(function (r) {
+        if (r === null) return;
+        act(API.admin.verifySyndNo(id, true, null), 'وُثّق الرقم النقابي لـ«' + a.name + '».');
+      });
+    }
+    if (k === 'synd-no') {
+      return A.confirm({
+        title: 'رفض الرقم النقابي', danger: true, okLabel: 'رفض الرقم',
+        text: 'يعود الحقل قابلاً للتعديل عند العضو، ويُعرض له السبب داخل التطبيق.',
+        /* السبب إلزامي هنا وحده: بلا سببٍ يعيد العضو إرسال الرقم نفسه
+           فتدور المراجعة على نفسها بلا نهاية */
+        reason: 'سبب الرفض (يظهر للعضو)', reasonRequired: true
+      }).then(function (note) {
+        if (note === null) return;
+        act(API.admin.verifySyndNo(id, false, note), 'رُفض الرقم النقابي لـ«' + a.name + '».');
+      });
+    }
+    if (k === 'grade-no') {
+      return A.confirm({
+        title: 'رفض طلب المرتبة', danger: true, okLabel: 'رفض الطلب',
+        text: 'يُرفض الطلب وحده — تبقى المرتبة المعتمدة سابقاً نافذة كما هي.'
+      }).then(function (r) {
+        if (r === null) return;
+        act(API.admin.verifyGrade(id, false, null), 'رُفض طلب المرتبة لـ«' + a.name + '».');
+      });
+    }
+    if (k === 'grade-ok') { return openGradeVerify(a); }
+  }
+
+  /* الاعتماد لوحةٌ لا تأكيد: القرار «وفقًا للرقم النقابي والفرع» يعني أن
+     الإدارة قد تعتمد غير ما طُلب — فالمرتبة تُختار هنا لا تُصادق، والرقم
+     والفرع والطلب معروضة فوق الاختيار كي يُقرَّر بها لا بالذاكرة. */
+  function openGradeVerify(a) {
+    var cur = a.grade_requested || a.grade || '';
+    A.sheet({
+      title: 'اعتماد المرتبة الهندسية',
+      okLabel: 'اعتماد المرتبة',
+      body:
+        '<dl class="adm-kv">' +
+          kv('العضو', A.esc(a.name)) +
+          kv('الرقم النقابي', ltr(a.synd_no) + vtag(a.synd_no_status)) +
+          kv('الفرع النقابي', A.esc(a.branch || '—')) +
+          kv('المرتبة المطلوبة', a.grade_requested
+            ? A.esc(gradeAr(a.grade_requested))
+            : '<span class="adm-sub" style="margin:0">لا طلب مسجَّل</span>') +
+        '</dl>' +
+        '<div class="field" style="margin-block-start:16px">' +
+          '<label for="vGrade">المرتبة المعتمدة</label>' +
+          '<select class="input" id="vGrade">' +
+            '<option value="">اختر المرتبة</option>' +
+            GRADES.map(function (g) {
+              return '<option value="' + g + '"' + (g === cur ? ' selected' : '') + '>' +
+                A.esc(GRADE_AR[g]) + '</option>';
+            }).join('') +
+          '</select>' +
+          '<span class="hint">يجوز اعتماد مرتبة غير المطلوبة — القرار للإدارة وفق الرقم النقابي والفرع.</span>' +
+        '</div>' +
+        '<div class="notice"><span>الاعتماد يكتب المرتبة في سجل العضو ويُغلق طلبه، ' +
+          'ويُسجَّل في سجل التدقيق باسمك.</span></div>',
+      onOk: function (host) {
+        var v = host.querySelector('#vGrade').value;
+        if (!v) { return Promise.reject(new Error('اختر المرتبة المعتمدة قبل الحفظ.')); }
+        return API.admin.verifyGrade(id, true, v).then(function () {
+          A.toast('اعتُمدت مرتبة «' + a.name + '»: ' + gradeAr(v) + '.', 'ok');
+          load();
+        });
+      }
+    });
   }
 
   /* ---------------------------------------------------------------- الإجراءات */
@@ -485,11 +691,16 @@
           '<select class="input" id="eBranch">' + branches + '</select></div>' +
         '<div class="field"><label for="eGrade">المرتبة الهندسية</label>' +
           '<select class="input" id="eGrade">' +
-            [['', 'لم تُحدَّد'], ['trainee', 'مهندس متدرب'], ['associate', 'مهندس مشارك'],
-             ['practicing', 'مهندس ممارس'], ['consultant', 'مهندس استشاري']].map(function (o) {
-              return '<option value="' + o[0] + '"' + ((a.grade || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+            '<option value=""' + (a.grade ? '' : ' selected') + '>لم تُحدَّد</option>' +
+            GRADES.map(function (g) {
+              return '<option value="' + g + '"' + ((a.grade || '') === g ? ' selected' : '') + '>' +
+                A.esc(GRADE_AR[g]) + '</option>';
             }).join('') +
-          '</select></div>' +
+          '</select>' +
+          /* الضبط المباشر هنا يعتمد المرتبة فوراً (admin_set_account_grade)
+             ويُغلق طلب العضو معها — والتوثيق المنفصل أعلاه هو طريق البتّ
+             في الطلب، فالتنبيه يمنع ظنّ أن أحدهما بديل الآخر */
+          '<span class="hint">الضبط من هنا يعتمد المرتبة مباشرةً ويُنهي أي طلب معلّق للعضو.</span></div>' +
         '<div class="field"><label for="ePhone">رقم الموبايل</label>' +
           '<input class="input" id="ePhone" dir="ltr" value="' + A.esc(a.phone || '') + '"></div>' +
         '<div class="field"><label for="eEmail">البريد الإلكتروني</label>' +
