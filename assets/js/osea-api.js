@@ -802,7 +802,7 @@
      مصدر واحد كي لا يتباعد اسم النوع بين اللوحة والتطبيق، ولا يظهر نوع في
      أحدهما دون الآخر كما كاد يحدث مع السجلين السوريين. */
   var ACCREDIT_KINDS = [
-    { k: 'engineer',   label: 'مهندس',              plural: 'المهندسون المعتمدون' },
+    { k: 'engineer',   label: 'مهندس',              plural: 'المهندسون المعتمدون وفق الاختبارات' },
     { k: 'org',        label: 'منظمة',              plural: 'المنظمات المعتمدة' },
     { k: 'company',    label: 'شركة معتمدة',        plural: 'الشركات المعتمدة' },
     { k: 'sy_company', label: 'شركة هندسية سورية',  plural: 'الشركات الهندسية السورية' },
@@ -893,17 +893,63 @@
     return String(path == null ? '' : path).replace(/^\/+/, '').split('/')
       .map(function (seg) { return encodeURIComponent(seg); }).join('/');
   }
-  /* رسالة عربية من ردّ خدمة التخزين — جسم الخطأ JSON فيه message أو error */
-  function storageErrText(xhr) {
+  /* امتداد الملف من مسار التخزين بحروف صغيرة («pdf»، «mp4») أو '' إن غاب.
+     الامتداد غير مخزَّن في القاعدة، وهذه الدالة هي المصدر الوحيد لاستخراجه
+     في اللوحة والتطبيق معاً كي لا يختلف عدّ «ملفات الفيديو» بين شاشتين.
+     يُؤخذ آخر مقطع من المسار بعد حذف أي استعلام أو علامة مرساة، والامتداد
+     حروفٌ وأرقام لاتينية من ١ إلى ١٠ فقط — فـ«v2.1» في اسم مجلد ليس امتداداً.
+     التعبير مطابقٌ حرفياً لدالة القاعدة public.content_path_ext (الترحيل ٠٣١)
+     التي تقرأ بها admin_content وadmin_storage_usage؛ الفرق الوحيد أن القاعدة
+     تُرجع null عند غياب الامتداد وهذه تُرجع ''، فيُقارَن دائماً بـ(it.ext || ''). */
+  function extOf(path) {
+    var s = String(path == null ? '' : path).split(/[?#]/)[0];
+    var seg = s.substring(s.lastIndexOf('/') + 1);
+    var m = /\.([A-Za-z0-9]{1,10})$/.exec(seg);
+    return m ? m[1].toLowerCase() : '';
+  }
+  /* حدود الرفع من osea-config.js (OSEA_UPLOAD) مع احتياطٍ مطابقٍ لقيمها:
+     تُقرأ عند كل استدعاء لا عند التحميل كي يبقى الملف صالحاً لو تأخّر
+     تحميل الإعداد أو غُيّر في الجلسة نفسها لأغراض الفحص. */
+  function uploadLimits() {
+    var u = window.OSEA_UPLOAD || {};
+    return {
+      max:     u.MAX_FILE_BYTES > 0 ? u.MAX_FILE_BYTES : 300 * 1024 * 1024,
+      chunk:   u.CHUNK_BYTES > 0    ? u.CHUNK_BYTES    : 6 * 1024 * 1024,
+      retries: u.RETRIES >= 0       ? (u.RETRIES | 0)  : 5,
+      base:    u.RETRY_BASE_MS > 0  ? u.RETRY_BASE_MS  : 1500
+    };
+  }
+  /* حجم بالميغابايت للرسائل: عشرٌ واحدة تحت ١٠٠ ميغابايت وعددٌ صحيح فوقها.
+     up = true يقرّب إلى الأعلى بعشرٍ واحدة دائماً: حجم الملف المرفوض يُعرض
+     بها كي لا تتساوى الأرقام في الرسالة — ملفٌ يزيد بايتاً واحداً على ٣٠٠
+     ميغابايت كان يُعرض «٣٠٠ ميغابايت يتجاوز ٣٠٠ ميغابايت» فلا تفهم الإدارة
+     سبب الرفض. */
+  function fmtMB(n, up) {
+    var mb = (Number(n) || 0) / 1048576;
+    if (up) { return toAr(Math.ceil(mb * 10) / 10) + ' ميغابايت'; }
+    return toAr(mb >= 100 ? Math.round(mb) : Math.round(mb * 10) / 10) + ' ميغابايت';
+  }
+  /* رسالة عربية من ردّ خدمة التخزين — جسم الخطأ JSON فيه message أو error.
+     تقبل أي كائنٍ يحمل status وresponseText (XMLHttpRequest أو ردّ fetch
+     بعد قراءة نصّه) كي تُستعمل في مسارَي الرفع معاً. حدّ الحجم يُشتقّ من
+     OSEA_UPLOAD لا من رقمٍ مكتوب: الرقم المكتوب «١٠٠ ميغابايت» بقي يُعرض
+     بعد رفع حدّ السلة فأربك الإدارة. خدمة التخزين لا تُجيب بـ413 دائماً بل
+     أحياناً بـ400 ونصّ «exceeded the maximum allowed size» أو «Payload too
+     large»، فيُفحص النصّ أيضاً. */
+  function storageErrText(res) {
+    var status = (res && res.status) | 0;
+    var raw = String((res && res.responseText) || '');
     var body = null, msg = '';
-    try { body = JSON.parse(xhr.responseText || 'null'); } catch (e) { body = null; }
+    try { body = JSON.parse(raw || 'null'); } catch (e) { body = null; }
     msg = (body && (body.message || body.error || body.msg)) || '';
-    if (xhr.status === 401 || xhr.status === 403) {
+    if (status === 401 || status === 403) {
       return 'لا صلاحية لرفع ملفات المحتوى — تأكد أنك داخل بحساب مدير ثم أعد المحاولة.';
     }
-    if (xhr.status === 413) { return 'حجم الملف يتجاوز الحد المسموح للسلة (100 ميغابايت).'; }
-    if (!xhr.status) { return 'انقطع الاتصال بالخادم أثناء رفع الملف.'; }
-    return 'تعذّر رفع الملف (' + xhr.status + ')' + (msg ? ' — ' + msg : '');
+    if (status === 413 || /exceeded the maximum allowed size|Payload too large/i.test(msg + ' ' + raw)) {
+      return 'حجم الملف يتجاوز الحد المسموح للملف الواحد (' + fmtMB(uploadLimits().max) + ').';
+    }
+    if (!status) { return 'انقطع الاتصال بالخادم أثناء رفع الملف.'; }
+    return 'تعذّر رفع الملف (' + status + ')' + (msg ? ' — ' + msg : '');
   }
 
   var admin = {
@@ -989,6 +1035,13 @@
 
     /* المحتوى وبنك الأسئلة والإصدارات */
     content:   function () { return rpc('admin_content'); },
+    /* سجل نسخ ملف البند (ترحيل ٠٣١): كل رفعٍ أو استبدالٍ صفٌّ بوقته وحجمه
+       ومن رفعه — الإدارة تسأل «متى رُفعت هذه النسخة؟» ولم يكن لها جواب
+       غير updated_at الذي يتحرّك مع أي تعديل عنوان */
+    contentFileVersions: function (id) { return rpc('admin_content_file_versions', { p_id: id }); },
+    /* استهلاك السلة: مجموع الأحجام من الصفوف ومن كائنات التخزين وحدّ الملف
+       الواحد، موزَّعاً على النوع والامتداد — مقياس السعة المخطَّطة في اللوحة */
+    storageUsage: function () { return rpc('admin_storage_usage'); },
     /* مجلدات المحتوى (ترحيل 021): قراءة للطاقم وحفظ/حذف للمدير */
     folders:      function ()   { return rpc('admin_folders'); },
     saveFolder:   function (p)  { return rpc('admin_save_folder', { p: p }); },
@@ -1071,60 +1124,260 @@
        يضبط الحجم ويرفع rev فتُبطل أجهزة الأعضاء نسختها المخزّنة. */
 
     /* رفع ملف. الإرجاع: Promise يُحلّ بالمسار المرفوع، وعليه خاصية abort()
-       لإلغاء الرفع (يرفض الوعد برسالة «أُلغي رفع الملف»).
+       لإلغاء الرفع (يرفض الوعد برسالة «أُلغي رفع الملف») وخاصية onRetry
+       اختيارية تضبطها اللوحة بعد الاستدعاء: onRetry(رقم المحاولة, الحدّ, السبب)
+       كي تعرض «إعادة المحاولة ٢ من ٥» بدل شريطٍ متجمّد.
        الاستعمال: var up = admin.uploadContentFile(p, f, cb); up.then(…); up.abort();
-       XMLHttpRequest لا مكتبة التخزين: المكتبة لا تعطي تقدّماً حقيقياً ولا
-       إلغاءً، وملفات الدروس بعشرات الميغابايت — شريط تقدّمٍ كاذب يجعل
-       الإدارة تظن الصفحة معلّقة فتغلقها في منتصف الرفع فيتلف الملف.
-       onProgress(محمّل, الإجمالي) اختيارية. */
+       onProgress(محمّل, الإجمالي) اختيارية.
+       مساران: الملف الذي لا يتجاوز قطعةً واحدة (CHUNK_BYTES) يُرفع بطلب POST
+       واحد كما كان؛ والأكبر يمرّ عبر نقطة الرفع القابل للاستئناف (TUS) في خدمة
+       التخزين قطعةً قطعة. السبب: ملفات الدروس تقارب ٣٠٠ ميغابايت، وطلبٌ واحد
+       بهذا الحجم على شبكةٍ متقطّعة يسقط في منتصفه فيُعاد من الصفر، أما القطع
+       فيُعاد المتعثّر منها فقط بعد مصالحة الموضع مع الخادم بطلب HEAD. ولو
+       أجابت نقطة الاستئناف بـ404/405 (خدمة أقدم) عاد الرفع إلى الطلب الواحد.
+       XMLHttpRequest لا مكتبة التخزين: المكتبة المضمّنة لا تعرف الرفع القابل
+       للاستئناف ولا تعطي تقدّماً حقيقياً ولا إلغاءً — شريط تقدّمٍ كاذب يجعل
+       الإدارة تظن الصفحة معلّقة فتغلقها في منتصف الرفع فيتلف الملف. */
     uploadContentFile: function (path, file, onProgress) {
-      var xhr = (typeof XMLHttpRequest !== 'undefined') ? new XMLHttpRequest() : null;
+      var lim = uploadLimits();
+      var CANCEL_MSG = 'أُلغي رفع الملف.';
       var canceled = false;
-      var p;
+      var xhr = null;   /* الطلب الجاري: POST الكامل أو قطعة PATCH */
+      var ctl = null;   /* مُلغي طلبات fetch (الإنشاء وHEAD) */
+      var wake = null;  /* يقطع مهلة التراجع فوراً عند الإلغاء */
+      var task;
       function fail(msg) {
         var r = Promise.reject(new Error(msg));
         r.abort = function () {};
         return r;
       }
-      if (!LIVE || !xhr) { return fail('قاعدة النقابة غير متاحة'); }
+      if (!LIVE || typeof XMLHttpRequest === 'undefined') { return fail('قاعدة النقابة غير متاحة'); }
       if (!path) { return fail('مسار التخزين مطلوب قبل رفع الملف.'); }
       if (!file) { return fail('اختر ملفاً أولاً.'); }
+      /* الفحص قبل أي طلب: رفعُ ٤٠٠ ميغابايت ليرفضها الخادم عند آخر قطعة
+         يهدر ربع ساعة من وقت الإدارة ومن حصة الشبكة */
+      if ((file.size || 0) > lim.max) {
+        return fail('حجم الملف (' + fmtMB(file.size, true) + ') يتجاوز الحد المسموح للملف الواحد (' + fmtMB(lim.max) + ').');
+      }
 
-      p = sb.auth.getSession().then(function (r) {
+      function cancelErr() { return new Error(CANCEL_MSG); }
+      function retryable(msg) { var e = new Error(msg); e.retry = true; return e; }
+      function isRetryStatus(st) { return st >= 500 || st === 409 || st === 423 || st === 429; }
+      function report(loaded) {
+        if (typeof onProgress !== 'function') { return; }
+        var total = file.size || 0;
+        onProgress(total ? Math.min(loaded, total) : loaded, total);
+      }
+      /* Base64 لنصٍّ UTF-8: أسماء المسارات قد تحمل حرفاً عربياً وbtoa وحدها
+         ترفض ما فوق Latin-1 */
+      function b64(str) { return btoa(unescape(encodeURIComponent(String(str)))); }
+      function fetchOpts(method, headers) {
+        var o = { method: method, headers: headers };
+        if (typeof AbortController !== 'undefined') { ctl = new AbortController(); o.signal = ctl.signal; }
+        return o;
+      }
+      function baseHeaders(token) {
+        return { 'Authorization': 'Bearer ' + token, 'apikey': cfg.SUPABASE_ANON_KEY, 'Tus-Resumable': '1.0.0' };
+      }
+      /* موضع الرفع قد يرد مطلقاً أو نسبياً إلى /storage/v1 — كلاهما شوهد */
+      function resolveLoc(loc) {
+        loc = String(loc || '');
+        if (/^https?:\/\//i.test(loc)) { return loc; }
+        if (loc.indexOf('/storage/v1/') === 0) { return cfg.SUPABASE_URL + loc; }
+        if (loc.charAt(0) === '/') { return cfg.SUPABASE_URL + '/storage/v1' + loc; }
+        return cfg.SUPABASE_URL + '/storage/v1/' + loc;
+      }
+      /* تراجع أُسّي: ١٫٥ ث ثم ٣ ثم ٦ ثم ١٢ بسقف ١٥ ثانية، ويُقطع بالإلغاء */
+      function backoff(attempt) {
+        var ms = Math.min(lim.base * Math.pow(2, attempt - 1), 15000);
+        return new Promise(function (resolve) {
+          var t = setTimeout(function () { wake = null; resolve(); }, ms);
+          wake = function () { clearTimeout(t); wake = null; resolve(); };
+        }).then(function () { if (canceled) { throw cancelErr(); } });
+      }
+
+      /* المسار القديم: طلب واحد بالملف كاملاً — للملفات الصغيرة وللاحتياط */
+      function postWhole(token) {
+        return new Promise(function (resolve, reject) {
+          var x = new XMLHttpRequest();
+          xhr = x;
+          x.open('POST', cfg.SUPABASE_URL + '/storage/v1/object/osea-content/' + encPath(path), true);
+          x.setRequestHeader('Authorization', 'Bearer ' + token);
+          x.setRequestHeader('apikey', cfg.SUPABASE_ANON_KEY);
+          /* الاستبدال مسموح: «استبدال الملف» يرفع على مسار البند نفسه */
+          x.setRequestHeader('x-upsert', 'true');
+          x.setRequestHeader('Content-Type', (file.type || 'application/octet-stream'));
+          if (x.upload) {
+            x.upload.onprogress = function (e) {
+              report(e.loaded || 0);
+            };
+          }
+          x.onload = function () {
+            if (xhr === x) { xhr = null; }
+            if (x.status === 200 || x.status === 201) { report(file.size || 0); resolve(path); return; }
+            reject(new Error(storageErrText(x)));
+          };
+          x.onerror   = function () { if (xhr === x) { xhr = null; } reject(new Error('تعذّر الاتصال بالخادم أثناء رفع الملف.')); };
+          x.onabort   = function () { if (xhr === x) { xhr = null; } reject(cancelErr()); };
+          x.ontimeout = function () { if (xhr === x) { xhr = null; } reject(new Error('انتهت مهلة رفع الملف — أعد المحاولة.')); };
+          x.send(file);
+        });
+      }
+
+      /* إنشاء جلسة رفع قابلة للاستئناف: يعيد {url} أو {unsupported:true} */
+      function tusCreate(token) {
+        var h = baseHeaders(token);
+        h['Upload-Length'] = String(file.size);
+        h['x-upsert'] = 'true';
+        h['Upload-Metadata'] = 'bucketName ' + b64('osea-content') +
+          ',objectName ' + b64(path) +
+          ',contentType ' + b64(file.type || 'application/octet-stream') +
+          ',cacheControl ' + b64('3600');
+        return fetch(cfg.SUPABASE_URL + '/storage/v1/upload/resumable', fetchOpts('POST', h)).then(function (res) {
+          ctl = null;
+          if (res.status === 404 || res.status === 405) { return { unsupported: true }; }
+          return res.text().then(function (txt) {
+            if (res.status < 200 || res.status >= 300) {
+              var msg = storageErrText({ status: res.status, responseText: txt });
+              var err = isRetryStatus(res.status) ? retryable(msg) : new Error(msg);
+              err.status = res.status;
+              throw err;
+            }
+            var loc = res.headers.get('Location');
+            if (!loc) { throw retryable('لم يُرجع الخادم موضع الرفع القابل للاستئناف.'); }
+            return { url: resolveLoc(loc) };
+          });
+        }, function () {
+          ctl = null;
+          if (canceled) { throw cancelErr(); }
+          throw retryable('تعذّر الاتصال بالخادم أثناء رفع الملف.');
+        });
+      }
+      /* قطعة واحدة: يعيد الموضع الجديد كما أعلنه الخادم */
+      function patchChunk(token, url, offset) {
+        return new Promise(function (resolve, reject) {
+          var end = Math.min(offset + lim.chunk, file.size);
+          var x = new XMLHttpRequest();
+          xhr = x;
+          x.open('PATCH', url, true);
+          x.setRequestHeader('Authorization', 'Bearer ' + token);
+          x.setRequestHeader('apikey', cfg.SUPABASE_ANON_KEY);
+          x.setRequestHeader('Tus-Resumable', '1.0.0');
+          x.setRequestHeader('Upload-Offset', String(offset));
+          x.setRequestHeader('Content-Type', 'application/offset+octet-stream');
+          if (x.upload) {
+            x.upload.onprogress = function (e) { report(offset + (e.loaded || 0)); };
+          }
+          x.onload = function () {
+            if (xhr === x) { xhr = null; }
+            if (x.status === 204 || x.status === 200) {
+              var next = parseInt(x.getResponseHeader('Upload-Offset'), 10);
+              resolve(isFinite(next) ? next : end);
+              return;
+            }
+            var msg = storageErrText(x);
+            var err = isRetryStatus(x.status) ? retryable(msg) : new Error(msg);
+            err.status = x.status;
+            reject(err);
+          };
+          x.onerror   = function () { if (xhr === x) { xhr = null; } reject(retryable('تعذّر الاتصال بالخادم أثناء رفع الملف.')); };
+          x.onabort   = function () { if (xhr === x) { xhr = null; } reject(cancelErr()); };
+          x.ontimeout = function () { if (xhr === x) { xhr = null; } reject(retryable('انتهت مهلة رفع القطعة.')); };
+          x.send(file.slice(offset, end));
+        });
+      }
+      /* مصالحة الموضع بعد تعثّر: -1 = الجلسة زالت من الخادم فتُنشأ من جديد،
+         null = لم نعرف فنُبقي الموضع الحالي ويصحّحه 409 التالي */
+      function tusOffset(token, url) {
+        return fetch(url, fetchOpts('HEAD', baseHeaders(token))).then(function (res) {
+          ctl = null;
+          if (res.status === 404 || res.status === 410) { return -1; }
+          var o = parseInt(res.headers.get('Upload-Offset'), 10);
+          return isFinite(o) ? o : null;
+        }, function () { ctl = null; return null; });
+      }
+      function tusUpload(token0) {
+        /* الرمز متغيّرٌ لا ثابت: رفع ٣٠٠ ميغابايت على شبكةٍ بطيئة يمتدّ
+           نصف ساعة وأكثر، ورمز الجلسة يبلى خلالها (عمره ساعة) بينما تجدّده
+           مكتبة الجلسة في خلفيتها؛ لو بقي الرمز الأول محفوظاً هنا رُفضت
+           القطعة التالية بـ401 وضاع ما رُفع. يُجدَّد مرةً واحدة عند أول 401
+           ثم يُستأنف الرفع من الموضع نفسه، وإن رُفض ثانيةً فالحساب لا
+           الجلسة هو المشكلة فتُعرض رسالة الصلاحية. */
+        var token = token0, refreshed = false;
+        var url = null, offset = 0, attempt = 0;
+        function step() {
+          if (canceled) { throw cancelErr(); }
+          if (!url) {
+            return tusCreate(token).then(function (c) {
+              if (c.unsupported) { return c; }
+              url = c.url; offset = 0;
+              return step();
+            }, recover);
+          }
+          if (offset >= file.size) { report(file.size); return path; }
+          return patchChunk(token, url, offset).then(function (next) {
+            /* العدّاد لكل قطعة لا للملف: ٣٠٠ ميغابايت خمسون قطعة، وخمس هفوات
+               متفرّقة على شبكةٍ متقطّعة لا تستحق إسقاط الرفع كله */
+            offset = next; attempt = 0;
+            report(offset);
+            return step();
+          }, recover);
+        }
+        function recover(e) {
+          if (canceled || (e && e.message === CANCEL_MSG)) { throw cancelErr(); }
+          if (e && e.status === 401 && !refreshed) {
+            refreshed = true;
+            return sb.auth.getSession().then(function (r) {
+              var s = r && r.data && r.data.session;
+              if (!s || !s.access_token) { throw new Error('انتهت جلسة اللوحة — سجّل الدخول ثم أعد المحاولة.'); }
+              token = s.access_token;
+              return step();
+            });
+          }
+          if (!e || !e.retry) { throw e; }
+          attempt++;
+          if (attempt > lim.retries) {
+            throw new Error(e.message + ' — توقّف الرفع بعد ' + toAr(lim.retries) + ' محاولات.');
+          }
+          if (typeof task.onRetry === 'function') {
+            try { task.onRetry(attempt, lim.retries, e.message); } catch (x) {}
+          }
+          return backoff(attempt).then(function () {
+            if (!url) { return step(); }
+            return tusOffset(token, url).then(function (o) {
+              if (o === -1) { url = null; }
+              else if (o != null) { offset = Math.min(o, file.size); }
+              return step();
+            });
+          });
+        }
+        return Promise.resolve().then(step);
+      }
+
+      task = sb.auth.getSession().then(function (r) {
         var sess = r && r.data && r.data.session;
         var token = sess && sess.access_token;
         /* الرمز من الجلسة لا المفتاح العلني: سياسات السلة تشترط is_staff()،
            والمفتاح العلني وحده يُرفض بـ403 برسالة غامضة. */
         if (!token) { throw new Error('انتهت جلسة اللوحة — سجّل الدخول ثم أعد المحاولة.'); }
-        if (canceled) { throw new Error('أُلغي رفع الملف.'); }
-        return new Promise(function (resolve, reject) {
-          xhr.open('POST', cfg.SUPABASE_URL + '/storage/v1/object/osea-content/' + encPath(path), true);
-          xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-          xhr.setRequestHeader('apikey', cfg.SUPABASE_ANON_KEY);
-          /* الاستبدال مسموح: «استبدال الملف» يرفع على مسار البند نفسه */
-          xhr.setRequestHeader('x-upsert', 'true');
-          xhr.setRequestHeader('Content-Type', (file.type || 'application/octet-stream'));
-          if (xhr.upload && typeof onProgress === 'function') {
-            xhr.upload.onprogress = function (e) {
-              onProgress(e.loaded, e.lengthComputable ? e.total : (file.size || 0));
-            };
-          }
-          xhr.onload = function () {
-            if (xhr.status === 200 || xhr.status === 201) { resolve(path); return; }
-            reject(new Error(storageErrText(xhr)));
-          };
-          xhr.onerror  = function () { reject(new Error('تعذّر الاتصال بالخادم أثناء رفع الملف.')); };
-          xhr.onabort  = function () { reject(new Error('أُلغي رفع الملف.')); };
-          xhr.ontimeout = function () { reject(new Error('انتهت مهلة رفع الملف — أعد المحاولة.')); };
-          xhr.send(file);
+        if (canceled) { throw cancelErr(); }
+        if ((file.size || 0) <= lim.chunk || typeof fetch !== 'function' || typeof file.slice !== 'function') {
+          return postWhole(token);
+        }
+        return tusUpload(token).then(function (r2) {
+          return (r2 && r2.unsupported) ? postWhole(token) : r2;
         });
       });
-      /* الإلغاء قبل وصول الجلسة يضبط الراية، وبعدها يقطع الطلب فعلياً */
-      p.abort = function () {
+      /* الإلغاء قبل وصول الجلسة يضبط الراية، وبعدها يقطع الطلب الجاري —
+         XHR أو fetch — ويُنهي مهلة التراجع كي لا تنتظر الإدارة ١٥ ثانية */
+      task.abort = function () {
         canceled = true;
-        try { xhr.abort(); } catch (e) {}
+        try { if (xhr) { xhr.abort(); } } catch (e) {}
+        try { if (ctl) { ctl.abort(); } } catch (e) {}
+        if (wake) { wake(); }
       };
-      return p;
+      task.onRetry = null;
+      return task;
     },
 
     /* تثبيت الملف على صف البند: يضبط المسار والحجم ويرفع rev افتراضياً */
@@ -1250,6 +1503,7 @@
     durSec: durSec,
     secDur: secDur,
     toAr: toAr,
+    extOf: extOf,
 
     register:   LIVE ? live.register   : offline('التسجيل'),
     accounts:   LIVE ? live.accounts   : offline('الحسابات'),

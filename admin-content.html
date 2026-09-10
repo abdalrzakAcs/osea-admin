@@ -13,13 +13,38 @@
 <style>
 /* أنماط الصفحة — بتوكنات الهوية حصراً */
 
-/* خمسة مؤشرات لا أربعة: الشبكة الجاهزة تضع الخامس وحيداً في سطر */
-.adm-kpis--5{grid-template-columns:repeat(5,1fr)}
-@media (max-width:1180px){.adm-kpis--5{grid-template-columns:repeat(3,1fr)}}
-@media (max-width:760px){.adm-kpis--5{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:520px){.adm-kpis--5{grid-template-columns:1fr}}
+/* ستة مؤشرات لا أربعة: الشبكة الجاهزة تترك الفائض وحيداً في سطر */
+.adm-kpis--6{grid-template-columns:repeat(6,1fr)}
+@media (max-width:1280px){.adm-kpis--6{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:760px){.adm-kpis--6{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:520px){.adm-kpis--6{grid-template-columns:1fr}}
+/* بطاقة المساحة: الرقم حجمٌ بوحدته لا عدداً، فيصغر قليلاً كي لا يلتفّ.
+   شريطها يقول النسبة من السعة بلمحة: نيلي، فذهبي فوق ٪٨٠، فأحمر فوق ٪٩٥ */
+.adm-kpi-num.sm{font-size:28px}
+.kpi-bar{display:block;height:8px;margin-block-start:10px;border-radius:var(--radius-pill);
+  background:var(--navy-50);overflow:hidden}
+.kpi-bar i{display:block;height:100%;width:0;border-radius:inherit;
+  background:var(--navy-600);transition:width 240ms var(--ease-std)}
+.kpi-bar[data-lvl="warn"] i{background:var(--gold-400)}
+.kpi-bar[data-lvl="full"] i{background:var(--error-600)}
+.kpi-ext{display:block;margin-block-start:8px;font-size:12px;line-height:1.7;
+  color:var(--text-secondary);font-variant-numeric:tabular-nums}
 
-/* ثلاثة عشر عموداً: حشوة أضيق ومسار مقصوص كي يتّسع الجدول للشاشة قدر الإمكان */
+/* قائمتا المجال والترتيب في شريط الأدوات: عرض محدود كي لا تبتلعا حقل البحث */
+.tb-sel{flex:0 1 230px;min-width:170px}
+/* فاصل بين مجموعتي التصفية (النوع ثم الامتداد) وشارة الترتيب اليدوي */
+.flt-sep{width:1px;align-self:stretch;background:var(--border)}
+/* وسم الامتداد بجوار وسم النوع: أحرف لاتينية صغيرة الحجم على وسمٍ بلا لون */
+.ext-tag{font-size:11px;padding-inline:7px;text-transform:uppercase}
+/* زر «سجل النسخ» بهيئة رابط: إجراء قراءة لا يستحق زرّاً محاطاً بين الأزرار */
+.lnk{display:inline-block;font:inherit;font-size:12.5px;font-weight:700;padding:0;
+  margin-block-start:4px;background:none;border:0;cursor:pointer;color:var(--navy-700);
+  text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--navy-200)}
+.lnk:hover{text-decoration-color:var(--gold-600)}
+/* صف النسخة الحالية في سجل النسخ */
+.ver-cur td{background:var(--cream-50)}
+
+/* أربعة عشر عموداً: حشوة أضيق ومسار مقصوص كي يتّسع الجدول للشاشة قدر الإمكان */
 .adm-table th,.adm-table td{padding-inline:11px}
 .adm-table td.wrap{min-width:200px}
 .adm-table td.path{max-width:170px;overflow:hidden;text-overflow:ellipsis}
@@ -28,7 +53,7 @@
 /* أزرار الصف في سطر واحد: تكديسها يضاعف ارتفاع كل صف — الجدول يتمرّر أفقياً بدلها */
 .row-acts{display:flex;gap:6px;flex-wrap:nowrap}
 
-/* عمود الإجراءات ملتصق بحافة الجدول: ثلاثة عشر عموداً تتمرّر أفقياً على الشاشات
+/* عمود الإجراءات ملتصق بحافة الجدول: أربعة عشر عموداً تتمرّر أفقياً على الشاشات
    الأضيق، وأزرار التعديل والحذف لا يجوز أن تغيب خلف التمرير */
 .tbl-index th:last-child,.tbl-index td:last-child{
   position:sticky;inset-inline-end:0;background:var(--surface);
@@ -127,8 +152,16 @@
   background:var(--cream-50)}
 .fx-meta.wait{background:var(--navy-25);border-color:var(--border)}
 
-/* بطاقات المجلدات: راديو ظاهر داخل بطاقة كاملة قابلة للنقر */
-.fold-list{display:grid;gap:9px}
+/* بطاقات المجلدات: راديو ظاهر داخل بطاقة كاملة قابلة للنقر.
+   القائمة تتمرّر داخل ارتفاعٍ محدود: المجالات مضروبةً في مجلداتها تطول،
+   وزر «مجلد جديد» و«خيارات متقدمة» تحتها لا يجوز أن يغيبا خلف الطيّة */
+.fold-list{display:grid;gap:12px;max-height:46vh;overflow:auto;padding:2px}
+/* مجموعة مجال: عنوانه الصغير ثم بطاقة الجذر ثم مجلداته */
+.fold-group{display:grid;gap:9px}
+.fold-dom{font-size:12.5px;font-weight:700;color:var(--text-secondary);padding-inline:4px}
+.fold-group+.fold-group .fold-dom{margin-block-start:4px}
+/* بطاقة الجذر (مجلد الكود) أفتح خلفيةً كي تتميّز عن المجلدات تحتها */
+.fold.root{background:var(--navy-25)}
 .fold{display:flex;gap:11px;align-items:flex-start;cursor:pointer;
   padding:12px 13px;border:1.5px solid var(--border);
   border-radius:var(--radius-tool);background:var(--surface)}
@@ -167,7 +200,7 @@
     <div class="container">
 
       <!-- مؤشرات الفهرس -->
-      <div class="adm-kpis adm-kpis--5" id="kpis"></div>
+      <div class="adm-kpis adm-kpis--6" id="kpis"></div>
 
       <!-- حدّ الشاشة بعد ترحيل ٠٢٣: الصف والملف معاً من هنا — وما بقي خارجها
            (حذف الملف من السلة) يُقال صراحةً كي لا يُظنّ حذف الصف شاملاً -->
@@ -198,19 +231,43 @@
         </span>
       </div>
 
-      <!-- شريط الأدوات: بحث فوري في الفهرس المحمَّل + إضافة عنصر -->
+      <!-- شريط الأدوات: بحث فوري في الفهرس المحمَّل + تصفية بالمجال + ترتيب العرض
+           + إضافة عنصر. كل ذلك على الفهرس المحمَّل في الواجهة — لا استدعاء جديد -->
       <div class="adm-bar">
         <div class="adm-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           <input class="input" id="q" type="search" autocomplete="off"
                  placeholder="بحث بالعنوان أو الرمز أو المعرّف أو مسار التخزين">
         </div>
+        <div class="tb-sel">
+          <select class="input" id="fltDomain" autocomplete="off" aria-label="تصفية بالمجال">
+            <option value="">كل المجالات</option>
+          </select>
+        </div>
+        <div class="tb-sel">
+          <select class="input" id="sortBy" autocomplete="off" aria-label="ترتيب العرض">
+            <option value="lib" selected>ترتيب المكتبة</option>
+            <option value="title_asc">العنوان: أ ← ي</option>
+            <option value="title_desc">العنوان: ي ← أ</option>
+            <option value="upload_desc">تاريخ الرفع: الأحدث أولاً</option>
+            <option value="upload_asc">تاريخ الرفع: الأقدم أولاً</option>
+            <option value="size_desc">الحجم: الأكبر أولاً</option>
+          </select>
+        </div>
         <span class="spacer"></span>
         <button class="btn btn-primary btn-sm" id="addBtn" data-write>إضافة عنصر</button>
       </div>
 
+      <!-- مجموعتا التصفية: النوع (كتاب/استمارة/درس) ثم امتداد الملف — محوران
+           مختلفان، فالكتاب قد يكون PDF أو DOCX والعدّ على كلٍّ منهما مطلوب -->
       <div class="adm-bar" style="margin-block-start:-8px">
         <div class="adm-filters" id="filters" role="group" aria-label="تصفية بالنوع"></div>
+        <span class="flt-sep" aria-hidden="true"></span>
+        <div class="adm-filters" id="extFilters" role="group" aria-label="تصفية بالامتداد"></div>
+        <span class="spacer"></span>
+        <!-- يظهر فقط خارج «ترتيب المكتبة»: السحب والسهمان يعملان على ترتيب
+             القاعدة وحده، وعرضٌ مرتَّب بالعنوان يخفيهما فيُقال السبب -->
+        <span class="tag" id="sortHint" hidden>الترتيب اليدوي متاح في «ترتيب المكتبة» فقط</span>
       </div>
 
       <div class="adm-table-card">
@@ -235,7 +292,7 @@
                 <th>الوصول</th>
                 <th>الحالة</th>
                 <th>مرات الوصول</th>
-                <th>آخر تحديث</th>
+                <th>تاريخ الرفع</th>
                 <th>إجراءات</th>
               </tr>
             </thead>
@@ -321,22 +378,33 @@
   /* الحد الأعلى لأي سعر — قيد القاعدة نفسه، يُفحص هنا لرسالة أوضح */
   var PRICE_CAP = 1000000;
 
-  /* المجال هو المجلد الأعلى في مكتبة التطبيق: مجال ← نوع ← بنود.
-     كل المحتوى المنشور اليوم يخصّ هذا المجال، وهو افتراضي العمود في القاعدة
-     (ترحيل 015) — فيُكرَّر هنا لا ليُخترع بل ليظهر في القائمة قبل أن يوجد غيره. */
+  /* المجال هو مجلد الكود في مكتبة التطبيق: مجال ← مجلد حرّ ← بند، والبنود
+     السائبة تحت المجال مباشرةً. كل المحتوى المنشور اليوم يخصّ هذا المجال، وهو
+     افتراضي العمود في القاعدة (ترحيل 015) — فيُكرَّر هنا لا ليُخترع بل ليظهر
+     في القائمة قبل أن يوجد غيره. */
   var DOMAIN_DEFAULT = 'منظومة تقييم الأضرار';
   /* قيمة حارسة لخيار «مجال جديد…» — لا تصلح اسم مجال فلا تلتبس بقيمة حقيقية */
   var DOMAIN_NEW = '__NEW_DOMAIN__';
-  /* أسماء شاشات الأنواع كما يراها العضو في المكتبة — نسخة KINDS في
-     app/codes.html حرفياً. تخدم جملة «أين يظهر البند» في نصوص «بلا مجلد»:
-     النقابة قرأت «بند مباشر» على أنه بند مستقل خارج شاشة النوع، والصدق
-     يقتضي تسمية المسار بأسمائه الفعلية (المجال ← الكتب المعتمدة ← البند). */
-  var KIND_SCREEN = {
-    book: 'الكتب المعتمدة', form: 'الاستمارات الرسمية', lesson: 'الدروس المصوّرة'
+  /* بادئة قيمة بطاقة «مباشرةً في المجال» في معالج الإضافة: لا تلتبس بمعرّف
+     مجلد (uuid) ولا بالفراغ */
+  var DOM_PREFIX = 'dom:';
+
+  /* حدود الرفع من osea-config.js (ترحيلة ٠٣١ ترفع حدّ السلة معها). النسخة
+     الاحتياطية للقيم نفسها تحرس ذاكرة متصفحٍ ما زالت على ملف إعداد قديم:
+     بغيرها كان الفحص قبل الرفع يسقط صامتاً فيصل ملفٌ أكبر من الحد إلى السلة
+     ويُردّ منها برسالة إنجليزية خام */
+  var UP = window.OSEA_UPLOAD || {
+    MAX_FILE_BYTES: 300 * 1024 * 1024,
+    PLAN_TOTAL_BYTES: 2 * 1024 * 1024 * 1024
   };
 
-  var state = { kind: 'all', search: '' };
+  /* kind: النوع · domain: المجال ('' = الكل) · ext: الامتداد ('' = الكل،
+     '-' = بلا امتداد) · sort: مفتاح الترتيب ('lib' = ترتيب القاعدة/المكتبة) */
+  var state = { kind: 'all', domain: '', ext: '', sort: 'lib', search: '' };
   var items = [], sets = [], folders = [];
+  /* صفوف جدول المجالات (٠٢٨) كاملةً: ترتيب المكتبة مصدر ترتيب القوائم هنا —
+     قائمة التصفية وبطاقات مكان الحفظ — لا الأبجدية */
+  var domains = [];
   /* دور الاطّلاع لا يسحب ولا يرفع: أزرار الكتابة تختفي بـdata-write، والمقبض
      لا يُرسم أصلاً كي لا يبقى سحبٌ صامتٌ ينتهي إلى رفضٍ من القاعدة */
   var canWrite = true;
@@ -390,8 +458,21 @@
   function wire() {
     $('q').addEventListener('input', A.debounce(function () {
       state.search = $('q').value.trim();
-      paintRows();
+      /* عدّادات الرقائق تتبع البحث أيضاً: رقيقة تقول «٧ كتب» والجدول يعرض
+         اثنين تكذب */
+      paintFilters(); paintRows();
     }, 220));
+    $('fltDomain').addEventListener('change', function () {
+      state.domain = $('fltDomain').value;
+      paintFilters(); paintRows();
+    });
+    $('sortBy').addEventListener('change', function () {
+      /* ترتيبٌ معلَّق لم يُحفَظ: تبديل العرض يخفي المقابض فيضيع الشريط عن
+         النظر — يُحسم أولاً، وتعود القائمة إلى ترتيب المكتبة */
+      if (orderDirty) { $('sortBy').value = 'lib'; orderBusy(); return; }
+      state.sort = $('sortBy').value;
+      paintRows();
+    });
     $('addBtn').addEventListener('click', function () {
       if (orderBusy()) return;
       openAdd();
@@ -437,7 +518,8 @@
       folders = (r[1] && r[1].folders) || [];
       domainsOk = r[2] !== null;
       domainSubs = {};
-      ((r[2] && r[2].domains) || []).forEach(function (x) {
+      domains = (r[2] && r[2].domains) || [];
+      domains.forEach(function (x) {
         if (!x || !x.name) { return; }
         domainSubs['d:' + String(x.name).trim()] = x.use_subfolders !== false;
       });
@@ -458,9 +540,11 @@
         return (it.domain == null ? '' : String(it.domain)).trim() !== '';
       });
       paintKpis();
+      paintDomainFilter();
       paintFilters();
       paintRows();
       paintSets();
+      loadStorage();
     }).catch(function (e) {
       $('kpis').innerHTML = '';
       tbody.innerHTML = '<tr><td colspan="14">' + A.errorState(A.errText(e), 'retry') + '</td></tr>';
@@ -489,12 +573,134 @@
       kpiCard('الدروس', n.lesson, 'دروس مرئية مفهرسة') +
       kpiCard('العناصر المعطّلة', off,
         off ? 'لا تظهر في التطبيق ولا يُصدَر لها رابط' : 'كل عناصر الفهرس نشطة', 'warm') +
-      kpiCard('إجمالي مرات الوصول', acc, 'كل فتح مسجّل في سجل الوصول', 'gold');
+      kpiCard('إجمالي مرات الوصول', acc, 'كل فتح مسجّل في سجل الوصول', 'gold') +
+      /* بطاقة المساحة تُرسم بأحجام الفهرس فوراً ثم تُصحَّح من السلة (loadStorage):
+         قراءة السلة استدعاء ثانٍ قد يتأخر أو يغيب، والبطاقة لا تنتظره فارغة */
+      '<div class="adm-kpi" id="kpiStorage">' +
+        '<span class="adm-kpi-label">المساحة المستعملة</span>' +
+        '<span class="adm-kpi-num sm" id="stNum">—</span>' +
+        '<span class="kpi-bar" id="stBar" role="progressbar" aria-valuemin="0" ' +
+          'aria-valuemax="100" aria-valuenow="0" aria-label="نسبة المساحة المستعملة من السعة"><i></i></span>' +
+        '<span class="adm-kpi-hint" id="stHint">جارٍ قراءة السلة…</span>' +
+        '<span class="kpi-ext" id="stExt"></span>' +
+      '</div>';
+    paintStorage(null);
+  }
+
+  /* ----------------------------------------------------- المساحة والسعة */
+  /* مجموع أحجام الفهرس وعدّ الامتدادات من البنود نفسها: الاحتياط حين لا
+     تصل قراءة السلة (دالة ٠٣١ غير مطبَّقة أو الشبكة) */
+  function localUsage() {
+    var total = 0, files = 0, byExt = {}, list = [];
+    items.forEach(function (it) {
+      var sz = Number(it.size_bytes) || 0;
+      if (sz > 0) { total += sz; files++; }
+      var k = extKey(it);
+      if (!byExt[k]) { byExt[k] = { ext: k === '-' ? null : k, n: 0, bytes: 0 }; list.push(byExt[k]); }
+      byExt[k].n++;
+      byExt[k].bytes += sz;
+    });
+    return { total_bytes: total, objects_count: files, by_ext: list };
+  }
+  function loadStorage() {
+    if (typeof API.admin.storageUsage !== 'function') { paintStorage(null); return; }
+    API.admin.storageUsage().then(function (u) {
+      paintStorage(u && typeof u === 'object' ? u : null);
+    }).catch(function () { paintStorage(null); });
+  }
+  /* u = ناتج admin_storage_usage أو null ⇒ أحجام الفهرس. الشريط نسبةٌ من السعة
+     المتعاقَد عليها (OSEA_UPLOAD.PLAN_TOTAL_BYTES) لا من حدّ السلة */
+  function paintStorage(u) {
+    var num = $('stNum'), bar = $('stBar'), hint = $('stHint'), ext = $('stExt');
+    if (!num || !bar || !hint || !ext) return;
+    var loc = localUsage();
+    var fromBucket = !!(u && u.objects_bytes != null);
+    var used = fromBucket ? Number(u.objects_bytes) || 0 : loc.total_bytes;
+    var cnt = fromBucket && u.objects_count != null ? Number(u.objects_count) || 0 : loc.objects_count;
+    var plan = Number(UP.PLAN_TOTAL_BYTES) || 0;
+    var pct = plan > 0 ? Math.min(100, Math.round(used * 1000 / plan) / 10) : 0;
+    num.textContent = used ? A.bytes(used) : A.toAr(0) + ' بايت';
+    var fill = bar.querySelector('i');
+    if (fill) { fill.style.width = Math.min(100, Math.ceil(pct)) + '%'; }
+    bar.setAttribute('aria-valuenow', Math.round(pct));
+    bar.setAttribute('data-lvl', pct >= 95 ? 'full' : pct >= 80 ? 'warn' : '');
+    bar.title = '٪' + A.toAr(pct) + ' من السعة';
+    hint.textContent = 'من ' + A.bytes(plan) + ' · ' +
+      A.count(cnt, 'ملف واحد', 'ملفان', 'ملفات', 'ملفاً') + ' في السلة' +
+      (fromBucket ? '' : ' — حسب أحجام الفهرس');
+    /* ملخّص الامتدادات: الأكثر أولاً — «PDF ٤٧ · MP4 ٣» */
+    var list = (u && u.by_ext && u.by_ext.length ? u.by_ext : loc.by_ext).slice();
+    list.sort(function (a, b) { return (Number(b.n) || 0) - (Number(a.n) || 0); });
+    ext.textContent = list.map(function (x) {
+      return extLabel(x.ext ? String(x.ext).toLowerCase() : '-') + ' ' + A.toAr(Number(x.n) || 0);
+    }).join(' · ');
+  }
+
+  /* --------------------------------------------------- التصفية والترتيب */
+  /* امتداد ملف البند بأحرف صغيرة: من دالة القراءة (٠٣١) إن وصل، وإلا من
+     المسار نفسه. '' = بلا امتداد */
+  function extOf(it) {
+    var e = it.ext != null && it.ext !== ''
+      ? it.ext
+      : (API.extOf ? API.extOf(it.storage_path) : fileExt(it.storage_path, ''));
+    return e ? String(e).toLowerCase() : '';
+  }
+  /* مفتاح رقيقة الامتداد: البند بلا امتداد يأخذ '-' كي يبقى قابلاً للتصفية */
+  function extKey(it) { return extOf(it) || '-'; }
+  function extLabel(k) {
+    if (!k) return 'كل الامتدادات';
+    if (k === '-') return 'بلا امتداد';
+    return String(k).toUpperCase();
+  }
+  /* وسم الامتداد الصغير بجوار وسم النوع في الجدول */
+  function extTag(it) {
+    var e = extOf(it);
+    return e ? '<span class="tag adm-mono ext-tag" dir="ltr" title="امتداد الملف">' + A.esc(e) + '</span>' : '';
+  }
+
+  /* هل يمرّ البند من التصفية الحالية؟ skip يعفي محوراً واحداً: عدّادات رقائق
+     النوع تُحسب على ما صفّاه المجال والامتداد والبحث (لا النوع نفسه)، وعدّادات
+     الامتداد بالمثل — فكل رقيقة تقول كم بنداً سيظهر لو نُقرت */
+  function passes(it, skip) {
+    if (skip !== 'kind' && state.kind !== 'all' && it.kind !== state.kind) return false;
+    if (skip !== 'domain' && state.domain && domOf(it) !== state.domain) return false;
+    if (skip !== 'ext' && state.ext && extKey(it) !== state.ext) return false;
+    var q = A.norm(state.search);
+    if (!q) return true;
+    return A.norm([it.title, it.subtitle, it.category, it.code, it.id, it.storage_path, it.domain]
+      .join(' ')).indexOf(q) !== -1;
+  }
+
+  /* قائمة المجال في شريط الأدوات: ترتيب المكتبة. مجالٌ مختار لم يبقَ له
+     أثر بعد إعادة التحميل يعود إلى «كل المجالات» بدل تصفيةٍ على لا شيء */
+  function paintDomainFilter() {
+    var sel = $('fltDomain');
+    if (!sel) return;
+    var list = domainOrder();
+    if (state.domain && list.indexOf(state.domain) === -1) { state.domain = ''; }
+    sel.innerHTML = '<option value="">كل المجالات</option>' + list.map(function (d) {
+      return '<option value="' + A.esc(d) + '"' + (d === state.domain ? ' selected' : '') + '>' +
+        A.esc(d) + '</option>';
+    }).join('');
+  }
+
+  /* امتدادٌ اختير ثم زال من الفهرس (حُذف بنده الوحيد أو عُطّل) يعود إلى «كل
+     الامتدادات» قبل عدّ رقائق النوع، وإلا عدّت على تصفيةٍ لم تعد سارية ثم
+     أصلحتها رقائق الامتداد بعد فوات العدّ — فتقول الرقائق «٠» والجدول ممتلئ */
+  function normalizeExt() {
+    if (!state.ext) return;
+    var present = items.some(function (it) { return extKey(it) === state.ext; });
+    if (!present) { state.ext = ''; }
   }
 
   function paintFilters() {
-    var c = { all: items.length, book: 0, form: 0, lesson: 0 };
-    items.forEach(function (it) { if (c[it.kind] !== undefined) { c[it.kind]++; } });
+    normalizeExt();
+    var c = { all: 0, book: 0, form: 0, lesson: 0 };
+    items.forEach(function (it) {
+      if (!passes(it, 'kind')) return;
+      c.all++;
+      if (c[it.kind] !== undefined) { c[it.kind]++; }
+    });
     var defs = [['all', 'الكل'], ['book', 'كتب'], ['form', 'استمارات'], ['lesson', 'دروس']];
     filtersEl.innerHTML = defs.map(function (d) {
       return '<button class="adm-chip" data-f="' + d[0] + '" aria-pressed="' +
@@ -507,16 +713,108 @@
         paintFilters(); paintRows();
       });
     });
+    paintExtFilters();
   }
 
-  function visible() {
-    var q = A.norm(state.search);
-    return items.filter(function (it) {
-      if (state.kind !== 'all' && it.kind !== state.kind) return false;
-      if (!q) return true;
-      return A.norm([it.title, it.subtitle, it.category, it.code, it.id, it.storage_path, it.domain]
-        .join(' ')).indexOf(q) !== -1;
+  /* رقائق الامتداد: كل امتداد موجود في الفهرس (لا في العرض المصفّى وحده، كي
+     لا تختفي الرقيقة المضغوطة نفسها) بعدّاده ضمن التصفية الأخرى، الأكثر أولاً.
+     امتدادٌ اختير ثم زال من الفهرس يعود إلى «كل الامتدادات» */
+  function paintExtFilters() {
+    var host = $('extFilters');
+    if (!host) return;
+    var all = {}, keys = [], c = {}, total = 0;
+    items.forEach(function (it) {
+      var k = extKey(it);
+      if (!all[k]) { all[k] = 0; keys.push(k); }
+      all[k]++;
+      if (!passes(it, 'ext')) return;
+      total++;
+      c[k] = (c[k] || 0) + 1;
     });
+    if (state.ext && !all[state.ext]) { state.ext = ''; }
+    keys.sort(function (a, b) {
+      /* «بلا امتداد» آخر القائمة دائماً */
+      if (a === '-') return 1;
+      if (b === '-') return -1;
+      return (all[b] - all[a]) || a.localeCompare(b);
+    });
+    var chips = [['', 'كل الامتدادات', total]].concat(keys.map(function (k) {
+      return [k, extLabel(k), c[k] || 0];
+    }));
+    host.innerHTML = chips.map(function (d) {
+      return '<button class="adm-chip" data-ext="' + A.esc(d[0]) + '" aria-pressed="' +
+        (state.ext === d[0]) + '"' + (d[0] && d[0] !== '-' ? ' dir="ltr"' : '') + '>' +
+        A.esc(d[1]) + '<span class="n">' + A.toAr(d[2]) + '</span></button>';
+    }).join('');
+    host.querySelectorAll('[data-ext]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.ext = b.getAttribute('data-ext');
+        paintFilters(); paintRows();
+      });
+    });
+  }
+
+  /* إزالة التصفية كلها دفعةً واحدة — من زر الحالة الفارغة */
+  function resetFilters() {
+    state.kind = 'all'; state.domain = ''; state.ext = ''; state.search = '';
+    $('q').value = '';
+    var ds = $('fltDomain');
+    if (ds) { ds.value = ''; }
+    paintFilters(); paintRows();
+  }
+
+  /* مقارِنات الترتيب. ترتيب العنوان بعد تطبيع A.norm كي لا تفرّق الهمزةُ
+     والتاء المربوطة بين عنوانين متجاورين؛ وتاريخ الرفع من عمود ٠٣١ إن وصل
+     وإلا من آخر تحديث الصف؛ والحجم بالبايت. التعادل يحسمه ترتيب المكتبة */
+  function upAt(it) {
+    var t = Date.parse(it.file_uploaded_at || it.updated_at || '');
+    return isNaN(t) ? 0 : t;
+  }
+  var SORTS = {
+    title_asc:  function (a, b) { return A.norm(a.title).localeCompare(A.norm(b.title), 'ar'); },
+    title_desc: function (a, b) { return A.norm(b.title).localeCompare(A.norm(a.title), 'ar'); },
+    upload_desc: function (a, b) { return upAt(b) - upAt(a); },
+    upload_asc:  function (a, b) { return upAt(a) - upAt(b); },
+    size_desc:   function (a, b) { return (Number(b.size_bytes) || 0) - (Number(a.size_bytes) || 0); }
+  };
+  /* العرض: المصفّى ثم المرتَّب. 'lib' يُبقي ترتيب المصفوفة نفسه — وهو شرط
+     السحب والسهمين (moveTo يفترض أن تجاور العرض هو تجاور المصفوفة) */
+  function visible() {
+    var list = items.filter(function (it) { return passes(it); });
+    var cmp = SORTS[state.sort];
+    if (!cmp) return list;
+    var idx = list.map(function (it, i) { return { it: it, i: i }; });
+    idx.sort(function (a, b) { return cmp(a.it, b.it) || (a.i - b.i); });
+    return idx.map(function (x) { return x.it; });
+  }
+  /* هل الترتيب اليدوي (سحب وسهمان) متاح؟ خارج ترتيب المكتبة فقط يُمنع */
+  function manualOrder() { return state.sort === 'lib'; }
+
+  /* وصف التصفية السارية لجملة الحالة الفارغة */
+  function filterDesc() {
+    var parts = [];
+    if (state.domain) { parts.push('المجال «' + state.domain + '»'); }
+    if (state.kind !== 'all') {
+      parts.push('النوع «' + (KIND[state.kind] ? KIND[state.kind].plural : state.kind) + '»');
+    }
+    if (state.ext) { parts.push('الامتداد «' + extLabel(state.ext) + '»'); }
+    if (state.search) { parts.push('البحث «' + state.search + '»'); }
+    return parts.join(' · ');
+  }
+
+  /* المجالات بترتيب المكتبة: صفوف جدول المجالات (sort ثم الاسم) أولاً، ثم ما
+     ورد في البنود والمجلدات ولم يصله صفٌّ بعد (أبجدياً) — فلا يسقط مجال */
+  function domainOrder() {
+    var out = [];
+    domains.slice().sort(function (a, b) {
+      var d = ((a && a.sort) | 0) - ((b && b.sort) | 0);
+      return d || String((a && a.name) || '').localeCompare(String((b && b.name) || ''), 'ar');
+    }).forEach(function (x) {
+      var n = x && x.name != null ? String(x.name).trim() : '';
+      if (n && out.indexOf(n) === -1) { out.push(n); }
+    });
+    domainList().forEach(function (n) { if (out.indexOf(n) === -1) { out.push(n); } });
+    return out;
   }
 
   /* المجالات الموجودة فعلاً في البيانات — مصدر قائمة الاختيار.
@@ -533,6 +831,14 @@
        يغيب عن القائمة فتُعيد الإدارة كتابته ⟵ قسم مكرّر بالاسم نفسه */
     folders.forEach(function (f) {
       var d = (f && f.domain == null ? '' : String(f.domain)).trim();
+      if (d && out.indexOf(d) === -1) { out.push(d); }
+    });
+    /* وصفوف جدول المجالات (٠٢٨) كذلك: مجالٌ أُنشئ من لوحة المجلدات ولم يحمل
+       بنداً ولا مجلداً بعد يظهر في تصفية الفهرس وبطاقات المعالج (domainOrder)،
+       فلا يجوز أن يغيب عن قائمة «المجال» في اللوحة نفسها — وإلا أعادت الإدارة
+       كتابته من «مجال جديد…» فتعثّرت على اسم قائم */
+    domains.forEach(function (x) {
+      var d = (x && x.name != null ? String(x.name) : '').trim();
       if (d && out.indexOf(d) === -1) { out.push(d); }
     });
     if (out.indexOf(DOMAIN_DEFAULT) === -1) { out.push(DOMAIN_DEFAULT); }
@@ -585,26 +891,38 @@
   function paintRows() {
     var list = visible();
     paintOrderBar();
-    $('totalTag').textContent = A.toAr(list.length) + ' عنصراً' +
+    $('totalTag').textContent = A.count(list.length, 'عنصر واحد', 'عنصران', 'عناصر', 'عنصراً') +
       (list.length !== items.length ? ' من ' + A.toAr(items.length) : '');
 
+    var manual = manualOrder();
+    var sh = $('sortHint');
+    if (sh) { sh.hidden = manual; }
+
     if (!list.length) {
-      var filtered = state.search || state.kind !== 'all';
-      tbody.innerHTML = '<tr><td colspan="14">' + A.emptyState(
-        filtered ? 'لا نتائج مطابقة' : 'لا عناصر في الفهرس بعد',
-        filtered
-          ? 'جرّب توسيع البحث أو إلغاء التصفية بالنوع.'
-          : 'أضِف صف البند بزر «إضافة عنصر» وارفع ملفه من اللوحة نفسها.'
-      ) + '</td></tr>';
+      var desc = filterDesc();
+      /* الحالة الفارغة تُبنى هنا لا بـA.emptyState: الجملة تسمّي التصفية
+         السارية ويليها زر إزالتها — والمساعد يهرّب النص فلا يقبل زرّاً */
+      tbody.innerHTML = '<tr><td colspan="14"><div class="adm-state">' + A.ICONS.empty +
+        '<h3>' + (desc ? 'لا نتائج مطابقة' : 'لا عناصر في الفهرس بعد') + '</h3>' +
+        '<p>' + (desc
+          ? 'لا بند يطابق ' + A.esc(desc) + '.'
+          : 'أضِف صف البند بزر «إضافة عنصر» وارفع ملفه من اللوحة نفسها.') + '</p>' +
+        (desc ? '<button type="button" class="btn btn-outline btn-sm" id="clearFlt">إزالة التصفية</button>' : '') +
+        '</div></td></tr>';
+      var cf = $('clearFlt');
+      if (cf) { cf.addEventListener('click', resetFilters); }
       return;
     }
 
     tbody.innerHTML = list.map(function (it, i) {
       var k = KIND[it.kind] || { label: it.kind, cls: '' };
       /* السهمان لا يتجاوزان مجموعة (المجال + النوع): الجار الظاهر من مجموعة
-         أخرى ⇒ الزر معطَّل لا صامتاً — تفسير المنع في عنوان الزر */
-      var upOk   = i > 0 && sameGroup(list[i - 1], it);
-      var downOk = i < list.length - 1 && sameGroup(list[i + 1], it);
+         أخرى ⇒ الزر معطَّل لا صامتاً — تفسير المنع في عنوان الزر.
+         وخارج ترتيب المكتبة يُعطَّلان كلياً: تجاور العرض المرتَّب بالعنوان
+         ليس تجاور المصفوفة، فالنقل فيه يُفسد أرقام الترتيب صامتاً */
+      var upOk   = manual && i > 0 && sameGroup(list[i - 1], it);
+      var downOk = manual && i < list.length - 1 && sameGroup(list[i + 1], it);
+      var ordOff = 'الترتيب اليدوي متاح في «ترتيب المكتبة» فقط';
       /* الدروس تُقاس بالمدة والباقي بالصفحات — عمود واحد لأن أحدهما دائماً فارغ */
       var span = it.kind === 'lesson'
         ? (it.duration_s ? A.secDur(it.duration_s) : '—')
@@ -613,14 +931,14 @@
          يخفي أن دالة القراءة لا تُرجع العمود، فيُصدَّق خطأ ثم يُدهَس عند التعديل */
       var dom = (it.domain == null ? '' : String(it.domain)).trim();
       return '<tr data-id="' + A.esc(it.id) + '">' +
-        '<td class="grip">' + (canWrite
+        '<td class="grip">' + (canWrite && manual
           ? '<span class="drag-h" draggable="true" data-write aria-hidden="true" ' +
               'title="اسحب لإعادة الترتيب داخل النوع والمجال نفسه">' + ICON_GRIP + '</span>'
           : '') + '</td>' +
         '<td class="dom">' + (dom
           ? '<span class="strong">' + A.esc(dom) + '</span>'
           : '<span class="adm-sub" style="margin:0">—</span>') + '</td>' +
-        '<td><span class="tag ' + k.cls + '">' + A.esc(k.label) + '</span>' + dlMark(it) + '</td>' +
+        '<td><span class="tag ' + k.cls + '">' + A.esc(k.label) + '</span> ' + extTag(it) + dlMark(it) + '</td>' +
         '<td class="wrap"><span class="strong">' + A.esc(it.title) + '</span>' +
           (it.subtitle ? '<span class="adm-sub">' + A.esc(it.subtitle) + '</span>' : '') +
           '<span class="adm-sub adm-mono" dir="ltr">' + A.esc(it.id) + '</span>' +
@@ -637,16 +955,21 @@
           ? '<span class="tag tag--success">نشط</span>'
           : '<span class="tag tag--error">معطّل</span>') + '</td>' +
         '<td class="num">' + A.toAr(it.accesses | 0) + '</td>' +
-        '<td>' + A.arDate(it.updated_at) + '</td>' +
+        /* لحظة رفع الملف بالساعة (٠٣١) — وقبلها آخر تحديث الصف، وهو أقرب ما
+           يُعرف. رقم النسخة تحته وزر سجل النسخ كلها */
+        '<td>' + A.arDateTime(it.file_uploaded_at || it.updated_at) +
+          '<span class="adm-sub">النسخة ' + A.toAr(it.rev == null ? 1 : it.rev) +
+            (it.file_uploaded_at ? '' : ' · آخر تحديث للصف') + '</span>' +
+          '<button type="button" class="lnk" data-act="versions">سجل النسخ</button></td>' +
         '<td><span class="row-acts">' +
           (canWrite
             ? '<button class="btn btn-outline btn-sm ord-btn" data-act="up" data-write' +
                 (upOk ? '' : ' disabled') + ' aria-label="نقل لأعلى" ' +
-                'title="' + (upOk ? 'نقل لأعلى' : 'أول بند في نوعه ومجاله ضمن العرض الحالي') +
+                'title="' + (upOk ? 'نقل لأعلى' : (manual ? 'أول بند في نوعه ومجاله ضمن العرض الحالي' : ordOff)) +
                 '">&#8593;</button>' +
               '<button class="btn btn-outline btn-sm ord-btn" data-act="down" data-write' +
                 (downOk ? '' : ' disabled') + ' aria-label="نقل لأسفل" ' +
-                'title="' + (downOk ? 'نقل لأسفل' : 'آخر بند في نوعه ومجاله ضمن العرض الحالي') +
+                'title="' + (downOk ? 'نقل لأسفل' : (manual ? 'آخر بند في نوعه ومجاله ضمن العرض الحالي' : ordOff)) +
                 '">&#8595;</button>'
             : '') +
           '<button class="btn btn-outline btn-sm" data-act="edit" data-write>تعديل</button>' +
@@ -700,6 +1023,8 @@
     /* السهمان يحرّكان الترتيب غير المحفوظ نفسه، وباقي الإجراءات تُعيد تحميل
        الفهرس بعدها فتمحوه — فتُمنع حتى يُحسم شريط الترتيب */
     if (act === 'up' || act === 'down') return nudge(it, act === 'down');
+    /* سجل النسخ قراءة محضة لا تُعيد التحميل — يُفتح ولو كان ترتيبٌ معلَّقاً */
+    if (act === 'versions') return openVersions(it);
     if (orderBusy()) return;
     if (act === 'edit') return openEdit(it);
     if (act === 'file') return replaceFile(it);
@@ -807,6 +1132,8 @@
 
   /* السهمان: بديل السحب لمن لا يستطيعه — خطوة واحدة داخل العرض الحالي */
   function nudge(it, down) {
+    /* الأزرار معطَّلة خارج ترتيب المكتبة، والحارس هنا للنقر البرمجي */
+    if (!manualOrder()) return;
     var list = visible(), i = -1, j, n;
     for (n = 0; n < list.length; n++) { if (list[n].id === it.id) { i = n; break; } }
     if (i < 0) return;
@@ -823,6 +1150,9 @@
 
   function wireDrag() {
     tbody.addEventListener('dragstart', function (e) {
+      /* لا مقبض يُرسم خارج ترتيب المكتبة — والحارس يُكمل: سحبٌ بلا dragId
+         يُهمَل في dragover وdrop */
+      if (!manualOrder()) return;
       var h = up(e.target, '.drag-h');
       var tr = h ? up(h, 'tr') : null;
       if (!tr) return;
@@ -1011,11 +1341,12 @@
     });
     return mx + 1;
   }
-  /* ترتيب المجلد الجديد داخل مجاله ونوعه — قياساً على ترتيب البنود */
-  function nextFolderSort(domain, kind) {
+  /* ترتيب المجلد الجديد داخل مجاله: المجلدات حرّة بلا نوع (٠٣١) فالمجموعة
+     هي المجال وحده — قياساً على ما تفعله دالة القاعدة حين يغيب الترتيب */
+  function nextFolderSort(domain) {
     var mx = 0;
     folders.forEach(function (f) {
-      if (!f || f.kind !== kind || f.domain !== domain) return;
+      if (!f || f.domain !== domain) return;
       var n = parseInt(f.sort, 10);
       if (!isNaN(n) && n > mx) { mx = n; }
     });
@@ -1224,6 +1555,10 @@
       nm.innerHTML = f
         ? '<span class="strong">' + A.esc(f.name) + '</span> — ' + A.bytes(f.size)
         : 'اسحب الملف إلى هنا أو اخترْه من جهازك';
+      /* الحد يُقال لحظة الاختيار لا لحظة الحفظ: الإدارة تملأ الحقول ثم تُردّ
+         في آخر خطوة — والفحص الملزم نفسه يتكرّر قبل الرفع (sizeError) */
+      var se = sizeError(f);
+      if (se) { A.toast(se, 'bad', 6500); }
       suggest();
       warnExt();
       if (o.onPick) { o.onPick(st.file); }
@@ -1296,6 +1631,15 @@
     }, true);
   }
 
+  /* حدّ حجم الملف الواحد (OSEA_UPLOAD.MAX_FILE_BYTES): رسالة عربية تسمّي
+     الحجمَين بدل خطأ السلة الخام. null ⇒ ضمن الحد أو لا ملف */
+  function sizeError(file) {
+    var max = Number(UP.MAX_FILE_BYTES) || 0;
+    if (!file || !max || !(file.size > max)) return null;
+    return 'حجم الملف ' + A.bytes(file.size) + ' يتجاوز الحد المسموح ' + A.bytes(max) +
+      ' للملف الواحد — اختر ملفاً أصغر أو قسّمه.';
+  }
+
   /* الرفع ثم تثبيت الملف على الصف: الحجم من الملف نفسه، وrev يرتفع فتُبطل
      أجهزة الأعضاء نسختها المخزّنة وتنزّل الجديدة عند أول فتح */
   function uploadStep(host, id, path, file) {
@@ -1306,6 +1650,9 @@
         'رفع الملفات غير متاح في هذه النسخة من الصفحة — أعد تحميلها تحميلاً قسرياً ' +
         '(Ctrl+Shift+R) ثم أعد المحاولة.'));
     }
+    /* الفحص قبل أي طلب: ملفٌ فوق الحد يُردّ هنا لا من السلة بعد دقائق رفع */
+    var se = sizeError(file);
+    if (se) { return Promise.reject(new Error(se)); }
     var wrap = host.querySelector('#fUp');
     var cancel = host.querySelector('#fUpCancel');
     if (wrap) { wrap.hidden = false; }
@@ -1314,6 +1661,14 @@
     var task = API.admin.uploadContentFile(path, file, function (loaded, total) {
       setUp(host, loaded, total || file.size || 0);
     });
+    /* الرفع المجزّأ يعيد المحاولة وحده عند انقطاع: يُقال ذلك في سطر النسبة
+       بدل شريطٍ واقف يُظنّ معلّقاً — وأول تقدّم تالٍ يعيد النسبة مكانه */
+    task.onRetry = function (attempt, max) {
+      var pct = host.querySelector('#fUpPct');
+      if (pct) {
+        pct.textContent = 'إعادة المحاولة ' + A.toAr(attempt) + ' من ' + A.toAr(max) + '…';
+      }
+    };
     if (cancel) {
       cancel.disabled = false;
       cancel.onclick = function () {
@@ -1441,7 +1796,7 @@
           'يُرفع الملف على مسار البند نفسه ' +
           '<span class="adm-mono" dir="ltr">' + A.esc(it.storage_path) + '</span> ' +
           'فيحلّ محلّ الملف القديم. صف الفهرس لا يتغيّر — يُضبَط الحجم ' +
-          'ويرتفع رقم النسخة وحدهما.' +
+          'ويرتفع رقم النسخة وحدهما. ' + verLine(it) +
         '</span></div>' +
         fileHTML('الملف يحلّ محلّ ملف البند الحالي في سلة ' +
           '<span class="adm-mono" dir="ltr">osea-content</span> بالمسار نفسه.') +
@@ -1470,6 +1825,67 @@
       fixedPath: it.storage_path
     });
     guardSheet(s);
+  }
+
+  /* سطر النسخة الحالية ولحظة رفعها — في تنبيه التعديل والاستبدال معاً */
+  function verLine(it) {
+    return 'النسخة الحالية ' + A.toAr(it.rev == null ? 1 : it.rev) +
+      (it.file_uploaded_at
+        ? ' — رُفعت في ' + A.arDateTime(it.file_uploaded_at) + '.'
+        : ' — آخر تحديث للصف ' + A.arDateTime(it.updated_at) + '.');
+  }
+
+  /* ------------------------------------------------------ سجل نسخ البند */
+  /* كل رفعٍ صفٌّ في content_file_versions (ترحيلة ٠٣١) — الأحدث أولاً،
+     والنسخة الحالية ممّيزة. غياب الدالة يُقال باسمه لا بخطأ إنجليزي خام */
+  function openVersions(it) {
+    var s = A.sheet({
+      title: 'سجل نسخ «' + it.title + '»',
+      hideOk: true,
+      body:
+        '<div class="notice">' + A.ICONS.info + '<span>' +
+          verLine(it) + ' استبدال الملف يرفع رقم النسخة، وكل رفع يُسجَّل هنا بلحظته ' +
+          'وحجمه ومن رفعه.' +
+        '</span></div>' +
+        '<div id="verBody"><div class="adm-state"><p>جارٍ التحميل…</p></div></div>'
+    });
+    var host = s.el.querySelector('#verBody');
+    var pending = 'سجل النسخ يظهر بعد تطبيق ترحيلة ٠٣١ على القاعدة.';
+    if (typeof API.admin.contentFileVersions !== 'function') {
+      host.innerHTML = A.emptyState('السجل غير متاح بعد', pending);
+      return;
+    }
+    API.admin.contentFileVersions(it.id).then(function (r) {
+      var list = (r && r.versions) || [];
+      if (!list.length) {
+        host.innerHTML = A.emptyState('لا نسخ مسجّلة',
+          'يبدأ السجل من أول رفع بعد تطبيق ترحيلة ٠٣١ — والنسخ الأقدم تُستكمل من سجل الإجراءات.');
+        return;
+      }
+      host.innerHTML =
+        '<div class="adm-table-card"><div class="adm-scroll"><table class="adm-table">' +
+          '<thead><tr><th>النسخة</th><th>تاريخ الرفع بالساعة</th><th>الحجم</th>' +
+            '<th>من رفعها</th><th>المسار</th></tr></thead><tbody>' +
+          list.map(function (v) {
+            var cur = v.rev != null && it.rev != null && Number(v.rev) === Number(it.rev);
+            return '<tr' + (cur ? ' class="ver-cur"' : '') + '>' +
+              '<td class="num"><span class="strong">' + A.toAr(v.rev == null ? '—' : v.rev) + '</span>' +
+                (cur ? ' <span class="tag tag--gold">الحالية</span>' : '') + '</td>' +
+              '<td>' + A.arDateTime(v.uploaded_at) + '</td>' +
+              '<td class="num">' + A.bytes(v.size_bytes) + '</td>' +
+              '<td>' + A.esc(v.uploaded_by_name || '—') + '</td>' +
+              '<td class="adm-mono" dir="ltr" style="text-align:start">' + A.esc(v.storage_path || '—') + '</td>' +
+            '</tr>';
+          }).join('') +
+        '</tbody></table></div></div>';
+    }).catch(function (e) {
+      var m = String((e && e.message) || e || '');
+      /* الدالة غائبة من القاعدة (PGRST202 أو «function … does not exist») ⇒
+         الترحيلة لم تُطبَّق — وليس خطأ اتصال */
+      host.innerHTML = /PGRST202|does not exist|Could not find the function|404/i.test(m)
+        ? A.emptyState('السجل غير متاح بعد', pending)
+        : A.errorState(A.errText(e));
+    });
   }
 
   /* ---------------------------------------------------------------- الحفظ */
@@ -1585,8 +2001,8 @@
     return '' +
       '<div class="field"><label for="fDomain">المجال</label>' +
         '<select class="input" id="fDomain">' + opts + '</select>' +
-        '<span class="hint">المجلد الأعلى في مكتبة التطبيق: المستخدم يدخل المجال ' +
-          'ثم النوع ثم البنود. اختر «مجال جديد…» لإنشاء مجال بلا تعديل برمجي.</span></div>' +
+        '<span class="hint">مجلد الكود في مكتبة التطبيق: المستخدم يدخل المجال ' +
+          'ثم المجلد ثم البند. اختر «مجال جديد…» لإنشاء مجال بلا تعديل برمجي.</span></div>' +
       '<div class="field" id="fDomainNewWrap" hidden>' +
         '<label for="fDomainNew">اسم المجال الجديد</label>' +
         '<input class="input" id="fDomainNew" maxlength="80" placeholder="مثال: السلامة من الحريق">' +
@@ -1622,20 +2038,20 @@
     return v || null;
   }
 
-  /* خيارات قائمة المجلد: مجلدات النوع نفسه ضمن المجال المختار (تُدار في
-     شاشة «المجلدات والتسعير»). value = معرّف المجلد uuid، والفراغ = بلا مجلد.
-     مجلد البند الحالي يُدرَج ولو خالف المجال المختار كي لا يسقط الربط
-     القائم صامتاً — أما مخالفة النوع فترفضها القاعدة أصلاً. */
-  function folderOptionsHTML(kind, domVal, currentId) {
+  /* خيارات قائمة المجلد: كل مجلدات المجال المختار بلا قيد نوع — المجلد حرّ
+     يستقبل كتباً واستمارات ودروساً معاً (٠٣١). تُدار في شاشة «المجلدات
+     والتسعير». value = معرّف المجلد uuid، والفراغ = بلا مجلد. مجلد البند
+     الحالي يُدرَج ولو خالف المجال المختار كي لا يسقط الربط القائم صامتاً. */
+  function folderOptionsHTML(domVal, currentId) {
     var list = folders.filter(function (f) {
-      if (f.kind !== kind) return false;
+      if (!f) return false;
       if (domVal === DOMAIN_NEW) return false;
       if (domVal && f.domain !== domVal) return false;
       return true;
     });
     if (currentId && !list.some(function (f) { return f.id === currentId; })) {
       var cur = folders.filter(function (f) { return f.id === currentId; })[0];
-      if (cur && cur.kind === kind) { list = list.concat([cur]); }
+      if (cur) { list = list.concat([cur]); }
     }
     var opts = '<option value="">— بلا مجلد —</option>';
     list.forEach(function (f) {
@@ -1646,14 +2062,12 @@
     return opts;
   }
 
-  /* إعادة تصفية قائمة المجلدات عند تغيّر النوع أو المجال: المجلد لا يقبل
-     إلا بنوداً من نوعه، واختيار مجلد ينقل البند إلى مجال المجلد في القاعدة */
-  function wireFolderSel(host, fixedKind) {
+  /* إعادة تصفية قائمة المجلدات عند تغيّر المجال: اختيار مجلد ينقل البند إلى
+     مجال المجلد في القاعدة، فالقائمة تعرض مجلدات المجال المختار وحدها */
+  function wireFolderSel(host) {
     var sel = host.querySelector('#fFolder');
     if (!sel || !foldersOk) return;
     var refill = function () {
-      var kindEl = host.querySelector('#fKind');
-      var kind = kindEl ? kindEl.value : fixedKind;
       var domSel = host.querySelector('#fDomain');
       var domVal = domSel ? domSel.value : '';
       var curId = sel.value || null;
@@ -1666,7 +2080,7 @@
           curId = null;
         }
       }
-      sel.innerHTML = folderOptionsHTML(kind, domVal, curId);
+      sel.innerHTML = folderOptionsHTML(domVal, curId);
       /* وسطر التحذير يتبع المجال المختار لا مجال البند المخزَّن: تغييرُ
          المجال في اللوحة يغيّر مصير المجلد فوراً، وتحذيرٌ متأخر يضلّل */
       var warn = host.querySelector('#fFolderWarn');
@@ -1674,8 +2088,6 @@
     };
     var domSel = host.querySelector('#fDomain');
     if (domSel) { domSel.addEventListener('change', refill); }
-    var kindEl = host.querySelector('#fKind');
-    if (kindEl) { kindEl.addEventListener('change', refill); }
   }
 
   /* كتلة «الوصول والتسعير»: طريقة وصول البند نفسه + أسعاره الثلاثة الاختيارية.
@@ -1786,39 +2198,34 @@
      المجال في اللوحة (refill أدناه)، واسمٌ مطبوع مرة كان يصير كذباً */
   function folderWarnHTML(domVal) {
     return '<span class="hint" id="fFolderWarn"' + (domainSubsOff(domVal) ? '' : ' hidden') + '>' +
-      '<b>تنبيه:</b> المجال المختار مضبوط على «الكتاب مباشرةً» — مجلداته الفرعية ' +
+      '<b>تنبيه:</b> المجال المختار مضبوط على «الكتاب مباشرةً» — مجلداته ' +
       'لا تظهر في التطبيق، فالبند يُعرض ضمن قائمة المجال مباشرةً ولا يُرى مجلده. ' +
       'الربط والتسعير يبقيان محفوظَين، ويعودان للظهور بتشغيل الخيار من ' +
       '«المجلدات والتسعير».</span>';
   }
   /* سطر الإرشاد إلى خيار «يحتاج مجلدات فرعية» (لوحة المجلدات والتسعير، قسم
-     المجالات — ترحيلة ٠٢٨): هو جواب المنصة على «الكتاب مباشرةً فور الدخول إلى
-     المجال»، لا خيار «بلا مجلد» الذي يبقي البند خلف شاشة النوع. الذيل مشروط
-     بما وصل من القاعدة: قبل الترحيلة لا قسم مجالات هناك أصلاً، فيُقال متى يظهر
-     بدل إرسال الإدارة إلى خيار غير موجود. نصّ خالص بلا وسوم كي يصلح لـtextContent
-     في بطاقة المعالج ولـinnerHTML في تلميح لوحة التعديل معاً. */
+     المجالات — ترحيلة ٠٢٨): هو جواب المنصة على «البنود مباشرةً فور الدخول إلى
+     المجال بلا بطاقات مجلدات». الذيل مشروط بما وصل من القاعدة: قبل الترحيلة
+     لا قسم مجالات هناك أصلاً، فيُقال متى يظهر بدل إرسال الإدارة إلى خيار غير
+     موجود. نصّ خالص بلا وسوم كي يصلح لـtextContent ولـinnerHTML معاً. */
   function subsPointer() {
-    return 'ولعرض الكتاب فور الدخول إلى المجال بلا شاشة الأنواع والمجلدات، أطفئ ' +
+    return 'ولعرض بنود المجال كلها مباشرةً فور الدخول إليه بلا بطاقات مجلدات، أطفئ ' +
       '«يحتاج مجلدات فرعية» على المجال من قسم «المجالات» في لوحة المجلدات والتسعير' +
       (domainsOk ? '.' : ' (القسم يظهر هناك بعد تطبيق ترحيلة ٠٢٨ على القاعدة).');
   }
   function fldFolder(it) {
-    return '<div class="field"><label for="fFolder">المجلد الفرعي</label>' +
+    return '<div class="field"><label for="fFolder">المجلد</label>' +
       (foldersOk
         ? '<select class="input" id="fFolder">' +
-            folderOptionsHTML(it.kind || 'book',
-              (it.domain == null ? '' : String(it.domain)).trim(),
+            folderOptionsHTML((it.domain == null ? '' : String(it.domain)).trim(),
               it.folder_id || null) +
           '</select>' +
           folderWarnHTML((it.domain == null ? '' : String(it.domain)).trim()) +
-          '<span class="hint">بنود المجلد الواحد تُجمع في بطاقة داخل نوعها بالمكتبة — ' +
-            'مثل «الكتابان المعتمدان للمنظومة»، والمجلد يحدّد طريقة الوصول ' +
-            /* «بند مباشر» وحدها قرأتها النقابة بنداً مستقلاً خارج شاشة النوع —
-               فيُسمّى المسار الفعلي في التطبيق بأسماء شاشاته: المجال المختار
-               أعلاه ← شاشة النوع ← صفٌّ بين البنود تحت بطاقات المجلدات */
-            '(مجاني/بحساب/مدفوع). «بلا مجلد» = يظهر للعضو في: المجال المختار أعلاه ← ' +
-            A.esc(KIND_SCREEN[it.kind] || KIND_SCREEN.book) + ' ← بين البنود مباشرةً ' +
-            'بلا بطاقة مجلد ولا بوابة اشتراك — لا بنداً مستقلاً ولا خارج شاشة النوع. ' +
+          '<span class="hint">مسار العضو في المكتبة: المجال ← المجلد ← البند. ' +
+            'المجلد لا يُقيَّد بنوع: يستقبل كتباً واستمارات ودروساً معاً، ويحدّد ' +
+            'طريقة الوصول (مجاني/بحساب/مدفوع) لبنوده الموروثة. «بلا مجلد» = يظهر ' +
+            'البند للعضو مباشرةً داخل المجال المختار أعلاه بين البنود السائبة، ' +
+            'بلا بطاقة مجلد ولا بوابة اشتراك موروثة. ' +
             subsPointer() + ' ' +
             '<a href="admin-folders.html">إدارة المجلدات والتسعير ←</a></span>'
         /* القائمة لم تصل: حقل معطّل لا يُرسَل عند الحفظ — الربط القائم لا يُمَس */
@@ -2021,7 +2428,7 @@
           '<strong>المعرّف والحجم غير قابلين للتعديل.</strong> ' +
           'المعرّف <span class="adm-mono" dir="ltr">' + A.esc(it.id) + '</span> مفتاح مرجعي ' +
           'يستعمله التطبيق وسجل الوصول، والحجم ' + A.bytes(it.size_bytes) +
-          ' يُضبَط من الملف نفسه عند رفعه من هذه اللوحة ولا يُكتب يدوياً.' +
+          ' يُضبَط من الملف نفسه عند رفعه من هذه اللوحة ولا يُكتب يدوياً. ' + verLine(it) +
         '</span></div>' +
         fieldsHTML(it),
       onOk: function (host, close) {
@@ -2050,7 +2457,7 @@
       }
     });
     wireDomain(s.el);
-    wireFolderSel(s.el, it.kind);
+    wireFolderSel(s.el);
     wireAccess(s.el);
     st = wireFile(s.el, {
       kind: function () { return it.kind; },
@@ -2065,7 +2472,7 @@
      هنا ثلاثة لا غير: النوع، ثم الملف والعنوان، ثم مكان الحفظ — وكل ما عداها
      يُشتقّ (المعرّف، المسار، المجال، الترتيب، الحالة) أو يُستخرج من الملف
      (الصفحات، المدة، الحجم). النادر يبقى متاحاً مطويّاً تحت «خيارات متقدمة». */
-  var WZ_Q = ['شو بدك تضيف؟', 'الملف والعنوان', 'وين يتحفّظ؟'];
+  var WZ_Q = ['ما الذي تريد إضافته؟', 'الملف والعنوان', 'أين يُحفَظ؟'];
   var WZ_PICK = [
     ['book',   '📕', 'كتاب معتمد',    'ملف PDF يُقرأ داخل التطبيق'],
     ['form',   '📄', 'استمارة رسمية', 'استمارة تقييم تُملأ ميدانياً'],
@@ -2103,8 +2510,9 @@
             'placeholder="مثال: الكتابان المعتمدان للمنظومة"></div>' +
         '<div class="field"><label for="nfDomain">القسم (المجال)</label>' +
           '<select class="input" id="nfDomain">' + opts + '</select>' +
-          '<span class="hint">القسم هو المجلد الأعلى في مكتبة التطبيق: المستخدم يدخل ' +
-            'القسم ثم النوع ثم المجلدات وبنودها.</span></div>' +
+          '<span class="hint">القسم هو مجلد الكود في مكتبة التطبيق: المستخدم يدخل ' +
+            'القسم ثم المجلدات وبنودها. المجلد لا يُقيَّد بنوع: يستقبل كتباً ' +
+            'واستمارات ودروساً معاً.</span></div>' +
         '<div class="field" id="nfDomainNewWrap" hidden>' +
           '<label for="nfDomainNew">اسم القسم الجديد</label>' +
           '<input class="input" id="nfDomainNew" maxlength="80" placeholder="مثال: السلامة من الحريق">' +
@@ -2141,6 +2549,9 @@
        probe: رقم قراءةٍ للملف — نتيجةُ قراءةٍ سبقها اختيارُ ملفٍ آخر تُهمَل. */
     var W = { step: 1, kind: null, autoId: '', autoTitle: '', autoSort: '',
               autoPages: '', autoDur: '', probe: 0,
+              /* النوع ما زال المقترَح (كتاب افتراضاً) لا اختياراً صريحاً: ملفُ
+                 فيديو يبدّله إلى درس تلقائياً — ونقرةُ بطاقةٍ تجمّده */
+              kindAuto: true,
               /* المعرّف الذي نجح حفظ صفّه في هذه الجلسة: إعادة الضغط بعد فشل
                  الرفع تُعيد نفس الصف لا تطالب بمعرّف جديد فتُنشئ مكرّراً */
               savedId: null,
@@ -2159,9 +2570,9 @@
 
     /* ------------------------------------------------------ حركة الخطوات */
     function focusStep(n) {
-      var t = n === 1 ? s.el.querySelector('.pick')
+      var t = n === 1 ? s.el.querySelector('.pick[aria-pressed="true"]') || s.el.querySelector('.pick')
             : n === 2 ? ((st && st.file) ? el('fTitle') : el('fPick'))
-            : s.el.querySelector('#wzFolds input');
+            : s.el.querySelector('#wzFolds input:checked') || s.el.querySelector('#wzFolds input');
       if (t && t.focus) { try { t.focus(); } catch (e) {} }
       var body = s.el.querySelector('.adm-sheet-body');
       if (body) { body.scrollTop = 0; }
@@ -2175,8 +2586,9 @@
       el('wz3').hidden = n !== 3;
       indEl.innerHTML = 'الخطوة <b>' + A.toAr(n) + '</b> من ' + A.toAr(3) +
         ' — ' + A.esc(WZ_Q[n - 1]);
-      /* الخطوة الأولى تتقدّم بنقر البطاقة نفسها، فزر «التالي» فيها زائد */
-      okBtn.hidden = n === 1;
+      /* «التالي» ظاهر في الخطوة الأولى أيضاً: الكتاب مختار افتراضاً فالإدارة
+         تتقدّم بنقرة واحدة — ونقر بطاقةٍ أخرى يتقدّم بها كذلك */
+      okBtn.hidden = false;
       okBtn.textContent = n === 3 ? 'إضافة العنصر' : 'التالي';
       backBtn.hidden = n === 1;
       focusStep(n);
@@ -2225,93 +2637,86 @@
       var w = el('fDomainNewWrap');
       if (w) { w.hidden = true; }
       applySort();
-      paintNoFold();
+      syncFoldCheck();
     }
 
     /* ---------------------------------------------------- بطاقات المجلدات */
-    /* sbId اختياري: بطاقة «بلا مجلد» وحدها تحتاج معرّفاً لسطرها كي يُحدَّث
-       نصّه حين يتغيّر المجال بلا إعادة رسم القائمة كلها (وإلا ضاع الانتقاء) */
-    function foldCard(v, nm, sb, on, sbId) {
-      return '<label class="fold' + (on ? ' on' : '') + '">' +
+    /* root: بطاقة جذر المجال (مجلد الكود) — أفتح خلفيةً كي تتميّز عن مجلداته */
+    function foldCard(v, nm, sb, on, root) {
+      return '<label class="fold' + (root ? ' root' : '') + (on ? ' on' : '') + '">' +
         '<input type="radio" name="wzFold" value="' + A.esc(v) + '"' + (on ? ' checked' : '') + '>' +
         '<span><span class="nm">' + A.esc(nm) + '</span>' +
-        '<span class="sb"' + (sbId ? ' id="' + sbId + '"' : '') + '>' + A.esc(sb) + '</span></span></label>';
+        '<span class="sb">' + A.esc(sb) + '</span></span></label>';
     }
 
-    /* أين يظهر بند «بلا مجلد» فعلاً — بأسماء شاشات التطبيق نفسها لا بلفظ
-       «في قسمه» المبهم الذي كان هنا. المجال المختار في #fDomain هو ما يُحفَظ
-       حرفياً (لا شيء يزامنه بلا مجلد)، وهو مطويّ تحت «خيارات متقدمة» فلا تراه
-       الإدارة إلا من هذا السطر: النقابة أضافت كتاباً «مباشراً» ففوجئت به تحت
-       «منظومة تقييم الأضرار» لأن لا شيء قال لها أي مجال سيُكتب. مجالٌ جديد
-       يُطبع اسمه كما يُكتب لحظةً بلحظة، وفراغه يُقال فراغاً لا اسماً مخموناً. */
-    function noFoldSub() {
-      var ds = el('fDomain');
+    /* قيمة البطاقة التي تصف الحال الراهنة: مجلدٌ في #fFolder ⇒ معرّفه،
+       وإلا جذرُ المجال المختار في #fDomain — ومجالٌ جديد يُكتب اسمه لا بطاقة له */
+    function curFoldValue() {
+      var sel = el('fFolder'), ds = el('fDomain');
+      var fid = sel ? sel.value : '';
+      if (fid && folderById(fid)) return fid;
       var d = ds ? ds.value : '';
-      if (d === DOMAIN_NEW) {
-        var dn = el('fDomainNew');
-        d = dn ? dn.value.replace(/\s+/g, ' ').trim() : '';
-        d = d || 'المجال الجديد (لم يُكتب اسمه بعد)';
-      }
       if (!d) { d = defaultDomain(); }
-      /* ثلاثة مسارات لا مسار واحد، والسطر يجب أن يقول الحقيقي منها:
-         - الدروس خارج نموذج المجلدات أصلاً: بطاقتها في التطبيق رابطٌ إلى
-           شاشة المشغّل لا قائمةَ بنود، فلا «بين البنود» فيها.
-         - مجالٌ أُطفئت مجلداته الفرعية (٠٢٨) يقفز من بطاقة المجال إلى
-           البنود رأساً بلا شاشة الأنواع — وهذا ما يدعو إليه السطرُ نفسه
-           في ذيله، فلا يليق أن يصف مساراً ألغاه هو.
-         - «بلا بوابة اشتراك» صحيحة لبوابة المجلد وحدها: طريقة وصول البند
-           نفسه وشرط الحساب (في «خيارات متقدمة» أسفل هذا السطر) يبقيان
-           سارِيَين، فوعدُ صفٍّ مفتوح قد تُغلقه خانتان تحته. */
-      if (W.kind === 'lesson') {
-        return 'يظهر للعضو في: «' + d + '» ← ' + KIND_SCREEN.lesson +
-          ' (شاشة المشغّل) — الدروس بلا مجلدات أصلاً. ' +
-          'المجال يُبدَّل من «خيارات متقدمة» أدناه.';
-      }
-      var flat = (typeof domainSubsOff === 'function') && domainSubsOff(d);
-      var tail = ' — بلا بطاقة مجلد ولا بوابة اشتراكٍ موروثة من مجلد، ' +
-        'ويبقى وصول البند نفسه (طريقة الوصول وشرط الحساب في «خيارات متقدمة») سارياً. ' +
-        'المجال يُبدَّل من «خيارات متقدمة» أدناه. ';
-      if (flat) {
-        return 'يظهر للعضو في: «' + d + '» ← البنود مباشرةً فور الدخول ' +
-          '(المجلدات الفرعية مطفأة لهذا المجال)' + tail;
-      }
-      return 'يظهر للعضو في: «' + d + '» ← ' + (KIND_SCREEN[W.kind] || KIND_SCREEN.book) +
-        ' ← بين البنود مباشرةً' + tail + subsPointer();
+      return d === DOMAIN_NEW ? '' : DOM_PREFIX + d;
     }
-    /* textContent لا innerHTML: اسم المجال نصٌّ من الإدارة، والسطر بلا وسوم */
-    function paintNoFold() {
-      var e = el('wzNoFoldSb');
-      if (e) { e.textContent = noFoldSub(); }
+    /* المجال يُبدَّل من «خيارات متقدمة» فتتبعه بطاقة الجذر المعلَّمة — بلا
+       إعادة رسم القائمة كي لا يضيع موضع التمرير */
+    function syncFoldCheck() { checkFold(curFoldValue()); }
+
+    /* ما في المجلد من كتب واستمارات ودروس (admin_folders بعد ٠٣١) — سطرٌ
+       يقول محتواه بلمحة؛ وقبل الترحيلة عدد البنود وحده */
+    function foldContents(f) {
+      var n = f.items | 0;
+      if (f.books === undefined && f.forms === undefined && f.lessons === undefined) {
+        return A.count(n, 'بند واحد', 'بندان', 'بنود', 'بنداً');
+      }
+      var parts = [];
+      if (f.books | 0) { parts.push(A.count(f.books | 0, 'كتاب واحد', 'كتابان', 'كتب', 'كتاباً')); }
+      if (f.forms | 0) { parts.push(A.count(f.forms | 0, 'استمارة واحدة', 'استمارتان', 'استمارات', 'استمارة')); }
+      if (f.lessons | 0) { parts.push(A.count(f.lessons | 0, 'درس واحد', 'درسان', 'دروس', 'درساً')); }
+      return parts.length ? parts.join(' · ') : 'فارغ';
     }
 
-    /* تعيد الاختيار السارِيَ فعلاً بعد إعادة الرسم: تغيير النوع قد يُسقط
-       مجلداً منتقىً من نوع آخر، فيجب أن يتبعه المجالُ والقائمةُ المخفيّة —
-       وإلا بقيت #fFolder على مجلد لا تُظهره البطاقات فحُفظ ربطٌ لا يُرى */
+    /* البطاقات مجموعةً بالمجال (ترتيب المكتبة): جذر المجال أولاً — «مباشرةً في
+       «المجال»» وهو ما كان «بلا مجلد» يعنيه بلا أن يقوله — ثم مجلداته كلها بلا
+       قيد نوع (٠٣١). تعيد القيمة السارية فعلاً بعد إعادة الرسم كي تتبعها
+       القائمة المخفيّة #fFolder والمجال معاً */
     function paintFolds() {
-      var host = el('wzFolds'), sel = el('fFolder');
-      var cur = sel ? sel.value : '';
+      var host = el('wzFolds');
+      var cur = curFoldValue();
+      /* مجلدٌ منتقى لم يبقَ في القائمة (حُذف من شاشة أخرى) ⇒ جذر مجاله */
+      if (cur && cur.indexOf(DOM_PREFIX) !== 0 && !folderById(cur)) { cur = curFoldValue(); }
+      var h = '';
+      /* فشل استدعاء المجلدات لا يُخفي بطاقات الجذر: المجالات معروفة من الفهرس
+         والمجالات (٠٢٨) بمعزل عنه، وإلا بقي اختيار المجال حبيس «خيارات متقدمة»
+         في الحالة الوحيدة التي تتحمّلها الشاشة أصلاً بلا تعطّل */
       if (!foldersOk) {
-        host.innerHTML = '<div class="notice notice--error">' + A.ICONS.bad +
-          '<span><strong>تعذّر تحميل قائمة المجلدات.</strong> يُضاف البند بلا مجلد، ' +
-          'ويُربط لاحقاً من «تعديل» بعد عودة الاتصال — وإن استمر الخطأ فتأكد من ' +
-          'تطبيق ترحيل القاعدة ٠٢١.</span></div>';
-        return '';
+        h += '<div class="notice notice--error">' + A.ICONS.bad +
+          '<span><strong>تعذّر تحميل قائمة المجلدات</strong> — اختر المجال مباشرةً ' +
+          'أدناه، ويُربط البند بمجلد لاحقاً من «تعديل» بعد عودة الاتصال، وإن ' +
+          'استمر الخطأ فتأكد من تطبيق ترحيل القاعدة ٠٢١.</span></div>';
       }
-      var list = folders.filter(function (f) { return f && f.kind === W.kind; });
-      list.sort(function (a, b) {
-        if (a.domain !== b.domain) return String(a.domain).localeCompare(String(b.domain), 'ar');
-        return (a.sort | 0) - (b.sort | 0);
-      });
-      /* المجلد المنتقى قد لا يكون من نوع البند بعد رجوعٍ وتغييرِ نوع */
-      if (cur && !list.some(function (f) { return f.id === cur; })) { cur = ''; }
-      /* «بند مباشر» أُبقيت في العنوان لأن الإدارة تعرفها، والسطر تحتها يقول
-         المسار الفعلي (noFoldSub) بدل وصفٍ عام صدّقته النقابة على غير معناه */
-      var h = foldCard('', 'بلا مجلد (بند مباشر داخل شاشة النوع)', noFoldSub(), cur === '',
-        'wzNoFoldSb');
-      list.forEach(function (f) {
-        h += foldCard(f.id, f.name + (f.active === false ? ' (معطّل)' : ''),
-          f.domain + ' · ' + (FOLD_ACC[f.access || 'free'] || 'مجاني للجميع') +
-          ' · ' + A.count(f.items | 0, 'بند واحد', 'بندان', 'بنود', 'بنداً'), cur === f.id);
+      domainOrder().forEach(function (d) {
+        var flat = domainSubsOff(d);
+        var list = foldersOk
+          ? folders.filter(function (f) { return f && String(f.domain || '').trim() === d; })
+          : [];
+        list.sort(function (a, b) {
+          return ((a.sort | 0) - (b.sort | 0)) ||
+            String(a.name || '').localeCompare(String(b.name || ''), 'ar');
+        });
+        var rv = DOM_PREFIX + d;
+        h += '<div class="fold-group"><span class="fold-dom">' + A.esc(d) + '</span>' +
+          foldCard(rv, 'مباشرةً في «' + d + '»',
+            flat ? 'المجال يعرض بنوده مباشرة — المجلدات محفوظة بلا ظهور'
+                 : 'مجلد الكود — يظهر البند فور الدخول إلى المجال',
+            cur === rv, true);
+        list.forEach(function (f) {
+          h += foldCard(f.id, f.name + (f.active === false ? ' (معطّل)' : ''),
+            (FOLD_ACC[f.access || 'free'] || 'مجاني للجميع') + ' · ' + foldContents(f),
+            cur === f.id);
+        });
+        h += '</div>';
       });
       host.innerHTML = h;
       return cur;
@@ -2322,25 +2727,28 @@
         var i = l.querySelector('input');
         if (!i) return;
         i.checked = i.value === id;
-        l.className = 'fold' + (i.checked ? ' on' : '');
+        l.className = 'fold' + (l.classList.contains('root') ? ' root' : '') + (i.checked ? ' on' : '');
       });
     }
 
-    /* القائمة المخفيّة #fFolder هي ما يقرأه readFields — البطاقات تقودها */
-    function applyFolder(id) {
+    /* القائمة المخفيّة #fFolder هي ما يقرأه readFields — البطاقات تقودها.
+       v = معرّف مجلد، أو 'dom:<المجال>' لجذر المجال، أو '' */
+    function applyFolder(v) {
       var sel = el('fFolder');
-      var f = folderById(id);
-      if (sel) { sel.innerHTML = '<option value="' + A.esc(id || '') + '" selected></option>'; }
+      var f = folderById(v);
+      /* جذر المجال: لا مجلد، والمجال يُكتب في #fDomain حرفياً — المحفّز لا
+         يزامن شيئاً حين folder_id فارغ، فما يُرى هنا هو ما يُحفَظ */
+      if (v && v.indexOf(DOM_PREFIX) === 0) {
+        if (sel) { sel.innerHTML = '<option value="" selected></option>'; }
+        setDomain(v.slice(DOM_PREFIX.length));
+        return;
+      }
+      if (sel) { sel.innerHTML = '<option value="' + A.esc(f ? v : '') + '" selected></option>'; }
       /* مجلدٌ منتقى ⇒ المجال مجاله: محفّز content_items_folder_sync (٠٢١)
-         يزامنه من المجلد على أي حال فيُظهَر موافقاً. أما «بلا مجلد» فلا يمسّ
-         المجال إطلاقاً: المحفّز لا يزامن شيئاً حين folder_id فارغ، فما يُكتب
-         في #fDomain يُحفَظ حرفياً. كان هذا الفرع يصفّر الاختيار إلى
-         defaultDomain() — فمجالٌ اختارته الإدارة من «خيارات متقدمة» ثم نقرت
-         «بلا مجلد» (أو رجعت وبدّلت النوع فأُعيد رسم البطاقات) كان يُدهَس صامتاً
-         بـ«منظومة تقييم الأضرار»؛ وهذا عين شكوى النقابة: الكتاب «المباشر» يُحفَظ
-         في غير المجال المقصود. الترتيب وحده يُعاد حسابه (يتبع المجال والنوع)،
-         وسطر البطاقة يُحدَّث ليقول أين سيظهر البند فعلاً. */
-      if (f) { setDomain(f.domain); } else { applySort(); paintNoFold(); }
+         يزامنه من المجلد على أي حال فيُظهَر موافقاً. وبغير مجلد لا يُمسّ
+         المجال إطلاقاً — مجالٌ اختارته الإدارة من «خيارات متقدمة» لا يُدهَس
+         بالافتراضي؛ الترتيب وحده يُعاد حسابه (يتبع المجال والنوع) */
+      if (f) { setDomain(f.domain); } else { applySort(); syncFoldCheck(); }
     }
 
     function setKind(k) {
@@ -2354,7 +2762,9 @@
         W.autoId = freshId(k);
         idEl.value = W.autoId;
       }
-      applyFolder(paintFolds());
+      /* المجلدات حرّة بلا نوع (٠٣١) فلا تُعاد رسمها هنا — الترتيب وحده يتبع
+         النوع (nextSort يجمع البنود داخل المجال والنوع) */
+      applySort();
       /* حماية البند تتبع النوع ما لم تُغيَّر يدوياً: الدرس بلا الخيار أصلاً،
          والاستمارة افتراضها التنزيل والكتاب الحماية. قيمة بقيت على افتراضي
          النوع السابق تُعدَّل لافتراضي الجديد — والاختيار الصريح لا يُداس */
@@ -2399,6 +2809,21 @@
 
       if (!meta || !ex) return;
       var pk = probeKind(f);
+      /* النوع المقترَح يتبع الملف ما دام لم تنقره الإدارة: فيديو ⇒ درس، وPDF
+         بعد فيديو ⇒ كتاب من جديد. setKind يعيد استدعاء onPick بنفسه حين
+         يتغيّر النوع، فالخروج هنا يمنع قراءة الملف مرتين */
+      if (W.kindAuto) {
+        if (pk === 'dur' && W.kind !== 'lesson') {
+          setKind('lesson');
+          A.toast('الملف فيديو فاختير «درس مصوّر» تلقائياً — بدّل النوع من الخطوة الأولى إن لزم.', 'ok', 5200);
+          return;
+        }
+        if (pk === 'pages' && W.kind === 'lesson') {
+          setKind('book');
+          A.toast('الملف PDF فاختير «كتاب» تلقائياً — بدّل النوع من الخطوة الأولى إن لزم.', 'ok', 5200);
+          return;
+        }
+      }
       meta.hidden = false;
       meta.className = 'fx-meta wait';
       ex.textContent = pk
@@ -2491,20 +2916,23 @@
           return;
         }
       }
+      /* بلا نوع: المجلد حرّ يستقبل الأنواع كلها (٠٣١)، والدالة تتجاهل المفتاح
+         على أي حال — فلا يُرسَل أصلاً */
       var p = {
-        name: name, domain: dom, kind: W.kind || 'book', access: access,
+        name: name, domain: dom, access: access,
         price_month: pm, price_year: py, price_once: po, note: null,
-        sort: nextFolderSort(dom, W.kind || 'book'), active: true
+        sort: nextFolderSort(dom), active: true
       };
       btn.disabled = true;
       API.admin.saveFolder(p).then(function (r) {
         if (r && r.id) { folders.push(r); return r; }
-        /* الدالة لم تُعِد الصف: تُقرأ القائمة كاملةً ثم يُلتقط المطابق */
+        /* الدالة لم تُعِد الصف: تُقرأ القائمة كاملةً ثم يُلتقط المطابق
+           بالاسم والمجال — وهما مفتاح التفرّد بعد ٠٣١ */
         return API.admin.folders().then(function (d) {
           folders = (d && d.folders) || folders;
           var m = null;
           folders.forEach(function (f) {
-            if (f && f.name === p.name && f.domain === p.domain && f.kind === p.kind) { m = f; }
+            if (f && f.name === p.name && f.domain === p.domain) { m = f; }
           });
           return m;
         });
@@ -2537,10 +2965,12 @@
         '<p class="wz-ind" id="wzInd" role="status" aria-live="polite"></p>' +
 
         '<div class="wz-step" id="wz1">' +
-          '<p class="wz-q">شو بدك تضيف؟</p>' +
+          '<p class="wz-q">ما الذي تريد إضافته؟</p>' +
           pickCardsHTML() +
-          '<span class="hint" style="margin:0">النوع يحدّد مكان البند في المكتبة ' +
-            'وامتداد ملفه المتوقّع، ولا يُغيَّر بعد الحفظ من هذه الشاشة.</span>' +
+          '<span class="hint" style="margin:0">الكتاب هو الخيار الافتراضي — اضغط «التالي» ' +
+            'مباشرة، أو اختر نوعاً آخر. النوع يحدّد امتداد الملف المتوقّع وطريقة عرضه ' +
+            '(قارئ أو مشغّل)، ولا يُغيَّر بعد الحفظ من هذه الشاشة. أما مكان البند في ' +
+            'المكتبة فيُختار في الخطوة الثالثة: المجال ← المجلد ← البند.</span>' +
         '</div>' +
 
         '<div class="wz-step" id="wz2" hidden>' +
@@ -2559,7 +2989,7 @@
         '</div>' +
 
         '<div class="wz-step" id="wz3" hidden>' +
-          '<p class="wz-q">وين يتحفّظ؟</p>' +
+          '<p class="wz-q">أين يُحفَظ؟</p>' +
           '<div class="fold-list" id="wzFolds"></div>' +
           '<div class="up-row">' +
             '<button type="button" class="btn btn-outline btn-sm" id="wzNewBtn" data-write>＋ مجلد جديد</button>' +
@@ -2582,7 +3012,11 @@
         '</div>',
       onOk: function (host, close) {
         /* الخطوتان الأوليان تتقدّمان ولا تحفظان: لا وعد يُعاد فلا تُغلق اللوحة */
-        if (W.step === 1) return;
+        if (W.step === 1) {
+          if (!W.kind) { A.toast('اختر نوع البند أولاً', 'bad'); return; }
+          goStep(2);
+          return;
+        }
         /* قراءة الملف جارية: التقدّم الآن يحفظ صفحاتٍ أو مدةً فارغة، ونتيجة
            القراءة تُكتب بعدها في عنصرٍ غادر الصفحة — ننتظرها، وهي ثوانٍ */
         if (W.reading) {
@@ -2675,6 +3109,8 @@
 
     s.el.querySelectorAll('.pick').forEach(function (b) {
       b.addEventListener('click', function () {
+        /* نقرة صريحة تجمّد النوع: الملف لا يبدّله بعدها */
+        W.kindAuto = false;
         setKind(b.getAttribute('data-kind'));
         goStep(2);
       });
@@ -2692,14 +3128,19 @@
         A.toast('قائمة المجلدات لم تصل — أعد تحميل الصفحة قبل إنشاء مجلد.', 'bad', 4800);
         return;
       }
-      /* القسم الحالي للبند هو الأرجح للمجلد الجديد: يُنتقى ابتداءً بدل أول
+      /* قسم البطاقة المعلَّمة هو الأرجح للمجلد الجديد: يُنتقى ابتداءً بدل أول
          أقسام القائمة أبجدياً — وإلا أُنشئ المجلد في قسم لم يقصده أحد */
       var ds = el('fDomain'), nd = el('nfDomain');
-      if (ds && nd && ds.value && ds.value !== DOMAIN_NEW) {
+      var chk = s.el.querySelector('#wzFolds input:checked');
+      var pre = '';
+      if (chk && chk.value.indexOf(DOM_PREFIX) === 0) { pre = chk.value.slice(DOM_PREFIX.length); }
+      else if (chk && folderById(chk.value)) { pre = folderById(chk.value).domain; }
+      else if (ds && ds.value && ds.value !== DOMAIN_NEW) { pre = ds.value; }
+      if (nd && pre) {
         /* القسم قد يغيب عن قائمة النموذج المصغّر — يُدرَج ثم يُنتقى،
            وإلا بقي المختار قسماً آخر صامتاً فأُنشئ المجلد في غير موضعه */
-        addNfDomain(ds.value);
-        nd.value = ds.value;
+        addNfDomain(pre);
+        nd.value = pre;
       }
       el('wzNF').hidden = false;
       el('wzNewBtn').hidden = true;
@@ -2734,18 +3175,14 @@
         var f = folderById(sel ? sel.value : '');
         if (f && domSel.value !== f.domain) {
           if (sel) { sel.innerHTML = '<option value="" selected></option>'; }
-          checkFold('');
-          A.toast('غُيّر القسم — فأُلغي اختيار المجلد لأنه يتبع قسماً آخر.', 'bad', 4800);
+          A.toast('غُيّر القسم — فأُلغي اختيار المجلد لأنه يتبع قسماً آخر، وصار البند مباشرةً في القسم الجديد.', 'bad', 5200);
         }
         applySort();
-        /* سطر بطاقة «بلا مجلد» يتبع المجال المختار لحظةً بلحظة — اسمٌ طُبع
-           مرةً عند الرسم كان يصير كذباً بعد أول تبديل في «خيارات متقدمة» */
-        paintNoFold();
+        /* بطاقة جذر المجال المختار تُعلَّم بدل المجلد الملغى — والقسم الجديد
+           الذي يُكتب اسمه لا بطاقة له فتبقى القائمة بلا علامة */
+        syncFoldCheck();
       });
     }
-    /* واسم المجال الجديد كذلك وهو يُكتب: البطاقة تطبعه بدل الحارسة الداخلية */
-    var domNewIn = el('fDomainNew');
-    if (domNewIn) { domNewIn.addEventListener('input', paintNoFold); }
     st = wireFile(s.el, {
       kind: function () { return W.kind || 'book'; },
       id: function () {
@@ -2756,6 +3193,13 @@
       onPick: onPick
     });
     guardSheet(s);
+    /* الكتاب مختار افتراضاً (طلب النقابة): المعرّف والمسار وحماية البند
+       تُشتقّ منه فوراً، وبطاقات مكان الحفظ تُرسم على جذر المجال الافتراضي —
+       فالإدارة تصل إلى الخطوة الثالثة بنقرتَي «التالي» لا أكثر */
+    paintFolds();
+    applyFolder(DOM_PREFIX + defaultDomain());
+    setKind('book');
+    W.kindAuto = true;
     goStep(1);
   }
 

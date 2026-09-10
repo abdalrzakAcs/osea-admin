@@ -87,6 +87,8 @@
           <strong>هذه الشاشة تدير المجلدات وطرق الاشتراك والرسوم — لا الملفات.</strong>
           كل بند محتوى يُربَط بمجلد من شاشة «المحتوى»، والمجلد يحدّد طريقة وصوله:
           مجاني للجميع، أو يتطلب حساباً موافَقاً، أو مدفوع بالاشتراك.
+          والمجلد لا يُقيَّد بنوع واحد — يجمع كتباً واستمارات ودروساً معاً،
+          فالشجرة: المجال ← المجلد ← البند.
           حذف مجلد لا يحذف بنوده — تفقد ربطها به فقط.
         </span>
       </div>
@@ -133,8 +135,9 @@
       <div class="adm-bar" id="domBar" style="margin-block-start:28px">
         <span><strong>المجالات (مجلدات الأكواد)</strong>
           <span class="adm-sub">المستوى الأعلى في المكتبة — «كود الحريق» مثالاً.
-          المجال الذي لا يحتاج مجلدات فرعية يعرض كتبه واستماراته مباشرة بعد
-          الدخول إليه، بلا شاشة نوع ولا شاشة مجلدات.</span></span>
+          تحته مجلدات تُنشأ بحرّية وتُسمّى كما تشاء الإدارة، وكل مجلد يستقبل
+          أي نوع من البنود. المجال الذي لا يحتاج مجلدات فرعية يعرض بنوده
+          مباشرة بعد الدخول إليه، بلا شاشة مجلدات.</span></span>
         <span class="spacer"></span>
         <button class="btn btn-primary btn-sm" id="domAddBtn" data-write>مجال جديد</button>
       </div>
@@ -206,7 +209,7 @@
               <tr>
                 <th class="drag-cell" data-write aria-label="مقبض الترتيب"></th>
                 <th>المجال</th>
-                <th>النوع</th>
+                <th>محتواه</th>
                 <th>الاسم</th>
                 <th>طريقة الاشتراك</th>
                 <th>الأسعار</th>
@@ -233,9 +236,11 @@
         <div class="adm-pager">
           <span>المجلد المدفوع يظهر في التطبيق ولا تُفتح بنوده إلا باشتراك ساري أو
           اشتراك «كامل المكتبة» — ويصل المشترك إليه من شاشة الدفع أو بكود مُوجَّه.
+          المجلد لا يُقيَّد بنوع: يستقبل كتباً واستمارات ودروساً معاً، والشجرة
+          في التطبيق «المجال ← المجلد ← البند».
           لتغيير الترتيب اسحب المجلد بمقبضه أو استعمل زرّي ↑/↓، والحركة داخل
-          المجموعة الواحدة فقط (المجال نفسه والنوع نفسه) لأن التطبيق يرتّب كل
-          نوع داخل مجاله على حدة.</span>
+          المجال الواحد فقط لأن التطبيق يرتّب مجلدات كل مجال على حدة — ولنقل
+          مجلد إلى مجال آخر استعمل «تعديل».</span>
         </div>
       </div>
 
@@ -253,11 +258,8 @@
   'use strict';
   var A = window.ADMIN, API = window.OSEA_API;
 
-  var KIND = {
-    book:   { label: 'الكتب',      cls: 'tag--navy' },
-    form:   { label: 'الاستمارات', cls: 'tag--gold' },
-    lesson: { label: 'الدروس',     cls: '' }
-  };
+  /* لا خريطة أنواع للمجلدات: المجلد منذ ٠٣١ لا يُقيَّد بنوع، والنوع صفة
+     البند وحده — فيبقى هنا للعدّ والعرض لا للتصنيف */
   var ACCESS = {
     free:    { label: 'مجاني',        cls: 'tag--success' },
     account: { label: 'يتطلب حساباً', cls: 'tag--navy' },
@@ -685,7 +687,7 @@
   /* ------------------------------------------------- ترتيب المجالات
      نسخة مبسَّطة من ترتيب المجلدات أدناه: لا قيد مجموعة هنا (المجال أعلى
      الشجرة فلا أب له)، ولم تُدمج الدالتان كي لا يُعاد كتابة مسار المجلدات
-     العامل الذي يفرض قيد «المجال + النوع». */
+     العامل الذي يفرض قيد المجال الواحد. */
   function domOrderIds() {
     return domains.map(function (d) { return d.id; });
   }
@@ -822,9 +824,10 @@
         '<input class="adm-check" type="checkbox" id="dSubs"' + (subsOn ? ' checked' : '') +
           ' style="margin-block-start:3px">' +
         '<span>يحتاج مجلدات فرعية</span></label>' +
-        '<span class="hint">مفعّلاً: الدخول إلى المجال يعرض الأنواع ثم المجلدات الفرعية ' +
-          'بتسميتها وتسعيرها (مجاني/بحساب/مدفوع شهرياً أو سنوياً أو لمرة واحدة). ' +
-          'مطفأً: يظهر الكتاب مباشرة بعد الدخول، وتبقى مجلدات المجال ' +
+        '<span class="hint">مفعّلاً: الدخول إلى المجال يعرض مجلداته الفرعية ' +
+          'بتسميتها وتسعيرها (مجاني/بحساب/مدفوع شهرياً أو سنوياً أو لمرة واحدة)، ' +
+          'وكل مجلد يستقبل كتباً واستمارات ودروساً معاً. ' +
+          'مطفأً: تظهر بنود المجال مباشرة بعد الدخول، وتبقى مجلداته ' +
           'وتسعيرها محفوظة في القاعدة بلا ظهور — والإعادة تُظهرها كما كانت.</span></div>' +
       '<div class="field"><label for="dSort">الترتيب</label>' +
         '<input class="input" id="dSort" inputmode="numeric" value="' +
@@ -907,7 +910,7 @@
       A.confirm({
         title: 'إظهار الكتاب مباشرة في «' + d.name + '»؟',
         text: 'مجلدات هذا المجال (' + A.toAr(nf) + ') تختفي من التطبيق فوراً، '
-            + 'وتُعرض كتب المجال واستماراته في قائمة واحدة بعد الدخول إليه. '
+            + 'وتُعرض بنود المجال كلها في قائمة واحدة بعد الدخول إليه. '
             + 'المجلدات وتسعيرها واشتراكات الأعضاء بها لا تُحذف ولا تُمَس، '
             + 'والبند المدفوع يبقى مقفلاً بسعره في القائمة المسطّحة. '
             + 'إعادة الخيار تُظهر المجلدات كما كانت.',
@@ -970,6 +973,29 @@
       : '<span>' + A.esc(label) + ': <b>' + A.num(v) + '</b>' + A.esc(CUR) + '</span>';
   }
 
+  /* خلية «محتواه»: عدّ البنود بنوعها داخل المجلد الواحد — فالمجلد يجمع
+     الأنواع الثلاثة معاً ولم يبقَ له نوع يُوسَم به. قبل تطبيق ٠٣١ لا تصل
+     أعداد الأنواع من admin_folders، فتُقال «—» لا صفرٌ يكذب. */
+  function contentsCell(f) {
+    var hasKinds = f.books != null || f.forms != null || f.lessons != null;
+    if (!hasKinds) return '<span class="adm-sub" style="margin:0">—</span>';
+    var parts = [];
+    if (f.books | 0) parts.push(A.count(f.books, 'كتاب', 'كتابان', 'كتب', 'كتاباً'));
+    if (f.forms | 0) parts.push(A.count(f.forms, 'استمارة', 'استمارتان', 'استمارات', 'استمارة'));
+    if (f.lessons | 0) parts.push(A.count(f.lessons, 'درس', 'درسان', 'دروس', 'درساً'));
+    var html = parts.length
+      ? '<span>' + A.esc(parts.join(' · ')) + '</span>'
+      : '<span class="adm-sub" style="margin:0">فارغ</span>';
+    /* bigint من القاعدة قد يصل نصاً — Number() لا |0 كي لا يُبتر ما فوق ٢ غ.ب */
+    if (Number(f.bytes) > 0) {
+      html += '<span class="adm-sub">' + A.esc(A.bytes(Number(f.bytes))) + '</span>';
+    }
+    if (f.last_upload_at) {
+      html += '<span class="adm-sub">آخر رفع: ' + A.esc(A.arDateTime(f.last_upload_at)) + '</span>';
+    }
+    return html;
+  }
+
   function visible() {
     var q = A.norm(state.search);
     if (!q) return folders;
@@ -994,14 +1020,13 @@
     }
 
     tbody.innerHTML = list.map(function (f, i) {
-      var k = KIND[f.kind] || { label: f.kind, cls: '' };
       var ac = ACCESS[f.access] || { label: f.access, cls: '' };
-      /* المجموعة (المجال+النوع) متلاصقة دائماً: القاعدة ترتّب بـdomain, kind,
-         sort، والحركة لا تخرج بندًا من مجموعته — فالجاران كافيان للحكم */
+      /* مجلدات المجال الواحد متلاصقة دائماً: القاعدة ترتّب بـdomain, sort،
+         والحركة لا تخرج مجلداً من مجاله — فالجاران كافيان للحكم */
       var g = gkey(f);
       var upOk = i > 0 && gkey(list[i - 1]) === g;
       var dnOk = i < list.length - 1 && gkey(list[i + 1]) === g;
-      var grpName = f.domain + ' — ' + k.label;
+      var grpName = String(f.domain == null ? '' : f.domain);
       var prices = f.access === 'paid'
         ? '<div class="price-lines">' +
             priceLine('شهري', f.price_month) +
@@ -1025,7 +1050,7 @@
             : (domSubsOff(f.domain)
               ? ' <span class="tag tag--gold">لا يظهر — المجال بلا مجلدات فرعية</span>'
               : '')) + '</td>' +
-        '<td><span class="tag ' + k.cls + '">' + A.esc(k.label) + '</span></td>' +
+        '<td class="wrap">' + contentsCell(f) + '</td>' +
         '<td class="wrap"><span class="strong">' + A.esc(f.name) + '</span>' +
           (f.note ? '<span class="adm-sub">' + A.esc(f.note) + '</span>' : '') + '</td>' +
         '<td><span class="tag ' + ac.cls + '">' + A.esc(ac.label) + '</span></td>' +
@@ -1070,15 +1095,15 @@
   }
 
   /* ------------------------------------------------- الترتيب اليدوي للمجلدات
-     المجموعة = المجال + النوع. القاعدة ترتّب بـ(domain, kind, sort) والتطبيق
-     يعرض كل نوع داخل مجاله على حدة، فخلط مجموعتين لا معنى له — ولذلك تُمنع
-     الحركة خارج المجموعة سحباً وبالأزرار معاً.
+     المجموعة = المجال. القاعدة ترتّب بـ(domain, sort) منذ ٠٣١ والتطبيق يعرض
+     مجلدات كل مجال على حدة، فخلط مجالين لا معنى له — ولذلك تُمنع الحركة
+     خارج المجال سحباً وبالأزرار معاً، ونقل المجلد إلى مجال آخر من «تعديل».
      التحريك يجري على مصفوفة folders الكاملة لا على المعروض: الصف المسحوب
      يُنقل إلى جوار الصف الهدف في القائمة الكاملة، والحفظ يرسل معرّفات
      المجلدات كلها بالترتيب الكامل. لو أرسلنا المعروض وحده لأخذ كل مجلد
      مخفيّ بالبحث قيمة sort قديمة تتداخل مع الجديدة. */
   function gkey(f) {
-    return String(f.domain) + '\u001f' + String(f.kind);
+    return String(f.domain == null ? '' : f.domain).trim();
   }
   function idxOf(arr, id) {
     for (var i = 0; i < arr.length; i++) { if (arr[i].id === id) return i; }
@@ -1230,9 +1255,8 @@
       clearDrop();
       if (!crossWarned) {
         crossWarned = true;
-        var ka = KIND[a.kind] || { label: a.kind };
-        A.toast('الترتيب داخل المجموعة الواحدة فقط: «' + a.domain + ' — ' +
-          ka.label + '». المجلد لا ينتقل إلى مجال أو نوع آخر بالسحب.', 'bad');
+        A.toast('الترتيب داخل المجال الواحد فقط: «' + a.domain + '». ' +
+          'المجلد لا ينتقل إلى مجال آخر بالسحب — غيّر مجاله من «تعديل».', 'bad');
       }
       return;
     }
@@ -1289,6 +1313,19 @@
     return out;
   }
 
+  /* الترتيب الافتراضي لمجلد جديد = أكبر ترتيب داخل مجاله + ١، لا عدد المجلدات
+     كلها: القاعدة ترتّب داخل المجال، والعدّ العام كان يُلقي الجديد في موضعٍ
+     لا صلة له بجيرانه. مجالٌ بلا مجلدات بعد يبدأ من ١. */
+  function nextFolderSort(domain) {
+    var d = String(domain == null ? '' : domain).trim(), mx = 0;
+    folders.forEach(function (f) {
+      if (String(f.domain == null ? '' : f.domain).trim() !== d) return;
+      var s = Number(f.sort) || 0;
+      if (s > mx) mx = s;
+    });
+    return mx + 1;
+  }
+
   function folderBody(f) {
     f = f || {};
     var cur = (f.domain || DOMAIN_DEFAULT);
@@ -1315,7 +1352,9 @@
       '<div class="field"><label for="fName">الاسم</label>' +
         '<input class="input" id="fName" maxlength="120" value="' + A.esc(f.name || '') + '">' +
         '<span class="hint">كما سيظهر للمستخدم في المكتبة وشاشة الدفع — ' +
-          'مثل «الكتابان المعتمدان للمنظومة».</span></div>' +
+          'مثل «الكتابان المعتمدان للمنظومة».</span>' +
+        '<span class="hint">المجلد لا يُقيَّد بنوع: يستقبل كتباً واستمارات ودروساً معاً، ' +
+          'وتُرفع البنود إليه من شاشة «المحتوى».</span></div>' +
       '<div class="field"><label for="fDomain">المجال</label>' +
         '<select class="input" id="fDomain">' + domOpts + '</select>' +
         '<span class="hint">المجلد الأعلى في مكتبة التطبيق. اختر «مجال جديد…» لإنشاء مجال آخر.</span></div>' +
@@ -1323,13 +1362,6 @@
         '<label for="fDomainNew">اسم المجال الجديد</label>' +
         '<input class="input" id="fDomainNew" maxlength="80" placeholder="مثال: السلامة من الحريق">' +
         '<span class="hint">اختلاف حرف واحد عن مجال قائم ينشئ مجالاً ثانياً.</span></div>' +
-      '<div class="field"><label for="fKind">النوع</label>' +
-        '<select class="input" id="fKind">' +
-          '<option value="book"' + (f.kind === 'book' ? ' selected' : '') + '>الكتب</option>' +
-          '<option value="form"' + (f.kind === 'form' ? ' selected' : '') + '>الاستمارات</option>' +
-          '<option value="lesson"' + (f.kind === 'lesson' ? ' selected' : '') + '>الدروس</option>' +
-        '</select>' +
-        '<span class="hint">لا يقبل المجلد إلا بنوداً من نوعه — كتاب في مجلد كتب وهكذا.</span></div>' +
       '<div class="field"><span>طريقة الاشتراك</span>' +
         '<div class="acc-radio">' +
           radio('free', 'مجاني للجميع', 'بنوده تُفتح بلا حساب ولا رسم.') +
@@ -1352,7 +1384,7 @@
       '<div class="field"><label for="fSort">الترتيب</label>' +
         '<input class="input" id="fSort" inputmode="numeric" value="' +
           A.esc(f.sort == null ? 0 : f.sort) + '">' +
-        '<span class="hint">الأصغر يظهر أولاً داخل نوعه.</span></div>' +
+        '<span class="hint">الأصغر يظهر أولاً داخل مجاله.</span></div>' +
       '<div class="field"><label style="display:flex;align-items:center;gap:9px;cursor:pointer">' +
         '<input class="adm-check" type="checkbox" id="fActive"' +
           (f.active === false ? '' : ' checked') + '>فعّال</label>' +
@@ -1360,12 +1392,20 @@
           'اشتراكات أصحابه السارية تبقى محفوظة.</span></div>';
   }
 
-  function wireFolderSheet(host) {
+  function wireFolderSheet(host, isNew) {
     var sel = host.querySelector('#fDomain');
     var wrap = host.querySelector('#fDomainNewWrap');
+    var sortEl = host.querySelector('#fSort');
+    /* الترتيب الافتراضي يتبع المجال المختار ما دامت الإدارة لم تلمسه: كتابةٌ
+       يدوية واحدة تثبّته، فلا يُمحى رقمٌ قصدته الإدارة بتبديل المجال بعده */
+    var sortTouched = false;
+    sortEl.addEventListener('input', function () { sortTouched = true; });
     sel.addEventListener('change', function () {
       var on = sel.value === DOMAIN_NEW;
       wrap.hidden = !on;
+      if (isNew && !sortTouched) {
+        sortEl.value = on ? 1 : nextFolderSort(sel.value);
+      }
       if (on) { host.querySelector('#fDomainNew').focus(); }
     });
     var fs = host.querySelector('#fPrices');
@@ -1425,10 +1465,10 @@
     if (sort !== null && isNaN(sort)) {
       return Promise.reject(new Error('الترتيب رقم صحيح — أو يُترك فارغاً'));
     }
+    /* لا نوع في الحمولة: admin_save_folder (٠٣١) يتجاهله ويكتب null دائماً */
     var p = {
       name: name,
       domain: domain,
-      kind: host.querySelector('#fKind').value,
       access: access,
       price_month: pm,
       price_year: py,
@@ -1453,7 +1493,7 @@
             A.toAr(f.items | 0) + '). تشديد طريقة الاشتراك يسري فوراً على فتح البنود، ' +
             'واشتراكات الأعضاء السارية لا تُمَس.' +
           '</span></div>') +
-        folderBody(f || { sort: folders.length + 1, active: true }),
+        folderBody(f || { sort: nextFolderSort(DOMAIN_DEFAULT), active: true }),
       onOk: function (host) {
         return readFolder(host, f).then(function (p) {
           return API.admin.saveFolder(p).then(function () {
@@ -1464,13 +1504,13 @@
         });
       }
     });
-    wireFolderSheet(s.el);
+    wireFolderSheet(s.el, isNew);
   }
 
   function toggleFolder(f, btn) {
     btn.disabled = true;
     API.admin.saveFolder({
-      id: f.id, name: f.name, domain: f.domain, kind: f.kind, access: f.access,
+      id: f.id, name: f.name, domain: f.domain, access: f.access,
       price_month: f.price_month, price_year: f.price_year, price_once: f.price_once,
       note: f.note, sort: f.sort | 0, active: !f.active
     }).then(function () {
