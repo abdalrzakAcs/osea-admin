@@ -30,6 +30,11 @@
    ألّا يومض الهيكل الفارغ قبل وصول البيانات أو مع حالة الخطأ */
 #wrap[hidden]{display:none}
 
+/* قوائم الاختيار المتعدد في لوحة منح إذن الالتقاط: ‎.input‎ مضبوطة على سطر
+   واحد بارتفاع ثابت، والقائمة المتعددة لا تُقرأ إلا إذا ظهرت خياراتها مجتمعة
+   — ومن يمنح إذناً أمنياً يقرّر بما يراه أمامه لا بما يبلغه بالتمرير */
+.cap-multi{min-height:172px;height:auto;padding-block:9px;line-height:1.9}
+
 /* رقم تسلسلي صغير للمحاولات والدروس */
 .seq{
   display:inline-grid;place-items:center;width:26px;height:26px;
@@ -90,6 +95,24 @@
             <dl class="adm-kv" id="verifyKv"></dl>
             <div class="prof-acts" id="verifyBtns" style="margin-block-start:16px"></div>
             <p class="adm-sub" id="verifyNote" hidden></p>
+          </div>
+        </div>
+
+        <!-- إذن التقاط الشاشة (ترحيلة ٠٣٢): الالتقاط محجوب على أجهزة الأعضاء
+             كلها بحكم الطبقة الأصلية، وهذا الإذن استثناء مؤقت يُمنح لحساب
+             واحد ويُلغى فوراً. بطاقة مستقلة على شاكلة بطاقة التوثيق لأن هذا
+             فعلٌ لا عرض، ولأن قرار المنح يحتاج النطاق والمدة والسبب مجتمعةً
+             أمام عين المدير — والقرار الأمني لا يُتّخذ من الذاكرة. -->
+        <div class="adm-table-card" id="capCard" hidden>
+          <div class="adm-table-head">
+            <h2>إذن التقاط الشاشة</h2>
+            <span class="spacer"></span>
+            <span class="tag" id="capTag" hidden></span>
+          </div>
+          <div class="prof-body">
+            <dl class="adm-kv" id="capKv"></dl>
+            <div class="prof-acts" id="capBtns" style="margin-block-start:16px"></div>
+            <p class="adm-sub" id="capNote" hidden></p>
           </div>
         </div>
 
@@ -296,6 +319,40 @@
     rejected: ['مرفوض',      'مرفوضة',     'tag--error']
   };
 
+  /* شاشات التطبيق كما يشتقّها app.js: المفتاح اسم ملف الصفحة بلا .html لا
+     اسم اللسان — الأخير يجمع تحته شاشات عدة فيمنح أكثر ممّا قصده المدير.
+     «exam» و«exam-run» خارج القائمة عمداً: بنك الأسئلة لا يُلتقط بحال،
+     والطبقة الأصلية ترفضهما مهما قال الخادم — فإدراجهما هنا وعدٌ كاذب. */
+  var CAP_SCREENS = [
+    ['reader',        'القارئ'],
+    ['videos',        'الفيديوهات التدريبية'],
+    ['codes',         'مكتبة الأكواد'],
+    ['home',          'الرئيسية'],
+    ['news',          'الأخبار والقرارات'],
+    ['accredit',      'الاعتمادات'],
+    ['accredit-list', 'سجل الاعتمادات'],
+    ['services',      'الخدمات'],
+    ['grade',         'المراتب الهندسية'],
+    ['account',       'حسابي'],
+    ['pay',           'الدفع والتفعيل'],
+    ['verify',        'التحقق من الشهادات'],
+    ['profile',       'استكمال بيانات الحساب'],
+    ['exam-demo',     'النموذج التجريبي'],
+    ['index',         'شاشة الإقلاع'],
+    ['login',         'تسجيل الدخول'],
+    ['register',      'إنشاء حساب']
+  ];
+
+  var CAP_SCOPE = { all: 'كل الشاشات', screens: 'شاشات محددة', items: 'بنود محددة' };
+
+  /* مُدد الإذن بالساعات — لا خيار دائم: الإذن استثناء بطبيعته، والدائم منه
+     ثغرة تبقى مفتوحة بعد أن يُنسى سببها */
+  var CAP_HOURS = [[2, 'ساعتان'], [8, 'ثماني ساعات'], [24, 'يوم واحد'],
+                   [72, 'ثلاثة أيام'], [168, 'أسبوع واحد']];
+
+  /* أنواع بنود المحتوى كما تكتبها admin_content → عربية في قائمة الاختيار */
+  var CAP_KIND = { book: 'كتاب', form: 'استمارة', lesson: 'درس' };
+
   /* أفعال سجل التدقيق كما تكتبها القاعدة → عربية مقروءة */
   var ACTIONS = {
     'edit': 'تعديل بيانات', 'delete': 'حذف', 'revoke': 'سحب شهادة',
@@ -324,6 +381,9 @@
 
   function wire() {
     $('actBtns').addEventListener('click', onAction);
+    /* أزرار الالتقاط تمرّ بموزّع الإجراءات نفسه: هي إجراءات على الحساب
+       كأختها في الشريط العلوي، ومُوزّعان لفعلٍ واحد يفترقان عند أول تعديل */
+    $('capBtns').addEventListener('click', onAction);
     $('verifyBtns').addEventListener('click', onVerify);
     $('attemptRows').addEventListener('click', onAttemptClick);
     $('paymentRows').addEventListener('click', onPaymentClick);
@@ -355,6 +415,9 @@
          أو صنفٌ غاب) لسقط في ‎.catch‎ الوحيد أسفله فمحا الملف كله بدل أن
          يفقد بطاقةً واحدة — وهو بعينه العطل الذي اشتكت منه النقابة. */
       try { paintVerify(); } catch (e) { $('verifyCard').hidden = true; }
+      /* وبطاقة الالتقاط بالحارس نفسه وللسبب نفسه: مفتاح P.capture تضيفه
+         ترحيلة ٠٣٢، وقاعدةٌ لم تصلها بعد لا يجوز أن تمحو الملف كله */
+      try { paintCapture(); } catch (e) { $('capCard').hidden = true; }
       paintActions();
       paintKpis();
       paintLessons();
@@ -618,6 +681,265 @@
     });
   }
 
+  /* ---------------------------------------------------------------- الالتقاط */
+  /* الإذن الحيّ يُقرأ من P.capture التي تضيفها ٠٣٢ إلى admin_account_profile،
+     لا من نداء ثانٍ: الملف نداء واحد بحكم التصميم. وغياب المفتاح = ترحيلة
+     غير مطبَّقة، فتبقى البطاقة ظاهرة بلا أزرار وتقول السبب — إخفاؤها كان
+     سيُوهم الطاقم أن الميزة غير موجودة أصلاً. */
+  function paintCapture() {
+    /* شرطان كما في بطاقة التوثيق: قاعدةٌ مُرحَّلة، ونسخةُ osea-api.js
+       المحمَّلة في المتصفح تعرف دالتَي المنح والإلغاء — النسخة القديمة
+       الباقية في الذاكرة تنفجر بـTypeError قبل أن ينشأ وعدٌ يلتقطه catch */
+    var ready = (P.capture !== undefined) &&
+      !!(API.admin && API.admin.grantCapture && API.admin.revokeCapture);
+    var g = ready ? captureLive() : null;
+
+    $('capKv').innerHTML = g ? capLiveKv(g) : capIdleKv();
+
+    /* شارة الترويسة تقول حالة الجهاز لا حالة الصف: «إذن سارٍ» تعني أن
+       الحماية مرفوعة الآن عن هذا الحساب، وهي الجملة التي يبحث عنها المدير */
+    var t = $('capTag');
+    t.className = 'tag' + (g ? ' tag--gold' : ' tag--success');
+    t.textContent = g ? 'إذن سارٍ' : 'الالتقاط محجوب';
+    t.hidden = !ready;
+
+    $('capBtns').innerHTML = !ready ? '' : (g
+      ? '<button class="btn btn-danger btn-sm" data-act="cap-revoke" data-write>إلغاء الإذن فوراً</button>'
+      : '<button class="btn btn-outline btn-sm" data-act="cap-grant" data-write>منح الإذن</button>');
+
+    var note = $('capNote');
+    note.textContent = ready ? '' :
+      'إذن الالتقاط غير متاح بعد — إمّا أن ترحيلة ٠٣٢ لم تُطبَّق على القاعدة، '
+      + 'وإمّا أن نسخة اللوحة في متصفحك أقدم من النشر (جرّب تحديث الصفحة بلا ذاكرة). '
+      + 'الحماية في الحالتين مفعّلة على كل الأجهزة ولا حساب يستطيع الالتقاط.';
+    note.hidden = ready;
+    $('capCard').hidden = false;
+  }
+
+  function captureLive() {
+    var c = P.capture;
+    if (!c || c.granted === false) { return null; }
+    var g = c.grant || c;                      /* الترحيلة قد تلفّ الإذن داخل grant */
+    /* السريان يُقاس على الآن لا على وجود الصف: إذنٌ منتهٍ لا يرفع الحماية،
+       وعرضه سارياً يدفع المدير إلى إلغاء ما انتهى وحده */
+    if (!g.expires_at || new Date(g.expires_at) <= new Date()) { return null; }
+    return g;
+  }
+
+  function capIdleKv() {
+    return [
+      kv('الحالة', '<span class="tag tag--success">الالتقاط محجوب</span>',
+         'لا لقطة شاشة ولا تسجيل ولا عرض على شاشة خارجية من داخل التطبيق.'),
+      kv('إذن سارٍ', 'لا إذن على هذا الحساب',
+         'المنح استثناء مؤقت بنطاق ومدة وسبب، ويُلغى من هنا في أي لحظة.')
+    ].join('');
+  }
+
+  function capLiveKv(g) {
+    return [
+      kv('النطاق', '<span class="tag tag--gold">' +
+        A.esc(CAP_SCOPE[g.scope] || g.scope || '—') + '</span>'),
+      kv(g.scope === 'items' ? 'البنود المسموحة' : 'الشاشات المسموحة', capTargets(g),
+         'بنك الأسئلة خارج أي إذن — شاشتا الامتحان مرفوضتان في الطبقة الأصلية.'),
+      kv('مُنح بواسطة', g.granted_by_name
+        ? A.esc(g.granted_by_name)
+        : (g.granted_by
+            ? 'بمعرّف الموظف <span dir="ltr">' + A.esc(String(g.granted_by).slice(0, 8)) + '</span>'
+            : '—'),
+         g.granted_at ? 'تاريخ المنح: ' + A.arDateTime(g.granted_at) : null),
+      kv('ينتهي في', A.arDateTime(g.expires_at), capLeft(g.expires_at)),
+      kv('سبب المنح', g.reason
+        ? A.esc(g.reason)
+        : '<span class="adm-sub" style="margin:0">لم يُسجَّل سبب</span>')
+    ].join('');
+  }
+
+  /* المسموح مكتوباً لا معدوداً: «ثلاثة بنود» لا تقول للمدير أيّها، وهو
+     بالضبط ما يحتاج أن يراه قبل أن يقرّر الإبقاء أو الإلغاء */
+  function capTargets(g) {
+    if (g.scope === 'all') { return 'كل شاشات التطبيق عدا بنك الأسئلة'; }
+    if (g.scope === 'screens') {
+      var s = g.screens || [];
+      return s.length ? A.esc(s.map(capScreenAr).join('، ')) : '—';
+    }
+    /* البنود تُخزَّن بمعرّفاتها: تُعرض عناوينها إن أعادتها الترحيلة، وإلا
+       فالمعرّفات لاتينيةً — معرّفٌ صريح أصدق من عنوانٍ مُخمَّن */
+    var titles = g.item_titles || [], ids = g.items || [];
+    if (titles.length) { return A.esc(titles.join('، ')); }
+    return ids.length
+      ? '<span class="adm-mono" dir="ltr">' + A.esc(ids.join(' · ')) + '</span>'
+      : '—';
+  }
+
+  function capScreenAr(k) {
+    for (var i = 0; i < CAP_SCREENS.length; i++) {
+      if (CAP_SCREENS[i][0] === k) { return CAP_SCREENS[i][1]; }
+    }
+    return k;                                  /* مفتاح لا تعرفه اللوحة يُعرض كما هو */
+  }
+
+  /* المتبقّي لا تاريخ الانتهاء وحده: قرار «أأتركه أم أُلغيه الآن» يُتّخذ
+     بالمدة الباقية، وحسابها في رأس المدير خطأ ينتظر أن يقع */
+  function capLeft(iso) {
+    var ms = new Date(iso) - new Date();
+    if (!(ms > 0)) { return 'انتهى'; }
+    var h = Math.floor(ms / 3600000), m = Math.round((ms % 3600000) / 60000);
+    /* آخر دقيقة تُقال بنصّها: «يتبقّى 0 دقيقة» عبارةٌ تقرأ نفسها انتهاءً */
+    if (!h && !m) { return 'يتبقّى أقل من دقيقة'; }
+    return 'يتبقّى ' + (h
+      ? count(h, 'ساعة واحدة', 'ساعتان', 'ساعات', 'ساعة')
+      : count(m, 'دقيقة واحدة', 'دقيقتان', 'دقائق', 'دقيقة'));
+  }
+
+  /* قيم القائمة المتعددة: selectedOptions ليست مصفوفة فتُقرأ بـcall */
+  function capPicked(host, sel) {
+    return Array.prototype.map.call(
+      host.querySelectorAll(sel + ' option:checked'),
+      function (o) { return o.value; });
+  }
+
+  /* لوحة المنح: النطاق أولاً لأنه يحكم ما يُعرض بعده، ثم المسموح، ثم المدة،
+     ثم السبب. السبب إلزامي لأن الإذن يرفع حمايةً قائمة، وإذنٌ بلا سبب مكتوب
+     لا يُراجَع ولا يُفهَم بعد شهر — ولا يُدافَع عنه أمام النقابة. */
+  function openCaptureGrant() {
+    var a = P.account;
+    var scopeOpts = ['items', 'screens', 'all'].map(function (k) {
+      /* الافتراضي أضيق النطاقات: الافتراض الواسع يُمنح سهواً، والضيّق يُوسَّع بقصد */
+      return '<option value="' + k + '"' + (k === 'items' ? ' selected' : '') + '>' +
+        A.esc(CAP_SCOPE[k]) + '</option>';
+    }).join('');
+    var screenOpts = CAP_SCREENS.map(function (sc) {
+      return '<option value="' + A.esc(sc[0]) + '">' + A.esc(sc[1]) + '</option>';
+    }).join('');
+    var durOpts = CAP_HOURS.map(function (h) {
+      return '<option value="' + h[0] + '"' + (h[0] === 2 ? ' selected' : '') + '>' +
+        A.esc(h[1]) + '</option>';
+    }).join('');
+
+    var s = A.sheet({
+      title: 'منح إذن التقاط الشاشة',
+      okLabel: 'منح الإذن',
+      body:
+        '<div class="notice">' + A.ICONS.info + '<span>' +
+          'الالتقاط محجوب على أجهزة الأعضاء كلها. هذا استثناء لحساب ' +
+          '«' + A.esc(a.name) + '» وحده، مؤقت وقابل للإلغاء في أي لحظة. ' +
+          '<strong>بنك الأسئلة خارج أي إذن:</strong> شاشتا الامتحان ترفضان الالتقاط ' +
+          'في الطبقة الأصلية مهما كان النطاق، فلا تظهران في القائمة أصلاً.' +
+        '</span></div>' +
+        '<div class="field"><label for="capScope">نطاق الإذن</label>' +
+          '<select class="input" id="capScope">' + scopeOpts + '</select>' +
+          '<span class="hint">«بنود محددة» أضيق النطاقات: لا يُلتقط بها إلا ما تختاره أنت.</span></div>' +
+        '<div class="field" id="capScreensField" hidden>' +
+          '<label for="capScreens">الشاشات المسموح التقاطها</label>' +
+          '<select class="input cap-multi" id="capScreens" multiple size="8">' + screenOpts + '</select>' +
+          '<span class="hint">اختيار متعدد: Ctrl (أو Cmd) مع النقر.</span></div>' +
+        '<div class="field" id="capItemsField">' +
+          '<label for="capItems">البنود المسموح التقاطها</label>' +
+          '<select class="input cap-multi" id="capItems" multiple size="8"></select>' +
+          '<span class="hint" id="capItemsHint">جارٍ تحميل بنود المحتوى المفعّلة…</span></div>' +
+        '<div class="field"><label for="capDur">مدة الإذن</label>' +
+          '<select class="input" id="capDur">' + durOpts + '</select>' +
+          '<span class="hint">لا إذن دائم: ينتهي وحده وتعود الحماية بلا تدخّل منك.</span></div>' +
+        '<div class="field"><label for="capReason">سبب المنح (إلزامي)</label>' +
+          '<input class="input" id="capReason" maxlength="200" ' +
+            'placeholder="مثال: تجهيز مادة تدريبية لفرع دمشق"></div>' +
+        '<div class="notice"><span>العلامة المائية تبقى ظاهرة في القارئ طوال الإذن — ' +
+          'حتى على البنود القابلة للتنزيل — وتحمل معرّف الحساب، فأي صورة تخرج تُنسب ' +
+          'إلى صاحبها. يُسجَّل المنح باسمك في سجل التدقيق، وتُسجَّل معه كل جلسة التقاط ' +
+          'يفتحها العضو — ولا تبدأ جلسة إلا بكلمة مروره على جهازه.</span></div>',
+      onOk: function (host) {
+        var scope = host.querySelector('#capScope').value;
+        var screens = capPicked(host, '#capScreens');
+        var items = capPicked(host, '#capItems');
+        var hours = +host.querySelector('#capDur').value || 0;
+        var reason = (host.querySelector('#capReason').value || '').trim();
+
+        /* التحقق هنا للراحة، والقاعدة هي الحارس — لكن نطاقاً بلا هدف مختار
+           يمرّ إلى القاعدة إذناً فارغاً يربك المدير حين يقرؤه لاحقاً */
+        if (scope === 'screens' && !screens.length) {
+          return Promise.reject(new Error('اختر شاشة واحدة على الأقل، أو بدّل النطاق إلى «كل الشاشات».'));
+        }
+        if (scope === 'items' && !items.length) {
+          return Promise.reject(new Error('اختر بنداً واحداً على الأقل، أو بدّل النطاق إلى «شاشات محددة».'));
+        }
+        if (!hours) { return Promise.reject(new Error('اختر مدة الإذن.')); }
+        if (!reason) {
+          return Promise.reject(new Error('اكتب سبب المنح — يُحفظ في سجل التدقيق، ولا يُمنح إذن بلا سبب.'));
+        }
+
+        var expires = new Date(Date.now() + hours * 3600000).toISOString();
+        return API.admin.grantCapture(id, {
+          scope: scope,
+          /* ما لا يخصّ النطاق يُرسل فارغاً: قائمةٌ منسيّة من اختيار سابق
+             تصير إذناً صامتاً إن بُدّل النطاق لاحقاً في القاعدة */
+          screens: scope === 'screens' ? screens : [],
+          items: scope === 'items' ? items : [],
+          expires: expires,
+          reason: reason
+        }).then(function () {
+          A.toast('مُنح «' + a.name + '» إذن التقاط (' + (CAP_SCOPE[scope] || scope) +
+            ') حتى ' + A.arDateTime(expires) + '.', 'ok', 6000);
+          load();
+        });
+      }
+    });
+
+    /* النطاق يحكم ما يُعرض: القائمتان لا تظهران معاً كي لا يظن المانح أنه
+       اختار الاثنتين فيمنح أوسع ممّا أراد */
+    var scopeSel = s.el.querySelector('#capScope');
+    function syncScope() {
+      s.el.querySelector('#capScreensField').hidden = scopeSel.value !== 'screens';
+      s.el.querySelector('#capItemsField').hidden   = scopeSel.value !== 'items';
+    }
+    scopeSel.addEventListener('change', syncScope);
+    syncScope();
+
+    /* البنود من الكتالوج الحيّ لا من قائمة مكتوبة، والمفعّلة وحدها: إذنٌ
+       على بند معطّل إذنٌ بلا أثر يظنّه المدير نافذاً */
+    API.admin.content().then(function (d) {
+      var list = ((d && d.items) || []).filter(function (it) { return it.active; });
+      var sel = s.el.querySelector('#capItems');
+      list.forEach(function (it) {
+        var o = document.createElement('option');
+        o.value = it.id;
+        o.textContent = (it.title || it.id) + ' — ' + (CAP_KIND[it.kind] || it.kind || '');
+        sel.appendChild(o);
+      });
+      s.el.querySelector('#capItemsHint').textContent = list.length
+        ? 'اختيار متعدد: Ctrl (أو Cmd) مع النقر — ' +
+          count(list.length, 'بند واحد مفعّل', 'بندان مفعّلان', 'بنود مفعّلة', 'بنداً مفعّلاً') +
+          ' في الكتالوج.'
+        : 'لا بنود مفعّلة في كتالوج المحتوى — اختر نطاق «شاشات محددة» أو فعّل بنداً من صفحة المحتوى.';
+    }).catch(function (e) {
+      s.el.querySelector('#capItemsHint').textContent =
+        'تعذّر تحميل بنود المحتوى — ' + A.errText(e);
+    });
+  }
+
+  function askCaptureRevoke() {
+    var a = P.account, g = captureLive();
+    /* أُلغي أو انتهى بين الرسم والنقر: إعادة التحميل تُصحّح الشاشة بلا رسالة خطأ */
+    if (!g) { return load(); }
+    var gid = g.id || g.grant_id;
+    if (!gid) {
+      return A.toast('لا معرّف للإذن في جواب القاعدة — تعذّر الإلغاء من هنا.', 'bad');
+    }
+    A.confirm({
+      title: 'إلغاء إذن الالتقاط', danger: true, okLabel: 'إلغاء الإذن',
+      text: 'سيُلغى إذن «' + a.name + '» فوراً، وتعود الحماية إلى جهازه خلال دقيقة على الأكثر: ' +
+            'الجهاز يسأل الخادم دورياً ويعيد الحجب فور سقوط الجواب. أي جلسة التقاط ' +
+            'مفتوحة الآن تنتهي معه.',
+      /* السبب إلزامي كما في المنح: الإلغاء طرفُ القرار الثاني، وسجلّ التدقيق
+         يحتاج الطرفين ليُقرأ بعد شهر */
+      reason: 'سبب الإلغاء (إلزامي)',
+      reasonRequired: true
+    }).then(function (reason) {
+      if (reason === null) return;
+      act(API.admin.revokeCapture(gid, reason),
+        'أُلغي إذن الالتقاط لـ«' + a.name + '» — تعود الحماية إلى جهازه خلال دقيقة.');
+    });
+  }
+
   /* ---------------------------------------------------------------- الإجراءات */
   function paintActions() {
     var a = P.account, b = [];
@@ -666,6 +988,8 @@
     if (act_ === 'edit') { return openEdit(); }
     if (act_ === 'pw')   { return openPassword(); }
     if (act_ === 'del')  { return askDelete(); }
+    if (act_ === 'cap-grant')  { return openCaptureGrant(); }
+    if (act_ === 'cap-revoke') { return askCaptureRevoke(); }
   }
 
   function openEdit() {

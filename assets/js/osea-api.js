@@ -666,6 +666,36 @@
       return sb.rpc('member_set_avatar', { p_account: id, p_url: url == null ? '' : url }).then(must);
     },
 
+    /* ---------- وضع التوثيق (إذن التقاط الشاشة) ----------
+       إذنٌ مؤقّت قابل للسحب تمنحه الإدارة لحسابٍ واحد. هذه الطبقة ناقل
+       لا حَكَم: القرار كله في الطبقة الأصيلة (FLAG_SECURE)، وما يُعاد هنا
+       سياقٌ للعرض. لا يُبنى على جوابها أي منع أو سماح في الويب. */
+
+    /* فتح جلسة التقاط: كلمة المرور تُعاد هنا عمداً — الإذن قائم منذ منحته
+       الإدارة، لكن بدء الجلسة فعلٌ يجب أن يصدر عن صاحب الحساب نفسه لا عمّن
+       وجد الجهاز مفتوحاً. p_device معرّف جهاز عشوائي يولّده التطبيق مرة
+       (لا معرّف عتاد)، وبه تُحصر الجلسة الحيّة في جهاز واحد.
+       الدالة تردّ {ok:false,error} بدل رفع استثناء كي لا تُلغى المعاملة
+       ومعها عدّاد المحاولات — نمط changePassword نفسه، فالفحص هنا لا catch. */
+    captureBegin: function (id, password, device) {
+      if (!LIVE) { return Promise.reject(new Error('قاعدة النقابة غير متاحة')); }
+      return sb.rpc('member_capture_begin', {
+        p_account: id, p_password: password, p_device: device || ''
+      }).then(must).then(function (r) {
+        if (!r || r.ok === false) { throw new Error((r && r.error) || 'تعذّر بدء وضع التوثيق'); }
+        return r;
+      });
+    },
+
+    /* هل لهذا الحساب إذنٌ قائم؟ سؤال عرضٍ محض تسأله شاشة الحساب لتقرّر
+       إظهار البطاقة، والقارئ ليعرف أنه في وضع توثيق فيُثخّن علامته
+       المائية. لا رمز فيها ولا جلسة، وغيابها (زائر أو بلا قاعدة) يُقرأ
+       «لا إذن» — وهو الجواب الآمن: من لا إذن له لا يعلم بوجود الميزة. */
+    captureState: function (id) {
+      if (!LIVE || !id) return Promise.resolve(null);
+      return sb.rpc('capture_grant_state', { p_account: id }).then(must);
+    },
+
     /* اسمٌ ثانٍ لدالتَي الهوية عن قصد: شاشات الحساب اتُّفق أن تناديهما
        member.setSyndNo / member.setGradeRequest، بينما جارتهما التاريخية
        setBranch تُنادى من الجذر (account.html:802). التفويض إلى live بدل
@@ -1024,6 +1054,36 @@
        بقرارٍ واحد بدل رفضٍ ثم طلبٍ ثانٍ من العضو. */
     verifyGrade: function (id, approve, grade) {
       return rpc('admin_verify_grade', { p_id: id, p_approve: !!approve, p_grade: grade || null });
+    },
+
+    /* ---------- أذونات التقاط الشاشة ----------
+       المنح استثناءٌ من قاعدة «لا لقطة شاشة»، فهو مؤقّت ومنسوب ومسجَّل
+       السبب. بنك الأسئلة خارج المفردات المسموح بها في القاعدة أصلاً،
+       والطبقة الأصيلة ترفضه ثانيةً مهما قال الخادم. */
+    /* الافتراض «الفعّالة وحدها»: سؤال اللوحة المعتاد «من يملك إذناً الآن»
+       لا «ماذا مُنح يوماً» — والسجل الكامل بتمرير active:false صراحةً */
+    captureGrants: function (o) {
+      o = o || {};
+      return rpc('admin_capture_grants', {
+        p_account: o.account || null,
+        p_active: (o.active === undefined ? true : !!o.active),
+        p_limit: o.limit || 50, p_offset: o.offset || 0
+      });
+    },
+    /* الافتراضات أضيق ما يمكن لا أوسعه: نداءٌ ناقص المجال يمنح لا شيء
+       (items مع قائمة فارغة) بدل أن ينزلق إلى 'all'. والمصفوفتان []
+       لا null كي لا يرث الخادم NULL في text[] فيلتبس بـ«كل شيء». */
+    grantCapture: function (id, o) {
+      o = o || {};
+      return rpc('admin_grant_capture', {
+        p_account: id, p_scope: o.scope || 'items',
+        p_screens: o.screens || [], p_items: o.items || [],
+        p_expires: o.expires || null, p_reason: o.reason || null
+      });
+    },
+    /* السحب فوري: الجلسة الحيّة تموت مع الإذن لأن كل فحصٍ لاحق يسأل القاعدة */
+    revokeCapture: function (gid, reason) {
+      return rpc('admin_revoke_capture', { p_id: gid, p_reason: reason || null });
     },
 
     /* الطاقم */

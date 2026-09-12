@@ -75,6 +75,35 @@
         <button class="btn btn-outline btn-sm" id="exportBtn">تصدير Excel</button>
       </div>
 
+      <!-- أذونات الالتقاط السارية (ترحيلة ٠٣٢): مكانها فوق سجل الوصول لأن من
+           يقرأ آثار الفتح يحتاج أولاً أن يعرف عمّن رُفعت الحماية في هذه اللحظة
+           — السجل يقول «فُتح الملف»، وهذه البطاقة وحدها تقول «وكان يستطيع
+           تصويره». تبقى مخفيّة حتى يصل جواب الدالة كي لا يومض هيكل فارغ. -->
+      <div class="adm-table-card acc-block" id="capCard" hidden>
+        <div class="adm-table-head">
+          <h2>أذونات الالتقاط السارية</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="capTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>العضو</th>
+                <th>النطاق</th>
+                <th>البنود/الشاشات</th>
+                <th>مُنح بواسطة</th>
+                <th>ينتهي في</th>
+                <th>إجراء</th>
+              </tr>
+            </thead>
+            <tbody id="capRows">
+              <tr><td colspan="6"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="adm-table-card">
         <div class="adm-table-head">
           <h2>سجل الوصول</h2>
@@ -115,6 +144,21 @@
 
   var KIND = { book: 'كتاب', form: 'استمارة', lesson: 'درس' };
 
+  var CAP_SCOPE = { all: 'كل الشاشات', screens: 'شاشات محددة', items: 'بنود محددة' };
+
+  /* أسماء شاشات التطبيق — نسخة ثانية إلى جانب التي في ملف العضو: صفحات
+     اللوحة لا تتشارك جافاسكربت غير admin.js المشتركة مع كل الصفحات، ومفاتيحها
+     أسماء ملفات التطبيق فلا تتبدّل. «exam» و«exam-run» ليستا هنا لأنهما لا
+     تُمنحان أصلاً — فإن ظهر مفتاح مجهول عُرض كما هو لا مترجماً بالتخمين. */
+  var CAP_SCREEN_AR = {
+    'reader': 'القارئ', 'videos': 'الفيديوهات التدريبية', 'codes': 'مكتبة الأكواد',
+    'home': 'الرئيسية', 'news': 'الأخبار والقرارات', 'accredit': 'الاعتمادات',
+    'accredit-list': 'سجل الاعتمادات', 'services': 'الخدمات', 'grade': 'المراتب الهندسية',
+    'account': 'حسابي', 'pay': 'الدفع والتفعيل', 'verify': 'التحقق من الشهادات',
+    'profile': 'استكمال بيانات الحساب', 'exam-demo': 'النموذج التجريبي',
+    'index': 'شاشة الإقلاع', 'login': 'تسجيل الدخول', 'register': 'إنشاء حساب'
+  };
+
   /* حدّ الدالة الأقصى خمسمئة صف — يُستعمل للمؤشرات والتصدير معاً */
   var CAP = 500;
 
@@ -138,6 +182,7 @@
     loadItems();
     load();
     loadStats();
+    loadCaptures();
   });
 
   /* الوصول إلى سجل حساب بعينه يأتي من ملف العضو، لا من داخل هذه الصفحة */
@@ -158,6 +203,7 @@
       load(); loadStats();
     });
     $('exportBtn').addEventListener('click', exportAll);
+    $('capRows').addEventListener('click', onCapClick);
   }
 
   function args(limit, offset) {
@@ -232,6 +278,109 @@
     $('acctText').textContent = named
       ? ('وصول الحساب: ' + named.account_name)
       : 'مصفّى بحساب واحد';
+  }
+
+  /* ------------------------------------------------------ أذونات الالتقاط */
+  /* غياب الدالة — ترحيلة ٠٣٢ غير مطبَّقة، أو نسخة osea-api.js قديمة باقية في
+     ذاكرة المتصفح — يُبقي البطاقة مخفيّة بلا ضجيج: سجل الوصول عمل الصفحة
+     الأصلي فلا يُحجب من أجل بطاقة إضافية. */
+  function loadCaptures() {
+    if (!API.admin.captureGrants) { return; }
+    API.admin.captureGrants({ active: true }).then(function (d) {
+      /* الدالة تُرجع jsonb: يُقرأ grants أو rows أيّهما وصل */
+      var list = (d && (d.grants || d.rows)) || [];
+      paintCaptures(list);
+      $('capCard').hidden = false;
+    }).catch(function () { $('capCard').hidden = true; });
+  }
+
+  function paintCaptures(list) {
+    $('capTag').textContent = list.length
+      ? A.count(list.length, 'إذن واحد سارٍ', 'إذنان ساريان', 'أذونات سارية', 'إذناً سارياً')
+      : 'لا أذونات سارية';
+
+    if (!list.length) {
+      $('capRows').innerHTML = '<tr><td colspan="6">' + A.emptyState(
+        'لا إذن التقاط سارٍ',
+        'الالتقاط محجوب الآن على أجهزة الأعضاء كلها. يُمنح الإذن من ملف العضو ' +
+        'بنطاق ومدة وسبب، ويظهر هنا ما دام سارياً.') + '</td></tr>';
+      return;
+    }
+
+    $('capRows').innerHTML = list.map(function (r) {
+      return '<tr data-id="' + A.esc(r.id || '') + '" data-name="' + A.esc(r.account_name || '') + '">' +
+        /* خلية العضو هي خلية سجل الوصول نفسها: الرابط واحد إلى ملف العضو،
+           فلا يتفرّع شكل الحساب بين جدولَين في صفحة واحدة. والمعرّف يُوحَّد
+           قبلها لأن الإذن لا يكون بلا حساب، فسقوط الاسم هنا خطأ تسمية لا
+           «زائر بلا حساب» كما في سجل الوصول */
+        '<td class="wrap">' + accountCell({
+          account_id: r.account_id || r.account || '',
+          account_name: r.account_name, synd_no: r.synd_no
+        }) + '</td>' +
+        '<td><span class="tag tag--gold">' +
+          A.esc(CAP_SCOPE[r.scope] || r.scope || '—') + '</span></td>' +
+        '<td class="wrap">' + capTargets(r) + '</td>' +
+        '<td class="wrap">' + A.esc(r.granted_by_name || '—') + '</td>' +
+        '<td>' + A.arDateTime(r.expires_at) +
+          '<span class="adm-sub">' + A.esc(capLeft(r.expires_at)) + '</span></td>' +
+        '<td><button class="btn btn-danger btn-sm" data-revoke data-write>إلغاء الإذن</button></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  /* المسموح مكتوباً لا معدوداً: عدد البنود لا يقول للمدير أيّها، وهو ما
+     يحتاج أن يراه قبل أن يقرّر الإلغاء */
+  function capTargets(r) {
+    if (r.scope === 'all') { return 'كل شاشات التطبيق عدا بنك الأسئلة'; }
+    if (r.scope === 'screens') {
+      var s = r.screens || [];
+      return s.length ? A.esc(s.map(function (k) {
+        return CAP_SCREEN_AR[k] || k;
+      }).join('، ')) : '—';
+    }
+    /* البنود تُخزَّن بمعرّفاتها: تُعرض عناوينها إن أعادتها الدالة، وإلا
+       فالمعرّفات لاتينيةً — معرّفٌ صريح أصدق من عنوانٍ مُخمَّن */
+    var titles = r.item_titles || [], ids = r.items || [];
+    if (titles.length) { return A.esc(titles.join('، ')); }
+    return ids.length
+      ? '<span class="adm-mono" dir="ltr">' + A.esc(ids.join(' · ')) + '</span>'
+      : '—';
+  }
+
+  /* المتبقّي إلى جانب تاريخ الانتهاء: القرار يُتّخذ بالمدة الباقية لا بتاريخٍ
+     يُطرح منه المدير الوقت في رأسه */
+  function capLeft(iso) {
+    var ms = new Date(iso) - new Date();
+    if (!(ms > 0)) { return 'انتهى — تعود الحماية من تلقائها'; }
+    var h = Math.floor(ms / 3600000), m = Math.round((ms % 3600000) / 60000);
+    /* آخر دقيقة تُقال بنصّها: A.count للصفر تكتب «لا دقائق» وهي جملة أخرى تماماً */
+    if (!h && !m) { return 'يتبقّى أقل من دقيقة'; }
+    return 'يتبقّى ' + (h
+      ? A.count(h, 'ساعة واحدة', 'ساعتان', 'ساعات', 'ساعة')
+      : A.count(m, 'دقيقة واحدة', 'دقيقتان', 'دقائق', 'دقيقة'));
+  }
+
+  function onCapClick(e) {
+    var btn = e.target.closest('[data-revoke]');
+    if (!btn) return;
+    var tr = btn.closest('tr');
+    var gid = tr.getAttribute('data-id'), who = tr.getAttribute('data-name') || 'العضو';
+    if (!gid) { return A.toast('لا معرّف للإذن في جواب القاعدة — تعذّر الإلغاء من هنا.', 'bad'); }
+    A.confirm({
+      title: 'إلغاء إذن الالتقاط', danger: true, okLabel: 'إلغاء الإذن',
+      text: 'سيُلغى إذن «' + who + '» فوراً، وتعود الحماية إلى جهازه خلال دقيقة على الأكثر: ' +
+            'الجهاز يسأل الخادم دورياً ويعيد الحجب فور سقوط الجواب. أي جلسة التقاط ' +
+            'مفتوحة الآن تنتهي معه.',
+      /* السبب إلزامي كما في المنح: سجل التدقيق يحتاج طرفَي القرار ليُقرأ بعد شهر */
+      reason: 'سبب الإلغاء (إلزامي)',
+      reasonRequired: true
+    }).then(function (reason) {
+      if (reason === null) return;
+      API.admin.revokeCapture(gid, reason).then(function () {
+        A.toast('أُلغي إذن الالتقاط لـ«' + who + '» — تعود الحماية إلى جهازه خلال دقيقة.', 'ok', 6000);
+        loadCaptures();
+      }).catch(function (err) { A.toast(A.errText(err), 'bad'); });
+    });
   }
 
   /* ---------------------------------------------------------------- المؤشرات */
