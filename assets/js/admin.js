@@ -28,6 +28,8 @@
     { key: 'folders',   href: 'admin-folders.html',   label: 'المجلدات والتسعير' },
     { key: 'news',      href: 'admin-news.html',      label: 'الأخبار' },
     { key: 'accredit',  href: 'admin-accredit.html',  label: 'سجل الاعتمادات' },
+    { key: 'jobs',      href: 'admin-jobs.html',      label: 'فرص العمل' },
+    { key: 'discounts', href: 'admin-discounts.html', label: 'الخصومات' },
     { key: 'codes',     href: 'admin-codes.html',     label: 'الأكواد المُوجَّهة' },
     { key: 'reports',   href: 'admin-reports.html',   label: 'التقارير' },
     { key: 'questions', href: 'admin-questions.html', label: 'بنك الأسئلة' },
@@ -222,6 +224,17 @@
     if (/[؀-ۿ]/.test(m)) return m;
     if (/permission denied|not authorized/i.test(m)) return 'لا تملك صلاحية هذا الإجراء.';
     if (/Failed to fetch|NetworkError/i.test(m)) return 'تعذّر الاتصال بالخادم — تحقق من إنترنتك.';
+
+    /* دالة غائبة (PGRST202 من PostgREST، 42883 من Postgres) قبل فرع «schema
+       cache» أدناه: رسالة PostgREST عنها تذكر «schema cache» أيضاً، فكانت تُقرأ
+       «حقلٌ ناقص في الجدول» وتحيل إلى ترحيلة ٠٢٤ — والناقص دالةٌ لا عمود.
+       الصفحة التي تعرف ترحيلتها (admin-jobs وadmin-discounts) تسمّيها قبل هذا */
+    if ((e && (e.code === 'PGRST202' || e.code === '42883')) ||
+        /Could not find the function|function .* does not exist/i.test(m)) {
+      return 'القاعدة تنقصها دالة تطلبها هذه الصفحة — ترحيلة لم تُطبَّق بعد. '
+           + 'نفّذوا الترحيلات المعلّقة بالترتيب ثم أعيدوا المحاولة. '
+           + 'التفصيل التقني: ' + m;
+    }
 
     /* عمود مفقود في القاعدة = ترحيلة لم تُطبَّق، لا خطأ من الموظّف.
        هذه الحالة بعينها هي التي أوقفت سجل الاعتمادات شهراً كاملاً: الحفظ

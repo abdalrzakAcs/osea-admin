@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>عروض الخصم — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* أنماط الصفحة — بتوكنات الهوية حصراً */
+.sheet-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+/* خانة مقدّم الخصم تلتفّ: التعريف سطران مقصوصان، والجدول كله nowrap */
+/* مسبوقٌ بـ.adm-table: «.adm-table td» (0,1,1) كان يغلب الصنف وحده فيبقى nowrap
+   ويُقصّ التعريف على سطرٍ واحد بدل سطرين */
+.adm-table .disc-name-cell{white-space:normal;min-width:200px;max-width:280px;overflow-wrap:anywhere}
+.disc-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.disc-head b{font-size:14px;line-height:1.55;color:var(--navy-800)}
+.disc-name-cell small{display:-webkit-box;margin-block-start:4px;font-size:12px;line-height:1.7;
+  color:var(--text-secondary);overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* النسبة هي ما يقرؤه المهندس أولاً في التطبيق — فهي أبرز ما في الصف هنا
+   أيضاً. كحلي لا ذهبي: الذهبي نصاً على الأبيض ممنوع */
+.disc-pct{font-family:var(--font-display);font-size:19px;font-weight:700;line-height:1.3;
+  color:var(--navy-700);font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+.disc-code-wrap{display:inline-flex;align-items:center;gap:6px}
+.disc-code{direction:ltr;unicode-bidi:isolate;font-family:Consolas,'Courier New',monospace;
+  font-size:13.5px;font-weight:700;letter-spacing:.5px;color:var(--navy-800);
+  background:var(--navy-25);border:1px solid var(--border);border-radius:6px;padding:3px 8px}
+.disc-copy{display:inline-flex;align-items:center;gap:5px;min-height:30px;padding-inline:9px;
+  font-size:12.5px;font-weight:600;color:var(--navy-700);background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius-tool)}
+.disc-copy:hover{border-color:var(--navy-300);background:var(--navy-50)}
+.disc-copy svg{width:14px;height:14px;flex:none}
+/* أزرار الصف في سطر واحد: الالتفاف كان يكدّسها عموداً ويضاعف ارتفاع الصف */
+.disc-acts{display:flex;gap:6px}
+.disc-limit .ln{display:block;line-height:1.9}
+.disc-link{display:inline-block;max-width:140px;overflow:hidden;text-overflow:ellipsis;
+  vertical-align:bottom;direction:ltr;unicode-bidi:isolate}
+.disc-about{min-height:78px;padding-block:10px;line-height:1.8;resize:vertical}
+.disc-count{text-align:end}
+/* حقلا الحدّ يتقاسمان السطر حين يظهران معاً («كلاهما»)، والظاهر وحده
+   يأخذ العرض كاملاً — auto-fit يطوي المسار الفارغ */
+.disc-limits{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <div class="adm-kpis" id="kpis"></div>
+
+      <div class="notice" style="margin-block:22px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>
+          <strong>ما يُنشر هنا يظهر فوراً في «الخدمات ← خصوماتي» بالتطبيق.</strong>
+          كود الخصم لا يظهر إلا للأعضاء الموافَق على حساباتهم: الزائر والحساب
+          قيد المراجعة يريان مقدّم الخصم والنسبة والتعريف دون الكود. العرض الذي
+          مضى تاريخ «صالح حتى» يختفي من التطبيق آلياً، و«سحب» يُخفي العرض عن
+          الجميع دون حذفه. والعرضان الأوّلان (ماي ستور، My Exams) أُدخلا بقيم
+          أولية للنسبة والكود والصلاحية — عدّلوها إلى القيم المتفق عليها.
+        </span>
+      </div>
+
+      <div class="adm-bar">
+        <div class="adm-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="input" id="q" type="search" autocomplete="off"
+                 placeholder="بحث باسم مقدّم الخصم أو الكود أو التعريف">
+        </div>
+        <span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" id="addBtn" data-write>إضافة عرض خصم</button>
+      </div>
+
+      <div class="adm-bar" style="margin-block-start:-8px">
+        <div class="adm-filters" id="filters" role="group" aria-label="تصفية عروض الخصم"></div>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2>عروض الخصم</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="totalTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>مقدّم الخصم</th>
+                <th>نسبة الخصم</th>
+                <th>كود الخصم</th>
+                <th>الصلاحية / الاستخدام</th>
+                <th>رابط</th>
+                <th>الترتيب</th>
+                <th>الحالة</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="adm-pager">
+          <span>تُعرض العروض في التطبيق مرتبةً بحقل «الترتيب» ثم باسم مقدّم الخصم، ويختفي العرض آلياً بعد تاريخ «صالح حتى».</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  /* نوعا مقدّم الخصم يُقرآن من الواجهة المشتركة كما في سجل الاعتمادات:
+     التطبيق واللوحة يقرآن القائمة نفسها فلا يتباعدان. البديل حارسٌ لنسخة
+     قديمة من osea-api.js في كاش المتصفح لا نسخة ثانية من القائمة. */
+  var KINDS = (API.discounts && API.discounts.KINDS) || [
+    { k: 'company', label: 'شركة' },
+    { k: 'app',     label: 'تطبيق' }
+  ];
+  function kindLabel(k) {
+    var f = KINDS.filter(function (x) { return x.k === k; })[0];
+    return f ? f.label : 'شركة';
+  }
+
+  /* حدّ استعمال الكود: القاعدة تشترط أحدهما على الأقل (مدة أو عدد)،
+     والقائمة هنا تُظهر الحقل المعنيّ وحده فلا يُترك حقلٌ مخفيّ بقيمة قديمة */
+  var LIMITS = [
+    { k: 'date', label: 'مدة صلاحية' },
+    { k: 'uses', label: 'عدد مرات استخدام' },
+    { k: 'both', label: 'كلاهما' }
+  ];
+
+  var ABOUT_MAX = 240;
+
+  /* رسالة النسخة القديمة: الصفحة سبقت الملف المشترك في كاش المتصفح،
+     والرسالة الإنجليزية الخام («is not a function») لا تدلّ على الحل */
+  var STALE = 'هذه النسخة من ملف البيانات المشترك لا تعرف عروض الخصم بعد — '
+            + 'أعد تحميل الصفحة تحميلاً قسرياً (Ctrl+Shift+R) ثم أعد المحاولة.';
+
+  var state = { status: 'all', search: '' };
+  var items = [];
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody, filtersEl;
+
+  A.boot({
+    page: 'discounts',
+    title: 'خصوماتي — عروض الخصم',
+    lead: 'الشركات والتطبيقات التي تقدّم خصومات للمهندسين المنتسبين — تظهر في '
+        + 'تبويب «الخدمات ← خصوماتي» بالتطبيق، والكود لا يظهر إلا للأعضاء '
+        + 'الموافَق على حساباتهم.',
+    crumb: 'الخصومات'
+  }).then(function (st) {
+    if (!st) { return; }
+    tbody = $('rows'); filtersEl = $('filters');
+    wire();
+    load();
+  });
+
+  function wire() {
+    $('q').addEventListener('input', A.debounce(function (e) {
+      state.search = A.norm(e.target.value);
+      render();
+    }, 160));
+    $('addBtn').addEventListener('click', function () { openEdit(null); });
+    filtersEl.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-status]') : null;
+      if (!b) { return; }
+      state.status = b.getAttribute('data-status');
+      render();
+    });
+    /* مستمع واحد بالتفويض على جسم الجدول لا مستمع لكل زر: render() يعيد
+       بناء الصفوف عند كل حرف بحث، والمعرّف يُقرأ من data-id على الصف */
+    tbody.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-act]') : null;
+      if (!b) { return; }
+      var tr = b.closest('tr');
+      var r = tr ? byId(tr.getAttribute('data-id')) : null;
+      if (!r) { return; }
+      var act = b.getAttribute('data-act');
+      if (act === 'copy') { copyCode(r, b); }
+      else if (act === 'edit') { openEdit(r); }
+      else if (act === 'toggle') { togglePublish(r, b); }
+      else if (act === 'del') { askDelete(r); }
+    });
+  }
+
+  function load() {
+    if (!API.admin || typeof API.admin.discountOffers !== 'function') {
+      tbody.innerHTML = '<tr><td colspan="8">' + A.errorState(STALE) + '</td></tr>';
+      return;
+    }
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    }
+    API.admin.discountOffers().then(function (rows) {
+      items = rows || [];
+      render();
+    }).catch(function (err) {
+      tbody.innerHTML = '<tr><td colspan="8">' + A.errorState(dbErr(err), 'retry') + '</td></tr>';
+      var b = $('retry');
+      if (b) { b.addEventListener('click', load); }
+    });
+  }
+
+  /* دالة غائبة من القاعدة (PGRST202) معناها الوحيد أن ترحيلة ٠٣٣ لم تُطبَّق.
+     errText المشتركة تلتقط «schema cache» فتقول «حقل ناقص في الجدول» وتحيل
+     إلى ٠٢٤ — وهي هنا تضلّل، فالرسالة الصريحة تسبقها */
+  function dbErr(e) {
+    var m = (e && (e.message || e.hint || e.details)) || '';
+    if ((e && (e.code === 'PGRST202' || e.code === '42883')) ||
+        /Could not find the function|function .* does not exist/i.test(m)) {
+      return 'دوال عروض الخصم غير موجودة في القاعدة بعد — ترحيلة 033 لم تُطبَّق. '
+           + 'نفّذوها ثم أعيدوا المحاولة.';
+    }
+    return A.errText(e);
+  }
+
+  /* تاريخ اليوم بتوقيت الجهاز YYYY-MM-DD — لا toISOString: منتصف الليل
+     بتوقيت دمشق ما يزال «أمس» بتوقيت UTC فيقبل تاريخاً مضى */
+  function todayIso() {
+    var d = new Date();
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+
+  /* «سارية» = منشورة ولم يمضِ تاريخها: هي بعينها ما يراه المهندس الآن */
+  function isValidNow(r) { return !!r.active && !r.expired; }
+
+  function visible() {
+    return items.filter(function (r) {
+      if (state.status === 'live' && !r.active) { return false; }
+      if (state.status === 'draft' && r.active) { return false; }
+      if (state.status === 'valid' && !isValidNow(r)) { return false; }
+      if (state.status === 'expired' && !r.expired) { return false; }
+      if (!state.search) { return true; }
+      var hay = A.norm([r.provider, r.coupon_code, r.about, r.kind_ar].join(' '));
+      return hay.indexOf(state.search) > -1;
+    });
+  }
+
+  function render() {
+    var live = items.filter(function (r) { return r.active; }).length;
+    var validNow = items.filter(isValidNow).length;
+    var expired = items.filter(function (r) { return r.expired; }).length;
+
+    $('kpis').innerHTML =
+      kpi('إجمالي العروض', items.length, 'منشور منها ' + A.toAr(live)) +
+      kpi('سارية الآن', validNow, 'منشورة وصالحة — تظهر في التطبيق الآن') +
+      kpi('منتهية الصلاحية', expired, 'مضى تاريخ «صالح حتى» — مخفيّة آلياً', 'adm-kpi--warm') +
+      kpi('غير منشورة', items.length - live, 'محفوظة ومخفيّة عن الجميع');
+
+    /* رقائق adm-chip لا tag.is-on: الثانية بلا أي نمط للحالة المختارة */
+    filtersEl.innerHTML = [
+      ['all', 'الكل', items.length],
+      ['live', 'منشورة', live],
+      ['draft', 'غير منشورة', items.length - live],
+      ['valid', 'سارية', validNow],
+      ['expired', 'منتهية', expired]
+    ].map(function (f) {
+      var on = state.status === f[0];
+      return '<button type="button" class="adm-chip" data-status="' + f[0] +
+        '" aria-pressed="' + (on ? 'true' : 'false') + '">' + A.esc(f[1]) +
+        '<span class="n">' + A.toAr(f[2]) + '</span></button>';
+    }).join('');
+
+    var rows = visible();
+    $('totalTag').textContent = A.toAr(rows.length) + ' من ' + A.toAr(items.length);
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="8">' +
+        A.emptyState(items.length ? 'لا نتائج مطابقة.' : 'لا عروض خصم بعد — ابدأ بإضافة أول عرض.') +
+        '</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(function (r) {
+      return '<tr data-id="' + A.esc(r.id) + '">' +
+        '<td class="disc-name-cell"><span class="disc-head"><b>' + A.esc(r.provider) + '</b>' +
+          '<span class="tag">' + A.esc(r.kind_ar || kindLabel(r.provider_kind)) + '</span></span>' +
+          (r.about ? '<small>' + A.esc(r.about) + '</small>' : '') + '</td>' +
+        '<td><span class="disc-pct">' + A.esc(r.percent_ar || (A.toAr(r.percent) + '٪')) + '</span></td>' +
+        '<td><span class="disc-code-wrap">' +
+          '<code class="disc-code" dir="ltr">' + A.esc(A.toAr(r.coupon_code)) + '</code>' +
+          '<button type="button" class="disc-copy" data-act="copy" aria-label="نسخ كود «' + A.esc(r.provider) + '»">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>' +
+            '<span>نسخ</span></button>' +
+        '</span></td>' +
+        '<td class="disc-limit">' + limitCell(r) + '</td>' +
+        '<td>' + (r.link_href
+            ? '<a class="link disc-link" href="' + A.esc(r.link_href) + '" target="_blank" rel="noopener noreferrer">' +
+                A.esc(shortLink(r.link_href)) + '</a>'
+            : '—') + '</td>' +
+        '<td class="num">' + A.esc(A.toAr(r.sort || 0)) + '</td>' +
+        '<td>' + statusCell(r) + '</td>' +
+        '<td class="adm-actions"><span class="disc-acts">' +
+          '<button class="btn btn-outline btn-sm" data-act="edit" data-write>تعديل</button>' +
+          '<button class="btn btn-outline btn-sm" data-act="toggle" data-write>' +
+            (r.active ? 'سحب' : 'نشر') + '</button>' +
+          '<button class="btn btn-outline btn-sm" data-act="del" data-write>حذف</button>' +
+        '</span></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  /* الصلاحية والاستخدام سطران مستقلان: العرض قد يحمل الحدّين معاً */
+  function limitCell(r) {
+    var out = [];
+    if (r.valid_until) {
+      out.push('<span class="ln">حتى ' + A.esc(r.valid_until_ar || A.arDate(r.valid_until)) +
+        (r.expired ? ' <span class="tag tag--error">منتهي</span>' : '') + '</span>');
+    }
+    if (r.max_uses) {
+      out.push('<span class="ln">' +
+        A.esc(A.count(r.max_uses, 'مرة واحدة', 'مرتا استخدام', 'مرات استخدام', 'مرة استخدام')) + '</span>');
+    }
+    return out.length ? out.join('') : '—';
+  }
+
+  /* المنشور المنتهي يبقى «منشوراً» في القاعدة لكنه غائب عن التطبيق — والإدارة
+     يجب أن ترى لماذا لا يجده العضو قبل أن تسأل عنه */
+  function statusCell(r) {
+    if (!r.active) { return '<span class="tag">غير منشور</span>'; }
+    return '<span class="tag tag--success">منشور</span>' +
+      (r.expired ? '<span class="adm-sub">مخفيّ — انتهت صلاحيته</span>' : '');
+  }
+
+  function shortLink(u) {
+    var s = String(u || '').replace(/^https?:\/\//i, '').replace(/\/$/, '');
+    return s.length > 32 ? s.slice(0, 31) + '…' : s;
+  }
+
+  function byId(id) {
+    return items.filter(function (r) { return String(r.id) === String(id); })[0];
+  }
+
+  function kpi(label, n, hint, mod) {
+    return '<div class="adm-kpi' + (mod ? ' ' + mod : '') + '">' +
+      '<span class="adm-kpi-label">' + A.esc(label) + '</span>' +
+      '<span class="adm-kpi-num">' + A.toAr(n) + '</span>' +
+      '<span class="adm-kpi-hint">' + A.esc(hint) + '</span></div>';
+  }
+
+  /* نسخ الكود: الحافظة تُرفض خارج سياق آمن أو بلا إذن — فيُحدَّد الكود
+     للنسخ اليدوي بدل أن يفشل الزر صامتاً (نمط صفحة الأكواد الموجَّهة) */
+  function copyCode(r, btn) {
+    var code = A.toAr(r.coupon_code || '');
+    function manual() {
+      try {
+        var el = btn.parentNode.querySelector('code');
+        var range = document.createRange();
+        range.selectNodeContents(el);
+        var sel = window.getSelection();
+        sel.removeAllRanges(); sel.addRange(range);
+      } catch (e) { /* التحديد نفسه غير متاح — تكفي الرسالة */ }
+      A.toast('تعذّر النسخ الآلي — حدّدتُ الكود، انسخه يدوياً (Ctrl+C).', 'bad', 4500);
+    }
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.writeText) { manual(); return; }
+      navigator.clipboard.writeText(code).then(function () {
+        A.toast('نُسخ كود «' + r.provider + '».', 'ok');
+      }, manual);
+    } catch (e) { manual(); }
+  }
+
+  /* ---------- اللوحة الجانبية: إنشاء وتعديل ---------- */
+
+  function limitMode(r) {
+    if (r.valid_until && r.max_uses) { return 'both'; }
+    if (r.max_uses) { return 'uses'; }
+    return 'date';
+  }
+
+  /* عرض جديد يأخذ ترتيباً بعد آخر عرض قائم: بصفر كان يقفز فوق العرضين
+     الأولين في التطبيق دون أن تقصد الإدارة ذلك */
+  function nextSort() {
+    return items.reduce(function (m, x) { return Math.max(m, x.sort | 0); }, 0) + 1;
+  }
+
+  function fieldsHTML(r) {
+    var isNew = !r;
+    r = r || {};
+    var mode = limitMode(r);
+    var kind = r.provider_kind || 'company';
+    return '' +
+      '<label class="field"><span>اسم مقدّم الخصم</span>' +
+        '<input class="input" id="f-provider" maxlength="120" placeholder="اسم الشركة أو التطبيق كما يعرفه المهندس" value="' +
+          A.esc(r.provider || '') + '"></label>' +
+      '<div class="sheet-pair">' +
+        '<label class="field"><span>النوع</span>' +
+          '<select class="input" id="f-kind">' +
+          KINDS.map(function (K) {
+            return '<option value="' + A.esc(K.k) + '"' + (kind === K.k ? ' selected' : '') + '>' +
+              A.esc(K.label) + '</option>';
+          }).join('') + '</select></label>' +
+        /* حقول الأرقام نصّية بـinputmode لا type="number" (نمط admin-folders
+           وadmin-content): حقل الرقم يمحو «١٢٫٥» المكتوبة بلوحة مفاتيح عربية
+           فيصل فارغاً، ولا يبلغ تطبيعُ الأرقام الهندية أدناه أيَّ قيمة */
+        '<label class="field"><span>نسبة الخصم ٪</span>' +
+          '<input class="input" id="f-pct" type="text" dir="ltr" inputmode="decimal" autocomplete="off" maxlength="6" placeholder="10" value="' +
+            A.esc(r.percent == null ? '' : A.toAr(r.percent)) + '"></label>' +
+      '</div>' +
+      '<label class="field"><span>كود الخصم</span>' +
+        '<input class="input" id="f-code" maxlength="60" dir="ltr" autocomplete="off" spellcheck="false" placeholder="OSEA10" value="' +
+          A.esc(r.coupon_code || '') + '">' +
+        '<span class="hint">بلا فراغات — يُنسخ كما هو</span></label>' +
+      '<label class="field"><span>التعريف بالجهة — سطران</span>' +
+        '<textarea class="input disc-about" id="f-about" rows="2" maxlength="' + ABOUT_MAX + '" ' +
+          'placeholder="ما الذي تقدّمه الجهة، ولمن، وأين — بجملتين قصيرتين">' + A.esc(r.about || '') + '</textarea>' +
+        '<span class="hint disc-count"><span id="f-about-n" dir="ltr">0/' + ABOUT_MAX + '</span></span></label>' +
+      '<label class="field"><span>حدّ استعمال الكود</span>' +
+        '<select class="input" id="f-limit">' +
+        LIMITS.map(function (L) {
+          return '<option value="' + L.k + '"' + (mode === L.k ? ' selected' : '') + '>' + A.esc(L.label) + '</option>';
+        }).join('') + '</select>' +
+        '<span class="hint">يظهر للعضو تحت الكود: حتى أي تاريخ يصلح، أو كم مرة يُستعمل.</span></label>' +
+      '<div class="disc-limits">' +
+        '<label class="field" id="w-until"><span>صالح حتى</span>' +
+          '<input class="input" id="f-until" type="date"' + (isNew ? ' min="' + todayIso() + '"' : '') +
+            ' value="' + A.esc(r.valid_until || '') + '"></label>' +
+        '<label class="field" id="w-uses"><span>عدد مرات الاستخدام المسموحة</span>' +
+          '<input class="input" id="f-uses" type="text" dir="ltr" inputmode="numeric" autocomplete="off" maxlength="7" value="' +
+            A.esc(r.max_uses == null ? '' : A.toAr(r.max_uses)) + '"></label>' +
+      '</div>' +
+      '<div class="sheet-pair">' +
+        '<label class="field"><span>رابط مقدّم الخصم (اختياري)</span>' +
+          '<input class="input" id="f-link" dir="ltr" maxlength="600" placeholder="https://example.com" value="' +
+            A.esc(r.link_url || '') + '"></label>' +
+        '<label class="field"><span>الترتيب — الأصغر أولاً</span>' +
+          '<input class="input" id="f-sort" type="text" dir="ltr" inputmode="numeric" autocomplete="off" maxlength="6" value="' +
+            A.esc(A.toAr(isNew ? nextSort() : (r.sort || 0))) + '"></label>' +
+      '</div>' +
+      '<label style="display:flex;align-items:center;gap:7px;font-size:13.5px">' +
+        '<input type="checkbox" id="f-active"' + (r.active === false ? '' : ' checked') + '> منشور</label>';
+  }
+
+  /* الحقل المخفيّ يُخفى بالعرض كما في syncKindFields بسجل الاعتمادات،
+     وقيمته تُرسَل null عند الحفظ (readFields) لا القيمة التي بقيت فيه */
+  function syncLimitFields(host) {
+    var mode = host.querySelector('#f-limit').value;
+    host.querySelector('#w-until').style.display = mode === 'uses' ? 'none' : '';
+    host.querySelector('#w-uses').style.display = mode === 'date' ? 'none' : '';
+  }
+
+  /* نطاقٌ مجرّد (mystore.sy) يُسبق بـ https:// كما يكتبه الناس عادةً،
+     وأي مخطط آخر (javascript: و data: وسواهما) يُترك كما هو ليرفضه الفحص */
+  function linkValue(v) {
+    if (!v) { return null; }
+    if (/^https?:\/\//i.test(v)) { return v; }
+    if (/^[a-z0-9؀-ۿ-]+(\.[a-z0-9؀-ۿ-]+)+([:\/?#]|$)/i.test(v)) { return 'https://' + v; }
+    return v;
+  }
+
+  /* النسبة: الأرقام الهندية تُطوى لاتينية والفاصلة العشرية العربية «٫»
+     نقطة قبل التحويل — «١٢٫٥» و«12.5» قيمة واحدة. تُقرَّب لمنزلتين كالقاعدة */
+  function parsePercent(v) {
+    var s = A.toAr(v).replace(/[٫,]/g, '.');
+    if (!/^(\d+(\.\d*)?|\.\d+)$/.test(s)) { return NaN; }
+    return Math.round(parseFloat(s) * 100) / 100;
+  }
+
+  function readFields(host) {
+    var g = function (id) { var el = host.querySelector('#' + id); return el ? el.value.trim() : ''; };
+    var mode = g('f-limit');
+    var uses = A.toAr(g('f-uses'));
+    return {
+      provider: g('f-provider').replace(/\s+/g, ' '),
+      provider_kind: g('f-kind') || 'company',
+      percent: parsePercent(g('f-pct')),
+      coupon_code: A.toAr(g('f-code')),
+      about: g('f-about'),
+      valid_until: mode === 'uses' ? null : (g('f-until') || null),
+      max_uses: mode === 'date' ? null : (uses === '' ? null : (/^\d+$/.test(uses) ? parseInt(uses, 10) : NaN)),
+      link_url: linkValue(g('f-link')),
+      sort: parseInt(A.toAr(g('f-sort')), 10) || 0,
+      active: !!host.querySelector('#f-active').checked
+    };
+  }
+
+  /* الفحص هنا بالرسائل نفسها التي ترميها admin_save_discount_offer — فلا
+     يصل الموظّف إلى قيد القاعدة ولا يرى رسالة Postgres إنجليزية */
+  function validate(host, f, isNew) {
+    var mode = host.querySelector('#f-limit').value;
+    var pctEl = host.querySelector('#f-pct');
+    if (!f.provider || f.provider.length < 2) { return 'اسم مقدّم الخصم مطلوب — حرفان على الأقل.'; }
+    if (f.provider.length > 120) { return 'اسم مقدّم الخصم 120 محرفاً على الأكثر.'; }
+    if (!KINDS.some(function (K) { return K.k === f.provider_kind; })) { return 'اختر نوع مقدّم الخصم: شركة أو تطبيق.'; }
+    if (!pctEl || !pctEl.value.trim()) { return 'نسبة الخصم مطلوبة.'; }
+    /* الحقل نصّي: ما لا يُقرأ رقماً (بعد طيّ الهندي و«٫») يُقال له ذلك صراحةً
+       لا رسالة المدى التي توحي بأن الرقم خارجه. والمدى نفسه قاعدة القاعدة
+       حرفاً (قيد percent_range): أكبر من صفر وحتى ١٠٠ — لا حدّ أدنى 0.5 */
+    if (isNaN(f.percent)) { return 'اكتب نسبة الخصم بالأرقام — مثال: 10 أو 12.5'; }
+    if (!(f.percent > 0 && f.percent <= 100)) { return 'نسبة الخصم أكبر من 0 وحتى 100'; }
+    if (!f.coupon_code) { return 'كود الخصم مطلوب.'; }
+    if (/\s/.test(f.coupon_code)) { return 'كود الخصم بلا فراغات'; }
+    if (f.coupon_code.length > 60) { return 'كود الخصم 60 محرفاً على الأكثر.'; }
+    if (!f.about || f.about.length < 2) { return 'التعريف بالجهة مطلوب — سطران يعرّفان المهندس بمقدّم الخصم.'; }
+    if (f.about.length > ABOUT_MAX) { return 'التعريف بالجهة ' + ABOUT_MAX + ' محرفاً على الأكثر.'; }
+    if (mode !== 'uses') {
+      if (!f.valid_until) { return 'حدّد تاريخ «صالح حتى» للكود.'; }
+      /* التاريخ الماضي مرفوض للعرض الجديد وحده: تعديل عرضٍ انتهى فعلاً
+         (تصحيح نسبته أو تعريفه) لا يُجبر الإدارة على تمديده */
+      if (isNew && f.valid_until < todayIso()) { return 'تاريخ الصلاحية مضى — اختر اليوم أو تاريخاً لاحقاً.'; }
+    }
+    if (mode !== 'date') {
+      if (f.max_uses == null) { return 'حدّد عدد مرات استخدام الكود — 1 على الأقل.'; }
+      if (isNaN(f.max_uses)) { return 'اكتب عدد مرات الاستخدام بالأرقام — مثال: 1'; }
+      if (!(f.max_uses >= 1 && f.max_uses <= 1000000)) { return 'عدد مرات الاستخدام عدد صحيح من 1 إلى 1000000.'; }
+    }
+    if (!f.valid_until && f.max_uses == null) { return 'حدّد مدة صلاحية الكود أو عدد مرات استخدامه'; }
+    if (f.link_url) {
+      if (f.link_url.length > 600) { return 'رابط مقدّم الخصم أطول من 600 محرف.'; }
+      /* بلا شرطة عكسية «\»: المتصفح يقرؤها «/» فيفتح مضيفاً غير الظاهر في
+         الرابط — القاعدة ترفضها أيضاً (قيد discount_offers_link_shape) */
+      if (f.link_url.indexOf('\\') > -1) { return 'رابط مقدّم الخصم لا يقبل الشرطة المائلة العكسية «\\» — استعمل «/».'; }
+      if (!/^https?:\/\/[^\s\\]+$/i.test(f.link_url)) { return 'رابط مقدّم الخصم يبدأ بـ https:// — مثال: https://example.com'; }
+    }
+    return '';
+  }
+
+  function openEdit(r) {
+    var sheet = A.sheet({
+      title: r ? 'تعديل عرض الخصم' : 'إضافة عرض خصم',
+      okLabel: r ? 'حفظ التعديلات' : 'إضافة العرض',
+      body: fieldsHTML(r),
+      onOk: function (host) {
+        if (!API.admin || typeof API.admin.saveDiscountOffer !== 'function') {
+          return Promise.reject(new Error(STALE));
+        }
+        var f = readFields(host);
+        var bad = validate(host, f, !r);
+        if (bad) { return Promise.reject(new Error(bad)); }
+        /* الحمولة حقول القاعدة وحدها — لا حقول العرض المزخرفة (percent_ar
+           وأخواتها) التي تحملها صفوف items */
+        var payload = {
+          provider: f.provider, provider_kind: f.provider_kind, percent: f.percent,
+          coupon_code: f.coupon_code, about: f.about, valid_until: f.valid_until,
+          max_uses: f.max_uses, link_url: f.link_url, sort: f.sort, active: f.active
+        };
+        if (r) { payload.id = r.id; }
+        return API.admin.saveDiscountOffer(payload).then(function () {
+          var gone = f.active && f.valid_until && f.valid_until < todayIso();
+          A.toast((r ? 'حُفظت تعديلات عرض «' + f.provider + '».' : 'أُضيف عرض «' + f.provider + '».') +
+            (gone ? ' تاريخ صلاحيته مضى فلن يظهر في التطبيق حتى يُمدَّد.'
+                  : (f.active ? ' يظهر الآن في «خصوماتي» بالتطبيق.' : ' محفوظ غير منشور.')), 'ok');
+          load();
+        }).catch(function (err) { throw new Error(dbErr(err)); });
+      }
+    });
+    /* ربط قائمة الحدّ وعدّاد التعريف بعد بناء اللوحة */
+    var host = sheet && sheet.el ? sheet.el : document;
+    var sel = host.querySelector('#f-limit');
+    if (sel) {
+      sel.addEventListener('change', function () { syncLimitFields(host); });
+      syncLimitFields(host);
+    }
+    var about = host.querySelector('#f-about');
+    var cnt = host.querySelector('#f-about-n');
+    if (about && cnt) {
+      var paint = function () { cnt.textContent = A.toAr(about.value.length) + '/' + A.toAr(ABOUT_MAX); };
+      about.addEventListener('input', paint);
+      paint();
+    }
+  }
+
+  function togglePublish(r, btn) {
+    if (!r) { return; }
+    if (!API.admin || typeof API.admin.saveDiscountOffer !== 'function') { A.toast(STALE, 'bad'); return; }
+    var next = !r.active;
+    /* الحفظ الجزئي: admin_save_discount_offer تحدّث المفاتيح المرسَلة وحدها،
+       فالمعرّف مع active يكفي ولا يُعاد إرسال الكود ولا بقية الحقول */
+    if (btn) { btn.disabled = true; }
+    API.admin.saveDiscountOffer({ id: r.id, active: next }).then(function () {
+      A.toast(next
+        ? 'نُشر عرض «' + r.provider + '».' + (r.expired ? ' لكن صلاحيته منتهية فلن يظهر في التطبيق حتى يُمدَّد تاريخه.' : '')
+        : 'سُحب عرض «' + r.provider + '» من التطبيق — باقٍ في السجل.', 'ok');
+      load();
+    }).catch(function (err) {
+      if (btn) { btn.disabled = false; }
+      A.toast(dbErr(err), 'bad');
+    });
+  }
+
+  function askDelete(r) {
+    if (!r) { return; }
+    A.confirm({
+      title: 'حذف عرض الخصم',
+      text: 'سيُحذف عرض «' + r.provider + '» وكوده نهائياً ولا يمكن التراجع. '
+          + 'وإن كان القصد إخفاءه مؤقتاً فاستعمل «سحب» بدل الحذف — يبقى في السجل ويعود بضغطة.',
+      okLabel: 'حذف نهائي',
+      danger: true
+    }).then(function (ok) {
+      if (ok === null) { return; }
+      if (!API.admin || typeof API.admin.deleteDiscountOffer !== 'function') { A.toast(STALE, 'bad'); return; }
+      API.admin.deleteDiscountOffer(r.id).then(function () {
+        A.toast('حُذف عرض «' + r.provider + '».', 'ok');
+        load();
+      }).catch(function (err) { A.toast(dbErr(err), 'bad'); });
+    });
+  }
+})();
+</script>
+</body>
+</html>

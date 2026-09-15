@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>فرص العمل الهندسية — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* أنماط الصفحة — بتوكنات الهوية حصراً */
+.sheet-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:480px){ .sheet-pair{grid-template-columns:1fr} }
+/* القائمة المنسدلة بلوحة ألوان فاتحة ثابتة: وضعٌ داكن في النظام كان يرسم
+   قائمة الخيارات سوداء فوق حقلٍ أبيض */
+select.input{color-scheme:light}
+/* .input في الهوية بحشوة أفقية وحدها (قياس الحقل ذي السطر الواحد): النصّ
+   متعدد الأسطر كان يلتصق بحافة المربع العليا */
+textarea.input{padding-block:10px;line-height:1.8}
+
+/* ---------- تبويبا الصفحة: «فرص العمل» | «الجهات المعلنة» ----------
+   عنصر تحكّم مقسَّم بارتفاع 44 لا رقائق تصفية: التبويب يبدّل ما تعرضه الصفحة
+   كله، والرقاقة تحت الجدول تصفّي صفوفه — والشكلان المختلفان يمنعان الخلط */
+.jt-tabs{display:flex;flex-wrap:wrap;gap:4px;width:max-content;max-width:100%;
+  padding:5px;margin-block-end:22px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-pill);box-shadow:var(--shadow-rest)}
+.jt-tab{display:inline-flex;align-items:center;gap:9px;min-height:44px;padding-inline:22px;
+  font-family:inherit;font-size:15px;font-weight:700;color:var(--navy-700);background:transparent;
+  border:0;border-radius:var(--radius-pill);cursor:pointer;
+  transition:background var(--t-micro) var(--ease-std),color var(--t-micro) var(--ease-std)}
+.jt-tab:hover{background:var(--navy-25)}
+.jt-tab[aria-selected="true"]{background:var(--navy-700);color:#fff}
+.jt-tab:focus-visible{outline:3px solid var(--navy-200);outline-offset:2px}
+.jt-tab .n{font-size:12px;font-weight:700;min-width:22px;padding-inline:6px;line-height:20px;
+  text-align:center;border-radius:var(--radius-pill);background:var(--navy-50);color:var(--navy-700);
+  font-variant-numeric:tabular-nums}
+.jt-tab[aria-selected="true"] .n{background:rgba(255,255,255,.2);color:#fff}
+
+/* ---------- جدول الفرص ---------- */
+/* عنوان الفرصة يلتفّ على سطرين بدل أن يمدّ الجدول أفقياً: العناوين هنا
+   جُمَل («مهندس مدني لمتابعة تنفيذ مشروع…») لا أسماء قصيرة */
+/* عشرة أعمدة: الحشوة الأفقية أضيق قليلاً من الافتراضي كي يتّسع الجدول
+   لشاشة اللوحة المعتادة (1280) دون تمرير — وإلا كان عمود «إجراءات» في
+   الطرف الأيسر هو المقصوص، وهو بالذات ما تحتاجه الإدارة */
+.job-table th,.job-table td{padding-inline:10px}
+/* المحدِّد مسبوقٌ بـ.job-table عمداً: «.adm-table td» في admin.css (0,1,1) يغلب
+   «.job-title-cell» وحده (0,1,0) فيبقى nowrap — فلا يلتفّ العنوان ويُقصّ سطر
+   التفاصيل، ويفيض عنوانٌ طويل فوق عمود «الجهة». overflow-wrap لنصٍّ بلا فراغ
+   (رابط أو بريد في العنوان) */
+.job-table .job-title-cell{min-width:200px;max-width:260px;white-space:normal;overflow-wrap:anywhere}
+.job-title-cell b{display:block;font-size:14px;line-height:1.55;color:var(--navy-800)}
+.job-title-cell small{display:-webkit-box;margin-block-start:3px;font-size:12px;line-height:1.7;
+  color:var(--text-secondary);overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.job-table .job-employer{min-width:120px;max-width:180px;white-space:normal;overflow-wrap:anywhere}
+/* علامة «جهة مسجّلة» تحت الاسم: تميّز الفرصة المرتبطة بسجل الجهات من
+   المكتوب اسمها نصاً — والموقوفة جهتُها سطرٌ خافت يشرح غيابها عن التطبيق */
+.job-emp-reg{display:flex;align-items:center;gap:4px;margin-block-start:3px;
+  font-size:12px;font-weight:600;color:var(--navy-600)}
+.job-emp-reg svg{width:13px;height:13px;flex:none}
+.job-emp-off{display:block;margin-block-start:2px;font-size:12px;line-height:1.6;color:var(--text-secondary)}
+.job-ref{direction:ltr;unicode-bidi:isolate;font-weight:700;color:var(--navy-700);
+  font-variant-numeric:tabular-nums}
+/* وسم «منتهية» تحت التاريخ لا بجانبه: بجانبه يضاعف عرض العمود لأجل كلمة */
+.job-deadline .tag{display:flex;width:max-content;margin-block-start:4px}
+/* مضيف الرابط تحت زر «فتح»: تتحقق الإدارة بنظرة أن الرابط يذهب إلى الجهة
+   المعلنة نفسها لا إلى موقع آخر — والنص معزول الاتجاه بـ<bdi> */
+.job-host{display:block;max-width:150px;margin-block-start:3px;font-size:12px;
+  color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* الأزرار في سطر واحد: الالتفاف كان يكدّسها عمودياً فيتضاعف ارتفاع كل صف */
+.job-acts{display:flex;gap:6px}
+.job-sep{width:1px;align-self:stretch;background:var(--border);margin-inline:6px}
+.job-check{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600}
+/* القوائم داخل شريط الرقائق على قياس الرقاقة لا قياس حقل النموذج — كما في
+   سجل الاعتمادات. ثلاث قوائم منذ «الجهة» (٠٣٤): 170 كي تبقى الثلاث مع الرقائق
+   الخمس في سطرٍ واحد على 1280 */
+.adm-filters .input{flex:0 1 170px;min-height:38px;font-size:13.5px;padding-inline:12px}
+/* الشريط يأخذ عرض البطاقة كله: بعرض محتواه كان يُحسب على القياس الذاتي
+   للقوائم لا على 170، فتسقط القائمة الأخيرة إلى سطرٍ وحدها */
+#filters{flex:1 1 auto}
+.jt-note .btn{margin-inline-start:8px;vertical-align:middle}
+
+/* ---------- جدول الجهات المعلنة ---------- */
+.emp-table th,.emp-table td{padding-inline:12px}
+.emp-table .emp-name-cell{min-width:230px;max-width:340px;white-space:normal;overflow-wrap:anywhere}
+.emp-name-cell b{font-size:14px;line-height:1.6;color:var(--navy-800)}
+.emp-name-cell .tag{min-height:22px;padding-inline:9px;font-size:12px;margin-inline-start:6px;vertical-align:1px}
+.emp-name-cell small{display:-webkit-box;margin-block-start:3px;font-size:12px;line-height:1.7;
+  color:var(--text-secondary);overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* وسائل التواصل سطراً سطراً، ويُقصّ الطويل منها بنقاط: بريدٌ من ستين محرفاً
+   لا يمدّ الجدول أفقياً فيدفع «إجراءات» خارج البطاقة */
+.emp-contact{display:grid;gap:2px;max-width:230px}
+.emp-contact .emp-c{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.emp-contact bdi{font-variant-numeric:tabular-nums}
+.emp-jobs b{color:var(--navy-800);font-variant-numeric:tabular-nums}
+.emp-acts{display:flex;gap:6px}
+.emp-hint{display:block;margin-block-start:-6px;font-size:12.5px;line-height:1.7;color:var(--text-secondary)}
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <div class="jt-tabs" id="jobTabs" role="tablist" aria-label="أقسام صفحة فرص العمل">
+        <button type="button" class="jt-tab" role="tab" id="tabJobs" data-tab="jobs"
+                aria-controls="panelJobs" aria-selected="true" tabindex="0">فرص العمل<span class="n" id="tabJobsN">—</span></button>
+        <button type="button" class="jt-tab" role="tab" id="tabEmployers" data-tab="employers"
+                aria-controls="panelEmployers" aria-selected="false" tabindex="-1">الجهات المعلنة<span class="n" id="tabEmpN">—</span></button>
+      </div>
+
+      <!-- ═════════ تبويب «فرص العمل» ═════════ -->
+      <div id="panelJobs" role="tabpanel" aria-labelledby="tabJobs">
+
+        <div class="adm-kpis" id="kpis"></div>
+
+        <div class="notice" style="margin-block:22px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <span>
+            <strong>ما يُنشر هنا يظهر فوراً في «الخدمات ← فرص عمل هندسية» بالتطبيق.</strong>
+            «سحب» يُخفي الفرصة عن المهندسين دون حذفها، وتعود بضغطة «نشر».
+            رابط التقديم يُفتح خارج التطبيق — في المتصفح أو تطبيق البريد — فجرّبه
+            بزر «فتح» قبل النشر. والفرصة التي انتهى موعدها لا تختفي وحدها: تبقى
+            ظاهرة للمهندسين تحت «انتهى التقديم» إلى أن تُسحب أو تُحذف.
+          </span>
+        </div>
+
+        <!-- سجل الجهات غير متاح (واجهة قديمة أو ترحيلة ٠٣٤ غير مطبَّقة): الفرص
+             تعمل كما كانت باسم جهة مكتوب، وهذا السطر يقول ذلك صراحةً -->
+        <div class="notice jt-note" id="empNote" role="note" style="margin-block:-6px 22px" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          <span id="empNoteText"></span>
+        </div>
+
+        <div class="adm-bar">
+          <div class="adm-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input class="input" id="q" type="search" autocomplete="off"
+                   placeholder="بحث بعنوان الفرصة أو الجهة أو المحافظة أو المرتبة أو التفاصيل أو الرقم">
+          </div>
+          <span class="spacer"></span>
+          <button class="btn btn-primary btn-sm" id="addBtn" data-write>إضافة فرصة</button>
+        </div>
+
+        <div class="adm-bar" style="margin-block-start:-8px">
+          <div class="adm-filters" id="filters" role="group" aria-label="تصفية فرص العمل"></div>
+        </div>
+
+        <div class="adm-table-card">
+          <div class="adm-table-head">
+            <h2>إعلانات فرص العمل</h2>
+            <span class="spacer"></span>
+            <span class="tag" id="totalTag">—</span>
+          </div>
+          <div class="adm-scroll">
+            <table class="adm-table job-table">
+              <thead>
+                <tr>
+                  <th>الرقم</th>
+                  <th>فرصة العمل</th>
+                  <th>المرتبة الهندسية</th>
+                  <th>الجهة</th>
+                  <th>المحافظة</th>
+                  <th>تاريخ الإعلان</th>
+                  <th>لغاية</th>
+                  <th>رابط التقديم</th>
+                  <th>الحالة</th>
+                  <th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="rows">
+                <tr><td colspan="10"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="adm-pager">
+            <span>يرتّب التطبيق الفرص بتاريخ الإعلان، الأحدث أولاً. والرقم يُسنَد آلياً عند الإضافة ولا يتغيّر بالتعديل.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═════════ تبويب «الجهات المعلنة» ═════════ -->
+      <div id="panelEmployers" role="tabpanel" aria-labelledby="tabEmployers" hidden>
+
+        <div class="adm-kpis" id="empKpis"></div>
+
+        <div class="notice" style="margin-block:22px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <span>
+            <strong>الجهات التي تعلن عن وظائف هندسية عبر المنصة.</strong>
+            تُربط كل فرصة بجهتها من لوحة الفرصة، فيرى المهندس في تفاصيلها نبذة الجهة
+            ووسائل التواصل معها. إيقاف الجهة يخفي كل فرصها من التطبيق دون حذفها؛ حذف
+            الجهة يُبقي فرصها باسمها الأخير غير مرتبطة.
+          </span>
+        </div>
+
+        <div class="adm-bar">
+          <div class="adm-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input class="input" id="empQ" type="search" autocomplete="off"
+                   placeholder="بحث باسم الجهة أو نوعها أو المحافظة أو الهاتف أو البريد أو النبذة">
+          </div>
+          <span class="spacer"></span>
+          <button class="btn btn-primary btn-sm" id="empAddBtn" data-write>إضافة جهة</button>
+        </div>
+
+        <div class="adm-table-card">
+          <div class="adm-table-head">
+            <h2>سجل الجهات المعلنة</h2>
+            <span class="spacer"></span>
+            <span class="tag" id="empTotalTag">—</span>
+          </div>
+          <div class="adm-scroll">
+            <table class="adm-table emp-table">
+              <thead>
+                <tr>
+                  <th>الجهة</th>
+                  <th>المحافظة</th>
+                  <th>التواصل</th>
+                  <th>الفرص</th>
+                  <th>الحالة</th>
+                  <th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="empRows">
+                <tr><td colspan="6"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="adm-pager">
+            <span>الجهات مرتبة هجائياً. «متاحة» فرصةٌ منشورة لم ينتهِ موعدها، وتظهر في التطبيق ما دامت جهتها مفعّلة.</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  /* المراتب الأربع تُقرأ من الواجهة المشتركة لا تُكتب هنا ثانيةً: التطبيق
+     يعرض التسمية نفسها في عمود «المرتبة الهندسية»، ومرتبةٌ تُسمّى هنا بغير
+     اسمها هناك تُربك الإدارة والمهندس معاً. البديل أدناه حارسٌ لنسخة قديمة
+     من osea-api.js في كاش المتصفح لا نسخة ثانية من القائمة. */
+  var GRADES = (API.jobs && API.jobs.GRADES) || [
+    { k: 'trainee',    label: 'مهندس متدرب' },
+    { k: 'associate',  label: 'مهندس مشارك' },
+    { k: 'practicing', label: 'مهندس ممارس' },
+    { k: 'consultant', label: 'مهندس استشاري' }
+  ];
+  function gradeLabel(k) {
+    var f = GRADES.filter(function (x) { return x.k === k; })[0];
+    return f ? f.label : '';
+  }
+
+  /* أنواع الجهات المعلنة (٠٣٤) — من الواجهة المشتركة كالمراتب، والبديل حارسٌ
+     لنسخة قديمة في الكاش */
+  var KINDS = (API.jobs && API.jobs.EMPLOYER_KINDS) || [
+    { k: 'company', label: 'شركة هندسية' },
+    { k: 'office',  label: 'مكتب هندسي' },
+    { k: 'public',  label: 'جهة عامة' },
+    { k: 'org',     label: 'منظمة' },
+    { k: 'other',   label: 'جهة أخرى' }
+  ];
+  function kindLabel(k) {
+    var f = KINDS.filter(function (x) { return x.k === k; })[0];
+    return f ? f.label : 'جهة أخرى';
+  }
+
+  /* المحافظات من المصدر المشترك نفسه، ومعها «عدة محافظات»: إعلانٌ واحد
+     قد يطلب مهندسين لمشاريع في أكثر من محافظة، وحصره بواحدة يضلّل */
+  var GOVS = (API.jobs && API.jobs.GOVERNORATES) || API.GOVERNORATES || [];
+  var MULTI = 'عدة محافظات';
+
+  /* قيمة «جهة غير مسجّلة» في قائمة الجهة — لا تشبه معرّفاً (uuid) أبداً */
+  var FREE = '__free';
+  var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  var REG_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>';
+
+  var state = { tab: 'jobs', status: 'all', gov: 'all', grade: 'all', employer: 'all', search: '', empSearch: '' };
+  var items = [];
+  /* سجل الجهات: employers مرتبة هجائياً، وEMP فهرسها بالمعرّف. emp.ok خطأ
+     يعني أن السجل غير متاح (why: api واجهة قديمة · db ترحيلة ٠٣٤ غائبة ·
+     err خطأ آخر) — فتعمل الفرص بالاسم المكتوب وحده كما قبل ٠٣٤ */
+  var employers = [];
+  var EMP = {};
+  var emp = { ok: false, why: '', err: null };
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody, filtersEl, empBody;
+
+  A.boot({
+    page: 'jobs',
+    title: 'فرص العمل الهندسية',
+    lead: 'إعلانات الوظائف الهندسية وسجل الجهات المعلنة التي تنشر فرصها عبر المنصة — '
+        + 'تظهر للمهندسين في تبويب «الخدمات ← فرص عمل هندسية» بالتطبيق.',
+    crumb: 'فرص العمل'
+  }).then(function (st) {
+    if (!st) { return; }
+    tbody = $('rows'); filtersEl = $('filters'); empBody = $('empRows');
+    wireTabs();
+    setTab(initialTab(), false);
+    /* الصفحة أحدث من الملف المشترك في كاش المتصفح: بدون هذا الفحص ينكسر
+       التحميل بخطأ «undefined is not a function» لا يفهمه الموظّف */
+    if (!API.admin || !API.admin.jobPosts) {
+      $('addBtn').disabled = true;
+      $('empAddBtn').disabled = true;
+      tbody.innerHTML = '<tr><td colspan="10">' +
+        A.errorState('نسخة الواجهة قديمة — حدّث الصفحة (Ctrl+F5).') + '</td></tr>';
+      empBody.innerHTML = '<tr><td colspan="6">' +
+        A.errorState('نسخة الواجهة قديمة — حدّث الصفحة (Ctrl+F5).') + '</td></tr>';
+      return;
+    }
+    wire();
+    load();
+  });
+
+  /* صعودٌ إلى أقرب عنصر يحمل السمة — بديل Element.closest الذي تفتقده
+     بعض المتصفحات القديمة، والتفويض على الجدول يحتاجه عند كل نقرة */
+  function owner(el, attr) {
+    while (el && el.nodeType === 1) {
+      if (el.hasAttribute(attr)) { return el; }
+      el = el.parentNode;
+    }
+    return null;
+  }
+
+  /* ---------- التبويبان ---------- */
+
+  function initialTab() {
+    return /(?:^|[?&])tab=employers(?:&|$)/.test(location.search) ? 'employers' : 'jobs';
+  }
+
+  /* نمط tablist: التبويب المختار وحده في تسلسل Tab، والأسهم وHome/End تنقل
+     بينهما. والتبويب يُكتب في العنوان (?tab=employers) كي يعيد التحديث أو
+     الرابط المنسوخ الموظّفَ إلى حيث كان */
+  function setTab(name, focus) {
+    if (name !== 'employers') { name = 'jobs'; }
+    state.tab = name;
+    var tabs = [['jobs', 'tabJobs', 'panelJobs'], ['employers', 'tabEmployers', 'panelEmployers']];
+    for (var i = 0; i < tabs.length; i++) {
+      var on = tabs[i][0] === name, t = $(tabs[i][1]);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
+      $(tabs[i][2]).hidden = !on;
+      if (on && focus) { t.focus(); }
+    }
+    writeTabQuery(name);
+  }
+
+  function writeTabQuery(name) {
+    try {
+      var parts = location.search.replace(/^\?/, '').split('&').filter(function (kv) {
+        return kv && !/^tab(?:=|$)/.test(kv);
+      });
+      if (name === 'employers') { parts.push('tab=employers'); }
+      var next = location.pathname + (parts.length ? '?' + parts.join('&') : '') + location.hash;
+      if (next !== location.pathname + location.search + location.hash) {
+        history.replaceState(history.state, '', next);
+      }
+    } catch (e) { /* مستند بلا عنوان قابل للتعديل (srcdoc) — التبويب يعمل بلا ذاكرة */ }
+  }
+
+  function wireTabs() {
+    var list = $('jobTabs');
+    list.addEventListener('click', function (e) {
+      var b = owner(e.target, 'data-tab');
+      if (b) { setTab(b.getAttribute('data-tab'), false); }
+    });
+    list.addEventListener('keydown', function (e) {
+      var b = owner(e.target, 'data-tab');
+      if (!b) { return; }
+      var k = e.key, cur = b.getAttribute('data-tab'), next = '';
+      if (k === 'ArrowLeft' || k === 'ArrowRight') { next = cur === 'jobs' ? 'employers' : 'jobs'; }
+      else if (k === 'Home') { next = 'jobs'; }
+      else if (k === 'End') { next = 'employers'; }
+      if (!next) { return; }
+      e.preventDefault();
+      setTab(next, true);
+    });
+  }
+
+  function wire() {
+    $('q').addEventListener('input', A.debounce(function (e) {
+      state.search = A.norm(e.target.value);
+      paintRows();
+    }, 160));
+    $('addBtn').addEventListener('click', function () { openEdit(null); });
+
+    /* الرقائق والقوائم تُبنى مرة واحدة بعد كل تحميل، والتصفية بعدها
+       تبدّل حالة الرقاقة وصفوف الجدول وحدها: إعادة بناء الشريط عند كل
+       اختيار كانت تُسقط التركيز من القائمة المنسدلة في منتصف التنقل بالأسهم */
+    filtersEl.addEventListener('click', function (e) {
+      var b = owner(e.target, 'data-status');
+      if (!b) { return; }
+      state.status = b.getAttribute('data-status');
+      markChips();
+      paintRows();
+    });
+    filtersEl.addEventListener('change', function (e) {
+      var s = e.target;
+      if (!s || s.nodeName !== 'SELECT') { return; }
+      if (s.id === 'fGov') { state.gov = s.value; }
+      else if (s.id === 'fGrade') { state.grade = s.value; }
+      else if (s.id === 'fEmployer') { state.employer = s.value; }
+      else { return; }
+      paintRows();
+    });
+
+    /* مستمعٌ واحد مفوَّض على جسم الجدول بدل ربط كل زر عند كل رسم: الصف
+       يحمل data-id والزر يحمل data-act */
+    tbody.addEventListener('click', function (e) {
+      var b = owner(e.target, 'data-act');
+      if (!b || b.disabled) { return; }
+      var tr = owner(b, 'data-id');
+      var r = tr ? byId(tr.getAttribute('data-id')) : null;
+      if (!r) { return; }
+      var act = b.getAttribute('data-act');
+      if (act === 'edit') { openEdit(r); }
+      else if (act === 'toggle') { togglePublish(r, b); }
+      else if (act === 'del') { askDelete(r); }
+    });
+
+    $('empQ').addEventListener('input', A.debounce(function (e) {
+      state.empSearch = A.norm(e.target.value);
+      paintEmpRows();
+    }, 160));
+    $('empAddBtn').addEventListener('click', function () { openEmployer(null); });
+    empBody.addEventListener('click', function (e) {
+      var b = owner(e.target, 'data-act');
+      if (!b || b.disabled) { return; }
+      var tr = owner(b, 'data-id');
+      var r = tr ? EMP[tr.getAttribute('data-id')] : null;
+      if (!r) { return; }
+      var act = b.getAttribute('data-act');
+      if (act === 'emp-edit') { openEmployer(r); }
+      else if (act === 'emp-toggle') { toggleEmployer(r, b); }
+      else if (act === 'emp-add-job') { openEdit(null, r.id); }
+      else if (act === 'emp-jobs') { showEmployerJobs(r); }
+      else if (act === 'emp-del') { askDeleteEmployer(r); }
+    });
+  }
+
+  /* الفرص والجهات معاً في دفعة واحدة: عمود «الجهة» وقائمة الجهة في لوحة
+     الفرصة يحتاجان السجل، وعدّادات الجهات تحتاج الفرص. وفشل الجهات وحدها
+     (ترحيلة ٠٣٤ غير مطبَّقة، أو واجهة قديمة بلا jobEmployers) لا يُسقط الفرص:
+     تُعرض كما كانت بالاسم المكتوب مع سطر يشرح السبب */
+  function load() {
+    var hasEmpApi = !!(API.admin && typeof API.admin.jobEmployers === 'function');
+    var empP = hasEmpApi
+      ? API.admin.jobEmployers().then(function (rows) { return { rows: rows || [] }; },
+                                      function (err) { return { err: err }; })
+      : Promise.resolve({ missing: true });
+    Promise.all([API.admin.jobPosts(), empP]).then(function (res) {
+      items = res[0] || [];
+      setEmployers(res[1]);
+      paint();
+    }).catch(function (err) {
+      var msg = dbErr(err);
+      tbody.innerHTML = '<tr><td colspan="10">' + A.errorState(msg, 'retry') + '</td></tr>';
+      empBody.innerHTML = '<tr><td colspan="6">' + A.errorState(msg, 'empRetry') + '</td></tr>';
+      var rb = $('retry'), eb = $('empRetry');
+      if (rb) { rb.addEventListener('click', load); }
+      if (eb) { eb.addEventListener('click', load); }
+    });
+  }
+
+  function setEmployers(res) {
+    employers = [];
+    EMP = {};
+    if (res.missing) {
+      emp = { ok: false, why: 'api', err: null };
+    } else if (res.err) {
+      emp = { ok: false, why: missingFn(res.err) ? 'db' : 'err', err: res.err };
+    } else {
+      emp = { ok: true, why: '', err: null };
+      employers = res.rows.slice().sort(function (a, b) {
+        return String(a.name || '').localeCompare(String(b.name || ''), 'ar');
+      });
+      employers.forEach(function (e) { EMP[String(e.id)] = e; });
+    }
+    /* تصفيةٌ بجهةٍ حُذفت (أو سجلٍ لم يعد متاحاً) تعود إلى «كل الجهات» — وإلا
+       بقي الجدول فارغاً بقائمةٍ لا تعرض سبب فراغه */
+    if (state.employer !== 'all' && (!emp.ok || (state.employer !== FREE && !EMP[state.employer]))) {
+      state.employer = 'all';
+    }
+  }
+
+  /* ---------- التواريخ والروابط ---------- */
+
+  function two(n) { return (n < 10 ? '0' : '') + n; }
+
+  /* اليوم بتوقيت الجهاز لا UTC: toISOString يعيد تاريخ الأمس بعد منتصف
+     الليل حتى الثالثة فجراً بتوقيت دمشق، فتبدو فرصةٌ آخرُ يومها اليوم منتهية */
+  function todayLocal() {
+    var d = new Date();
+    return d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate());
+  }
+
+  /* «لغاية» يومٌ كامل: الفرصة متاحة حتى نهاية يوم الموعد نفسه. مقارنة نصّين
+     بصيغة YYYY-MM-DD تكافئ مقارنة التاريخين */
+  function isOpen(r, today) {
+    return !r.deadline || String(r.deadline) >= today;
+  }
+
+  function daysLeft(iso, today) {
+    var a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
+    var b = /^(\d{4})-(\d{2})-(\d{2})$/.exec(today);
+    if (!a || !b) { return null; }
+    var da = new Date(+a[1], +a[2] - 1, +a[3]), db = new Date(+b[1], +b[2] - 1, +b[3]);
+    /* التقريب يمتصّ ساعة التوقيت الصيفي بين التاريخين */
+    return Math.round((da.getTime() - db.getTime()) / 86400000);
+  }
+
+  /* القائمة البيضاء نفسها في القاعدة (قيد apply_url) وفي التطبيق: A.esc
+     لا يمنع javascript: ولا data: — والرابط الذي لا يطابقها لا يُرسم رابطاً
+     أبداً ولو وصل من القاعدة. وكالقيد حرفاً: لا شرطة عكسية «\» في رابط الويب
+     (المتصفح يقرؤها «/» فيُفتح مضيفٌ غير المكتوب)، والبريد عنوانٌ مجرّد بلا
+     ? & % , ; (mailto:…?bcc= يضيف مستلماً مخفياً لطلبات المهندسين) */
+  var WEB_RE = /^https?:\/\/[^\s\\]+$/i;
+  var MAIL_RE = /^mailto:[^\s@?&%,;\/\\]+@[^\s@?&%,;\/\\]+\.[^\s@?&%,;\/\\]+$/i;
+  function safeHref(u) {
+    var s = String(u == null ? '' : u);
+    if (WEB_RE.test(s)) { return s; }
+    if (MAIL_RE.test(s)) { return s; }
+    return '';
+  }
+
+  /* ما تكتبه الإدارة عادةً «example.com/jobs» أو «hr@example.com» بلا
+     مخطط — يُكمَل هنا بدل رفضه. أما ما له مخطط غير مقبول (javascript:) فيبقى
+     كما هو ليرفضه الفحص برسالة صريحة. «:8080» بعد النطاق منفذٌ لا مخطط.
+     والبريد يُكمَّل عنواناً مجرّداً وحده (صنف القاعدة نفسه): ملصوقٌ بـ?bcc=
+     يبقى كما هو فيرفضه الفحص بدل أن يصير رابط بريد بمستلمٍ مخفي */
+  function normApply(v) {
+    v = String(v == null ? '' : v).trim();
+    if (!v) { return ''; }
+    if (/^[a-z][a-z0-9+.\-]*:(?!\d)/i.test(v)) { return v; }
+    if (/^\/\//.test(v)) { return 'https:' + v; }
+    if (/^[^\s@\/:?&%,;\\]+@[^\s@\/:?&%,;\\]+\.[^\s@\/:?&%,;\\]+$/.test(v)) { return 'mailto:' + v; }
+    if (/^[^\s\/@:\\]+\.[^\s\/@:.\\]{2,}(:\d{1,5})?([\/?#]\S*)?$/.test(v)) { return 'https://' + v; }
+    return v;
+  }
+
+  /* مضيف الرابط أو عنوان البريد — للعرض تحت زر «فتح». «\» تنهي المضيف كما
+     ينهيه المتصفح، فلا يُعرض مضيفٌ غير الذي يُفتح */
+  function hrefHost(h) {
+    if (/^mailto:/i.test(h)) { return h.slice(7).split('?')[0]; }
+    return h.replace(/^https?:\/\//i, '').split(/[\/\\?#]/)[0];
+  }
+
+  /* دالةٌ غائبة من القاعدة (PGRST202 من PostgREST، 42883 من Postgres) */
+  function missingFn(e) {
+    var m = (e && (e.message || e.hint || e.details)) || '';
+    return !!((e && (e.code === 'PGRST202' || e.code === '42883')) ||
+      /Could not find the function|function .* does not exist/i.test(m));
+  }
+
+  /* الدالة الغائبة هنا تعني ترحيلة بعينها لم تُطبَّق — نمط dbErr في
+     admin-discounts. errText المشتركة كانت تلتقط «schema cache» فتقول «حقل
+     ناقص» وتحيل إلى ٠٢٤. دوال الفرص من ٠٣٣، ودوال الجهات من ٠٣٤ */
+  function dbErr(e) {
+    if (missingFn(e)) {
+      return 'دوال فرص العمل غير موجودة في القاعدة بعد — ترحيلة 033 لم تُطبَّق. '
+           + 'نفّذوها ثم أعيدوا المحاولة.';
+    }
+    return A.errText(e);
+  }
+  function empErr(e) {
+    if (missingFn(e)) {
+      return 'دوال الجهات المعلنة غير موجودة في القاعدة بعد — ترحيلة 034 لم تُطبَّق. '
+           + 'نفّذوها ثم أعيدوا المحاولة.';
+    }
+    return A.errText(e);
+  }
+
+  function txt(v) {
+    return String(v == null ? '' : v).trim();
+  }
+
+  /* سطرٌ واحد كما يحفظه accr_clean في القاعدة: المحارف الخفية المنسوخة من
+     Word/PDF (U+200B..U+200F، U+061C، U+FEFF) تُنزع والفراغات تُطوى — فيقيس
+     فحص الطول والتكرار النصَّ الذي سيُحفظ فعلاً */
+  function oneLine(v) {
+    return txt(String(v == null ? '' : v).replace(/[\u200B-\u200F\u061C\uFEFF]/g, ' ')).replace(/\s+/g, ' ');
+  }
+
+  /* ---------- سجل الجهات: بحث وتواصل ---------- */
+
+  function empOf(r) {
+    return r && r.employer_id ? EMP[String(r.employer_id)] || null : null;
+  }
+  /* فرصة جهتُها موقوفة لا تظهر في التطبيق ولو كانت منشورة (سياسة القراءة
+     العلنية في ٠٣٤) */
+  function hiddenByEmp(r) {
+    var e = empOf(r);
+    return !!(e && e.active === false);
+  }
+
+  /* عدّادا الجهة من admin_job_employers، وحسابهما من الفرص المحمّلة احتياطاً
+     لردٍّ بلا الحقلين */
+  function empStats(e) {
+    if (e.jobs_count != null && e.open_jobs_count != null &&
+        isFinite(+e.jobs_count) && isFinite(+e.open_jobs_count)) {
+      return { total: +e.jobs_count, open: +e.open_jobs_count };
+    }
+    var today = todayLocal(), total = 0, open = 0;
+    items.forEach(function (r) {
+      if (String(r.employer_id || '') !== String(e.id)) { return; }
+      total++;
+      if (r.active && isOpen(r, today)) { open++; }
+    });
+    return { total: total, open: open };
+  }
+
+  var PHONE_RE = /^\+?[0-9][0-9 ]{5,28}$/;
+  var EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  /* بريدٌ يصلح رابطاً: عنوانٌ واحد مجرّد بلا ? & % , ; : / \ — صنف رابط
+     التقديم نفسه */
+  var BARE_MAIL_RE = /^[^\s@?&%,;:\/\\]+@[^\s@?&%,;:\/\\]+\.[^\s@?&%,;:\/\\]+$/;
+
+  function contactHTML(e) {
+    var out = [];
+    var ph = oneLine(e.phone);
+    if (ph && PHONE_RE.test(ph)) {
+      out.push('<span class="emp-c"><bdi dir="ltr">' + A.esc(ph) + '</bdi></span>');
+    }
+    var em = txt(e.email);
+    if (em && BARE_MAIL_RE.test(em)) {
+      out.push('<a class="link emp-c" href="' + A.esc('mailto:' + em) + '"><bdi dir="ltr">' + A.esc(em) + '</bdi></a>');
+    }
+    var site = txt(e.website);
+    if (site && WEB_RE.test(site)) {
+      out.push('<a class="link emp-c" href="' + A.esc(site) + '" target="_blank" rel="noopener noreferrer"><bdi dir="ltr">' +
+        A.esc(hrefHost(site)) + '</bdi></a>');
+    }
+    return out.length ? '<span class="emp-contact">' + out.join('') + '</span>' : '<span class="muted">—</span>';
+  }
+
+  function empVisible(e) {
+    if (!state.empSearch) { return true; }
+    var ph = String(e.phone || '');
+    var hay = A.norm([e.name, kindLabel(e.kind), e.governorate, ph, ph.replace(/\s+/g, ''),
+                      e.email, e.about].join(' '));
+    return hay.indexOf(state.empSearch) > -1;
+  }
+
+  /* ---------- التصفية والرسم ---------- */
+
+  function visible() {
+    var today = todayLocal();
+    return items.filter(function (r) {
+      var open = isOpen(r, today);
+      if (state.status === 'live' && !r.active) { return false; }
+      if (state.status === 'draft' && r.active) { return false; }
+      /* «متاحة» بمعنى مؤشرها نفسه: منشورة وموعدها لم ينتهِ وجهتها غير موقوفة
+         — أي ما يستطيع المهندس التقديم عليه الآن فعلاً */
+      if (state.status === 'open' && !(r.active && open && !hiddenByEmp(r))) { return false; }
+      if (state.status === 'closed' && open) { return false; }
+      if (state.employer === FREE && r.employer_id) { return false; }
+      if (state.employer !== 'all' && state.employer !== FREE &&
+          String(r.employer_id || '') !== state.employer) { return false; }
+      if (state.gov !== 'all' && txt(r.governorate) !== state.gov) { return false; }
+      if (state.grade === 'any' && r.grade) { return false; }
+      if (state.grade !== 'all' && state.grade !== 'any' && r.grade !== state.grade) { return false; }
+      if (!state.search) { return true; }
+      var hay = A.norm([r.ref_no, r.title, r.employer, r.governorate,
+                        gradeLabel(r.grade), r.details].join(' '));
+      return hay.indexOf(state.search) > -1;
+    });
+  }
+
+  function counts() {
+    var today = todayLocal();
+    var c = { all: items.length, live: 0, draft: 0, open: 0, hidden: 0, closed: 0, closedLive: 0 };
+    items.forEach(function (r) {
+      var open = isOpen(r, today), hid = hiddenByEmp(r);
+      if (r.active) { c.live++; } else { c.draft++; }
+      if (r.active && open) {
+        if (hid) { c.hidden++; } else { c.open++; }
+      }
+      if (!open) {
+        c.closed++;
+        if (r.active && !hid) { c.closedLive++; }
+      }
+    });
+    return c;
+  }
+
+  function paint() {
+    paintTabs();
+    paintKpis();
+    paintEmpNote();
+    paintFilters();
+    paintRows();
+    paintEmployers();
+  }
+
+  function paintTabs() {
+    $('tabJobsN').textContent = A.toAr(items.length);
+    $('tabEmpN').textContent = emp.ok ? A.toAr(employers.length) : '—';
+  }
+
+  function paintKpis() {
+    var c = counts();
+    $('kpis').innerHTML =
+      kpi('إجمالي الإعلانات', c.all, 'منشور منها ' + A.toAr(c.live)) +
+      kpi('متاحة للتقديم الآن', c.open,
+          c.hidden ? 'منشورة وموعدها لم ينتهِ — عدا ' + A.toAr(c.hidden) + ' مخفية لأن جهتها موقوفة'
+                   : 'منشورة وموعدها لم ينتهِ', 'adm-kpi--gold') +
+      kpi('انتهى موعدها', c.closed,
+          c.closedLive ? 'منها ' + A.toAr(c.closedLive) + ' منشورة تظهر تحت «انتهى التقديم»'
+                       : 'لا شيء منها ظاهر في التطبيق', 'adm-kpi--warm') +
+      kpi('غير منشورة', c.draft, 'محفوظة ومخفية عن التطبيق');
+  }
+
+  function paintEmpNote() {
+    var note = $('empNote'), t = $('empNoteText');
+    if (emp.ok) { note.hidden = true; t.innerHTML = ''; return; }
+    var msg;
+    if (emp.why === 'api') {
+      msg = '<strong>سجل الجهات المعلنة غير متاح في هذه النسخة من الواجهة</strong> — حدّث الصفحة (Ctrl+F5). '
+          + 'إلى ذلك الحين تُحفظ الفرص باسم جهة مكتوب، ولا يُمسّ ارتباط الفرص المرتبطة بجهة مسجّلة.';
+    } else if (emp.why === 'db') {
+      msg = '<strong>سجل الجهات المعلنة غير مفعَّل في القاعدة بعد</strong> — ترحيلة 034 لم تُطبَّق. '
+          + 'إلى أن تُطبَّق تُحفظ الفرص باسم جهة مكتوب كما كانت.';
+    } else {
+      msg = '<strong>تعذّر تحميل سجل الجهات المعلنة:</strong> ' + A.esc(A.errText(emp.err)) + ' '
+          + 'الفرص معروضة، وتُحفظ باسم جهة مكتوب إلى أن يُعاد التحميل.'
+          + '<button type="button" class="btn btn-outline btn-sm" id="empNoteRetry">إعادة المحاولة</button>';
+    }
+    t.innerHTML = msg;
+    note.hidden = false;
+    var rb = $('empNoteRetry');
+    if (rb) { rb.addEventListener('click', load); }
+  }
+
+  function paintFilters() {
+    var c = counts();
+    var chips = [
+      ['all', 'الكل', c.all],
+      ['live', 'منشورة', c.live],
+      ['draft', 'غير منشورة', c.draft],
+      ['open', 'متاحة', c.open],
+      ['closed', 'منتهية', c.closed]
+    ].map(function (f) {
+      return '<button type="button" class="adm-chip" data-status="' + f[0] + '" aria-pressed="' +
+        (state.status === f[0] ? 'true' : 'false') + '">' + A.esc(f[1]) +
+        '<span class="n">' + A.toAr(f[2]) + '</span></button>';
+    });
+    filtersEl.innerHTML = chips.join('') +
+      '<span class="job-sep" aria-hidden="true"></span>' +
+      (emp.ok ? employerFilter() : '') + govFilter() + gradeFilter();
+  }
+
+  function markChips() {
+    var bs = filtersEl.querySelectorAll('button[data-status]'), i;
+    for (i = 0; i < bs.length; i++) {
+      bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-status') === state.status ? 'true' : 'false');
+    }
+  }
+
+  /* «الجهة»: كل الجهات، ثم الجهات المسجّلة هجائياً (الموقوفة موسومة)، ثم
+     الفرص المكتوبة جهتها نصاً بلا ربط — وهي بالذات ما قد تريد الإدارة ربطه */
+  function employerFilter() {
+    var opts = [['all', 'كل الجهات']].concat(employers.map(function (e) {
+      return [String(e.id), e.name + (e.active === false ? ' — موقوفة' : '')];
+    })).concat([[FREE, 'جهات غير مسجّلة']]);
+    return '<select class="input" id="fEmployer" aria-label="تصفية بالجهة المعلنة">' +
+      opts.map(function (o) {
+        return '<option value="' + A.esc(o[0]) + '"' + (o[0] === state.employer ? ' selected' : '') + '>' +
+          A.esc(o[1]) + '</option>';
+      }).join('') + '</select>';
+  }
+
+  /* خيارات المحافظة: القائمة الرسمية و«عدة محافظات» متّحدةً مع القيم
+     المسجّلة فعلاً — القيمة القديمة خارج القائمة هي بعينها ما تحتاج الإدارة
+     الوصول إليه لتصحّحه. واختيارٌ قائم اختفت قيمته بعد حذف آخر فرصة فيه
+     يبقى خياراً، وإلا عرضت القائمة «الكل» والجدول ما يزال مفلتراً. */
+  function govFilter() {
+    var opts = GOVS.concat([MULTI]), seen = {}, i;
+    for (i = 0; i < opts.length; i++) { seen[opts[i]] = 1; }
+    items.forEach(function (r) {
+      var v = txt(r.governorate);
+      if (!v || Object.prototype.hasOwnProperty.call(seen, v)) { return; }
+      seen[v] = 1; opts.push(v);
+    });
+    if (state.gov !== 'all' && !Object.prototype.hasOwnProperty.call(seen, state.gov)) { opts.push(state.gov); }
+    return '<select class="input" id="fGov" aria-label="تصفية بالمحافظة">' +
+      '<option value="all"' + (state.gov === 'all' ? ' selected' : '') + '>كل المحافظات</option>' +
+      opts.map(function (v) {
+        return '<option value="' + A.esc(v) + '"' + (v === state.gov ? ' selected' : '') + '>' +
+          A.esc(v) + '</option>';
+      }).join('') + '</select>';
+  }
+
+  function gradeFilter() {
+    var opts = [['all', 'كل المراتب'], ['any', 'أي مرتبة — بلا تحديد']].concat(
+      GRADES.map(function (G) { return [G.k, G.label]; }));
+    return '<select class="input" id="fGrade" aria-label="تصفية بالمرتبة الهندسية">' +
+      opts.map(function (o) {
+        return '<option value="' + A.esc(o[0]) + '"' + (o[0] === state.grade ? ' selected' : '') + '>' +
+          A.esc(o[1]) + '</option>';
+      }).join('') + '</select>';
+  }
+
+  function paintRows() {
+    var rows = visible();
+    var today = todayLocal();
+    $('totalTag').textContent = A.toAr(rows.length) + ' من ' + A.toAr(items.length);
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="10">' +
+        A.emptyState(items.length ? 'لا نتائج مطابقة.' : 'لا فرص عمل بعد — ابدأ بإضافة أول إعلان.') +
+        '</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(function (r) {
+      var open = isOpen(r, today);
+      var grade = gradeLabel(r.grade);
+
+      /* «لغاية»: التاريخ، ووسم «منتهية» حين يفوت، وتنبيه خافت في الأسبوع
+         الأخير — كي تمدّد الإدارة الموعد قبل أن ينتهي لا بعده */
+      var until = r.deadline ? A.esc(A.arDate(r.deadline)) : 'مفتوح';
+      if (!open) {
+        until += '<span class="tag tag--error">منتهية</span>';
+      } else if (r.deadline) {
+        var left = daysLeft(r.deadline, today);
+        if (left === 0) {
+          until += '<span class="adm-sub">آخر يوم للتقديم اليوم</span>';
+        } else if (left !== null && left > 0 && left <= 7) {
+          until += '<span class="adm-sub">يبقى ' + A.esc(A.count(left, 'يوم واحد', 'يومان', 'أيام', 'يوماً')) + '</span>';
+        }
+      }
+
+      var href = safeHref(r.apply_url);
+      var apply = href
+        ? '<a class="link" href="' + A.esc(href) + '" target="_blank" rel="noopener">فتح</a>' +
+          '<span class="job-host"><bdi>' + A.esc(hrefHost(href)) + '</bdi></span>'
+        : '<span class="tag tag--error">رابط غير صالح</span>';
+
+      /* الجهة: الاسم المعروض في التطبيق، وتحته علامة الربط بسجل الجهات */
+      var employer = A.esc(r.employer);
+      if (r.employer_id) {
+        employer += '<span class="job-emp-reg">' + REG_ICON + 'جهة مسجّلة</span>';
+        if (hiddenByEmp(r)) {
+          employer += '<span class="job-emp-off">(موقوفة — مخفية من التطبيق)</span>';
+        }
+      }
+
+      return '<tr data-id="' + A.esc(r.id) + '">' +
+        '<td><span class="job-ref">' + A.esc(A.toAr(r.ref_no)) + '</span></td>' +
+        '<td class="job-title-cell"><b>' + A.esc(r.title) + '</b>' +
+          (r.details ? '<small>' + A.esc(r.details) + '</small>' : '') + '</td>' +
+        '<td>' + (grade ? '<span class="tag">' + A.esc(grade) + '</span>'
+                        : '<span class="muted">أي مرتبة</span>') + '</td>' +
+        '<td class="job-employer">' + employer + '</td>' +
+        '<td>' + (r.governorate ? A.esc(r.governorate) : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + A.esc(A.arDate(r.posted_on)) + '</td>' +
+        '<td class="job-deadline">' + until + '</td>' +
+        '<td>' + apply + '</td>' +
+        '<td>' + (r.active
+            ? '<span class="tag tag--success">منشور</span>'
+            : '<span class="tag">غير منشور</span>') + '</td>' +
+        '<td><span class="job-acts">' +
+          '<button class="btn btn-outline btn-sm" data-act="edit" data-write>تعديل</button>' +
+          '<button class="btn btn-outline btn-sm" data-act="toggle" data-write>' +
+            (r.active ? 'سحب' : 'نشر') + '</button>' +
+          '<button class="btn btn-outline btn-sm" data-act="del" data-write>حذف</button>' +
+        '</span></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  /* ---------- تبويب الجهات: المؤشرات والجدول ---------- */
+
+  function paintEmployers() {
+    var add = $('empAddBtn');
+    if (!emp.ok) {
+      add.disabled = true;
+      $('empKpis').innerHTML = '';
+      $('empTotalTag').textContent = '—';
+      var msg = emp.why === 'api' ? 'نسخة الواجهة قديمة — حدّث الصفحة (Ctrl+F5).'
+              : emp.why === 'db' ? empErr({ code: 'PGRST202' })
+              : A.errText(emp.err);
+      empBody.innerHTML = '<tr><td colspan="6">' +
+        A.errorState(msg, emp.why === 'api' ? '' : 'empRetry') + '</td></tr>';
+      var rb = $('empRetry');
+      if (rb) { rb.addEventListener('click', load); }
+      return;
+    }
+    add.disabled = false;
+    var c = { all: employers.length, active: 0, withOpen: 0, off: 0 };
+    employers.forEach(function (e) {
+      if (e.active === false) { c.off++; return; }
+      c.active++;
+      if (empStats(e).open > 0) { c.withOpen++; }
+    });
+    $('empKpis').innerHTML =
+      kpi('إجمالي الجهات', c.all, 'مسجّلة في سجل الجهات المعلنة') +
+      kpi('مفعّلة', c.active, 'تظهر فرصها المنشورة في التطبيق') +
+      kpi('لها فرص متاحة الآن', c.withOpen, 'مفعّلة ولها فرصة منشورة لم ينتهِ موعدها', 'adm-kpi--gold') +
+      kpi('موقوفة', c.off, 'فرصها كلها مخفية عن التطبيق', 'adm-kpi--warm');
+    paintEmpRows();
+  }
+
+  function paintEmpRows() {
+    if (!emp.ok) { return; }
+    var rows = employers.filter(empVisible);
+    $('empTotalTag').textContent = A.toAr(rows.length) + ' من ' + A.toAr(employers.length);
+
+    if (!rows.length) {
+      empBody.innerHTML = '<tr><td colspan="6">' + (employers.length
+        ? A.emptyState('لا نتائج مطابقة.')
+        : A.emptyState('لا جهات معلنة مسجّلة بعد',
+            'أضف أول جهة بزر «إضافة جهة»، ثم اخترها في لوحة الفرصة لتُنشر فرصها مرتبطةً بها.')) +
+        '</td></tr>';
+      return;
+    }
+
+    empBody.innerHTML = rows.map(function (e) {
+      var s = empStats(e), off = e.active === false;
+      var jobsCell = s.total
+        ? '<span class="emp-jobs"><b>' + A.toAr(s.open) + '</b> متاحة من ' + A.toAr(s.total) + '</span>' +
+          (off && s.open ? '<span class="adm-sub">مخفية من التطبيق</span>' : '')
+        : '<span class="muted">لا فرص بعد</span>';
+      return '<tr data-id="' + A.esc(e.id) + '">' +
+        '<td class="emp-name-cell"><b>' + A.esc(e.name) + '</b>' +
+          '<span class="tag">' + A.esc(kindLabel(e.kind)) + '</span>' +
+          (e.about ? '<small>' + A.esc(e.about) + '</small>' : '') + '</td>' +
+        '<td>' + (e.governorate ? A.esc(e.governorate) : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + contactHTML(e) + '</td>' +
+        '<td>' + jobsCell + '</td>' +
+        '<td>' + (off ? '<span class="tag">موقوفة</span>' : '<span class="tag tag--success">مفعّلة</span>') + '</td>' +
+        '<td><span class="emp-acts">' +
+          '<button class="btn btn-outline btn-sm" data-act="emp-edit" data-write>تعديل</button>' +
+          '<button class="btn btn-outline btn-sm" data-act="emp-toggle" data-write>' + (off ? 'تفعيل' : 'إيقاف') + '</button>' +
+          '<button class="btn btn-outline btn-sm" data-act="emp-add-job" data-write>إضافة فرصة</button>' +
+          '<button class="btn btn-outline btn-sm" data-act="emp-jobs"' +
+            (s.total ? '' : ' disabled title="لا فرص مرتبطة بهذه الجهة بعد"') + '>فرصها</button>' +
+          '<button class="btn btn-outline btn-sm" data-act="emp-del" data-write>حذف</button>' +
+        '</span></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function byId(id) {
+    return items.filter(function (r) { return String(r.id) === String(id); })[0];
+  }
+
+  function kpi(label, n, hint, mod) {
+    return '<div class="adm-kpi' + (mod ? ' ' + mod : '') + '">' +
+      '<span class="adm-kpi-label">' + A.esc(label) + '</span>' +
+      '<span class="adm-kpi-num">' + A.toAr(n) + '</span>' +
+      '<span class="adm-kpi-hint">' + A.esc(hint) + '</span></div>';
+  }
+
+  /* «فرصها»: إلى تبويب الفرص مصفّىً بهذه الجهة وحدها — وبقية التصفيات والبحث
+     تُفرَّغ، فيرى الموظّف فرص الجهة كلها لا ما تقاطع منها مع تصفية سابقة */
+  function showEmployerJobs(e) {
+    state.employer = String(e.id);
+    state.status = 'all'; state.gov = 'all'; state.grade = 'all'; state.search = '';
+    var q = $('q');
+    if (q) { q.value = ''; }
+    paintFilters();
+    paintRows();
+    setTab('jobs', true);
+    var tabs = $('jobTabs');
+    if (tabs && tabs.getBoundingClientRect) {
+      var y = tabs.getBoundingClientRect().top + (window.pageYOffset || 0) - 96;
+      window.scrollTo(0, Math.max(0, y));
+    }
+  }
+
+  /* ---------- اللوحة الجانبية: إنشاء فرصة وتعديلها ---------- */
+
+  function fieldsHTML(r, presetEmp) {
+    r = r || {};
+    return '' +
+      '<label class="field"><span>عنوان فرصة العمل</span>' +
+        '<input class="input" id="f-title" maxlength="200" placeholder="مثال: مهندس مدني — إشراف على التنفيذ" value="' +
+          A.esc(r.title || '') + '"></label>' +
+      employerFieldsHTML(r, presetEmp) +
+      '<div class="sheet-pair">' +
+        '<label class="field"><span>المرتبة الهندسية المطلوبة</span>' + gradeSelect(r.grade) + '</label>' +
+        '<label class="field"><span>المحافظة</span>' + govSelect(r.governorate, 'f-gov') + '</label>' +
+      '</div>' +
+      '<div class="sheet-pair">' +
+        '<label class="field"><span>تاريخ الإعلان</span>' +
+          '<input class="input" id="f-posted" type="date" value="' +
+            A.esc(r.posted_on || todayLocal()) + '"></label>' +
+        '<label class="field"><span>لغاية — آخر موعد للتقديم (اختياري)</span>' +
+          '<input class="input" id="f-deadline" type="date" value="' + A.esc(r.deadline || '') + '"></label>' +
+      '</div>' +
+      '<label class="field"><span>رابط التقديم</span>' +
+        '<input class="input" id="f-apply" dir="ltr" maxlength="600" placeholder="https://…" value="' +
+          A.esc(r.apply_url || '') + '">' +
+        '<span class="hint">رابط صفحة التقديم لدى الجهة، أو <bdi dir="ltr">mailto:</bdi> لبريد يستقبل الطلبات</span></label>' +
+      '<label class="field"><span>تفاصيل الفرصة (اختياري)</span>' +
+        '<textarea class="input" id="f-details" rows="4" maxlength="1500">' + A.esc(r.details || '') + '</textarea>' +
+        '<span class="hint">الاختصاص، سنوات الخبرة، الوثائق المطلوبة، طبيعة العقد… تظهر حين يفتح المهندس الفرصة.</span></label>' +
+      '<label class="job-check">' +
+        '<input type="checkbox" id="f-active"' + (r.active === false ? '' : ' checked') + '> منشورة</label>';
+  }
+
+  /* «الجهة المعلنة»: قائمة الجهات المسجّلة ومعها «جهة غير مسجّلة» تكشف حقل
+     الاسم الحرّ. والسجل غير متاح ⇒ الحقل الحرّ وحده كما قبل ٠٣٤ — وفرصةٌ
+     مرتبطة بجهة يبقى اسمها للقراءة: محفّز القاعدة يعيده إلى اسم الجهة
+     المسجّلة مهما كُتب، فتعديله هنا وعدٌ لا يُوفى */
+  function employerFieldsHTML(r, presetEmp) {
+    if (!emp.ok) {
+      var linked = !!r.employer_id;
+      return '<label class="field"><span>الجهة المعلنة</span>' +
+        '<input class="input" id="f-employer" maxlength="200" value="' + A.esc(r.employer || '') + '"' +
+          (linked ? ' readonly aria-readonly="true"' : '') + '>' +
+        (linked ? '<span class="hint">مرتبطة بجهة مسجّلة — يُعدَّل اسمها من تبويب «الجهات المعلنة».</span>' : '') +
+        '</label>';
+    }
+    var cur = presetEmp ? String(presetEmp)
+            : r.employer_id ? String(r.employer_id)
+            : r.id ? FREE
+            : (employers.length ? '' : FREE);
+    var opts = '<option value=""' + (cur === '' ? ' selected' : '') + '>— اختر الجهة المعلنة —</option>' +
+      employers.map(function (e) {
+        var id = String(e.id);
+        return '<option value="' + A.esc(id) + '"' + (id === cur ? ' selected' : '') + '>' +
+          A.esc(e.name) + (e.active === false ? ' — موقوفة' : '') + '</option>';
+      }).join('');
+    /* معرّفٌ ليس في السجل المحمّل يبقى خياراً باسمه: فتح اللوحة وحفظها لا
+       يفكّ ارتباطاً قائماً بصمت */
+    if (cur && cur !== FREE && !EMP[cur]) {
+      opts += '<option value="' + A.esc(cur) + '" selected>' + A.esc(r.employer || cur) +
+        ' (غير موجودة في السجل المحمّل)</option>';
+    }
+    opts += '<option value="' + FREE + '"' + (cur === FREE ? ' selected' : '') + '>جهة غير مسجّلة — اكتب اسمها</option>';
+    return '' +
+      '<label class="field"><span>الجهة المعلنة</span>' +
+        '<select class="input" id="f-emp">' + opts + '</select>' +
+        '<span class="hint" id="h-emp" hidden></span></label>' +
+      '<label class="field" id="w-employer"' + (cur === FREE ? '' : ' hidden') + '><span>اسم الجهة غير المسجّلة</span>' +
+        '<input class="input" id="f-employer" maxlength="200" value="' + A.esc(r.employer || '') + '"></label>';
+  }
+
+  function syncEmpField(host, focus) {
+    var sel = host.querySelector('#f-emp');
+    if (!sel) { return; }
+    var v = sel.value, w = host.querySelector('#w-employer'), h = host.querySelector('#h-emp');
+    if (w) { w.hidden = v !== FREE; }
+    var e = EMP[v], msg = '';
+    if (e && e.active === false) {
+      msg = 'هذه الجهة موقوفة: تُحفظ الفرصة، لكنها لا تظهر في التطبيق حتى تُفعَّل الجهة.';
+    } else if (!employers.length) {
+      msg = 'لا جهات مسجّلة بعد — أضفها من تبويب «الجهات المعلنة» لتُربط بها الفرص، أو اكتب اسم الجهة هنا.';
+    }
+    if (h) { h.textContent = msg; h.hidden = !msg; }
+    if (focus && v === FREE) {
+      var inp = host.querySelector('#f-employer');
+      if (inp) { inp.focus(); }
+    }
+  }
+
+  /* «أي مرتبة» قيمته فارغة فتُحفَظ null — والمرتبة المسجّلة خارج القائمة
+     (نسخة قديمة من القائمة المشتركة) تبقى خياراً كي لا يبدّلها الحفظ صامتاً */
+  function gradeSelect(current) {
+    var cur = txt(current);
+    var opts = GRADES.slice();
+    if (cur && !gradeLabel(cur)) { opts.push({ k: cur, label: cur + ' (قيمة سابقة)' }); }
+    return '<select class="input" id="f-grade">' +
+      '<option value=""' + (cur ? '' : ' selected') + '>أي مرتبة</option>' +
+      opts.map(function (G) {
+        return '<option value="' + A.esc(G.k) + '"' + (G.k === cur ? ' selected' : '') + '>' +
+          A.esc(G.label) + '</option>';
+      }).join('') + '</select>';
+  }
+
+  /* قائمة منسدلة لا حقل نصّ حرّ: «اللاذقية» و«لاذقية» تصنعان محافظتين
+     لمكانٍ واحد. والقيمة المسجّلة سابقاً خارج القائمة تُوسم في نصّها لا في
+     قيمتها، فلا يبدّلها مجرّد فتح اللوحة وحفظها. تخدم لوحتَي الفرصة والجهة */
+  function govSelect(current, id) {
+    var cur = txt(current);
+    var opts = GOVS.concat([MULTI]);
+    if (cur && opts.indexOf(cur) < 0) { opts.push(cur); }
+    return '<select class="input" id="' + id + '">' +
+      '<option value=""' + (cur ? '' : ' selected') + '>— غير محدَّد —</option>' +
+      opts.map(function (v) {
+        var legacy = GOVS.indexOf(v) < 0 && v !== MULTI;
+        return '<option value="' + A.esc(v) + '"' + (v === cur ? ' selected' : '') + '>' +
+          A.esc(v) + (legacy ? ' (قيمة سابقة)' : '') + '</option>';
+      }).join('') + '</select>';
+  }
+
+  /* اختيار الجهة في اللوحة: none = السجل غير متاح (حقل حرّ وحده) · reg جهة
+     مسجّلة · free جهة غير مسجّلة · unset لم يُختر شيء */
+  function empChoice(host) {
+    var sel = host.querySelector('#f-emp');
+    if (!sel) { return { mode: 'none', id: '' }; }
+    if (sel.value === FREE) { return { mode: 'free', id: '' }; }
+    if (sel.value) { return { mode: 'reg', id: sel.value }; }
+    return { mode: 'unset', id: '' };
+  }
+
+  function readFields(host) {
+    var g = function (id) { var el = host.querySelector('#' + id); return el ? el.value.trim() : ''; };
+    var chk = function (id) { var el = host.querySelector('#' + id); return !!(el && el.checked); };
+    /* الحقول نفسها التي يقبلها admin_save_job_post وحدها — لا حقول عرض.
+       والفراغات الداخلية تُطوى هنا كما تطويها القاعدة، فيقيس فحص الطول
+       النصَّ الذي سيُحفظ فعلاً */
+    var f = {
+      title: g('f-title').replace(/\s+/g, ' '),
+      grade: g('f-grade') || null,
+      governorate: g('f-gov') || null,
+      /* التاريخ يُطوى للاتيني: متصفح قديم بلا منتقي تاريخ يترك الحقل نصاً
+         حرّاً قد تُكتب فيه أرقام هندية */
+      posted_on: A.toAr(g('f-posted')),
+      deadline: A.toAr(g('f-deadline')) || null,
+      apply_url: normApply(g('f-apply')),
+      details: g('f-details') || null,
+      active: chk('f-active')
+    };
+    /* الجهة (٠٣٤): مسجّلة ⇒ employer_id وحده والاسم يأخذه محفّز القاعدة من
+       السجل · غير مسجّلة ⇒ employer_id: null (فكّ أي ارتباط) مع الاسم ·
+       السجل غير متاح ⇒ الاسم وحده بلا employer_id، فلا يُفكّ ارتباطٌ لم يُرَ */
+    var ch = empChoice(host);
+    var name = g('f-employer').replace(/\s+/g, ' ');
+    if (ch.mode === 'reg') { f.employer_id = ch.id; }
+    else if (ch.mode === 'free') { f.employer_id = null; f.employer = name; }
+    else if (ch.mode === 'none') { f.employer = name; }
+    return f;
+  }
+
+  /* الفحوص نفسها التي تجريها القاعدة، بالرسائل العربية نفسها تقريباً —
+     كي لا تظهر للإدارة رسالة قيدٍ خام، ولا تذهب رحلة إلى الخادم لأجل خطأ
+     يُكتشف هنا */
+  function checkFields(f, ch) {
+    var DATE = /^\d{4}-\d{2}-\d{2}$/;
+    if (f.title.length < 2) { return 'عنوان فرصة العمل مطلوب — حرفان على الأقل.'; }
+    if (f.title.length > 200) { return 'عنوان فرصة العمل أطول من 200 حرف — اختصره.'; }
+    if (ch.mode === 'unset') {
+      return 'اختر الجهة المعلنة من القائمة، أو «جهة غير مسجّلة» واكتب اسمها.';
+    }
+    if (ch.mode === 'reg' && !UUID_RE.test(ch.id)) { return 'الجهة المعلنة غير موجودة — اخترها من القائمة.'; }
+    if (Object.prototype.hasOwnProperty.call(f, 'employer')) {
+      if (f.employer.length < 2) { return 'اسم الجهة المعلنة مطلوب — حرفان على الأقل.'; }
+      if (f.employer.length > 200) { return 'اسم الجهة المعلنة أطول من 200 حرف — اختصره.'; }
+    }
+    if (!f.posted_on) { return 'تاريخ الإعلان مطلوب.'; }
+    if (!DATE.test(f.posted_on) || (f.deadline && !DATE.test(f.deadline))) {
+      return 'صيغة التاريخ غير صحيحة — استعمل الشكل 2026-09-14.';
+    }
+    if (f.deadline && f.deadline < f.posted_on) {
+      return 'آخر موعد للتقديم يسبق تاريخ الإعلان — صحّح أحد التاريخين.';
+    }
+    if (!f.apply_url) { return 'رابط التقديم مطلوب — رابط صفحة التقديم لدى الجهة أو mailto: لبريدها.'; }
+    if (f.apply_url.length > 600) { return 'رابط التقديم أطول من 600 محرف.'; }
+    if (f.apply_url.indexOf('\\') > -1) {
+      return 'رابط التقديم لا يقبل الشرطة المائلة العكسية «\\» — استعمل «/».';
+    }
+    if (/^mailto:/i.test(f.apply_url) && /[?&%,;]/.test(f.apply_url)) {
+      return 'بريد التقديم عنوانٌ واحد مجرّد بلا إضافات (?cc= أو ?bcc= أو ?subject=) — مثال: mailto:hr@example.com';
+    }
+    if (!safeHref(f.apply_url)) {
+      return 'رابط التقديم يبدأ بـ https:// أو mailto: — مثال: https://example.com/jobs أو mailto:hr@example.com';
+    }
+    if (f.details && f.details.length > 1500) { return 'تفاصيل الفرصة أطول من 1500 حرف — اختصرها.'; }
+    return '';
+  }
+
+  /* presetEmp: معرّف جهة تُختار مسبقاً — زر «إضافة فرصة» في صف الجهة */
+  function openEdit(r, presetEmp) {
+    var sheet = A.sheet({
+      title: r ? 'تعديل فرصة العمل رقم ' + A.toAr(r.ref_no) : 'إضافة فرصة عمل',
+      okLabel: r ? 'حفظ التعديلات' : 'إضافة الفرصة',
+      body: fieldsHTML(r, presetEmp),
+      onOk: function (host) {
+        var f = readFields(host);
+        var ch = empChoice(host);
+        /* الرابط المُكمَل يُعاد إلى الحقل: ترى الإدارة ما سيُحفظ فعلاً،
+           ولو رُفض النموذج لسببٍ آخر بقي التصحيح في مكانه */
+        var ap = host.querySelector('#f-apply');
+        if (ap && f.apply_url) { ap.value = f.apply_url; }
+        var bad = checkFields(f, ch);
+        if (bad) { return Promise.reject(new Error(bad)); }
+        var p = r ? { id: r.id } : {};
+        for (var k in f) { if (Object.prototype.hasOwnProperty.call(f, k)) { p[k] = f[k]; } }
+        /* الرفض يُترجم هنا لا في A.sheet: رسالة عربية تمرّ من errText كما هي */
+        return API.admin.saveJobPost(p).then(function (row) {
+          var no = row && row.ref_no != null ? ' برقم ' + A.toAr(row.ref_no) : '';
+          var e = ch.mode === 'reg' ? EMP[ch.id] : null;
+          A.toast(r ? 'حُفظت تعديلات «' + f.title + '».'
+                    : 'أُضيفت فرصة العمل «' + f.title + '»' + no +
+                      (e ? ' لدى «' + e.name + '»' : '') + '.', 'ok');
+          load();
+        }, function (err) { throw new Error(dbErr(err)); });
+      }
+    });
+    var host = sheet && sheet.el ? sheet.el : document;
+    /* لغاية لا تسبق تاريخ الإعلان: حدٌّ أدنى لمنتقي التاريخ يتبع الحقل الأول */
+    var posted = host.querySelector('#f-posted'), dl = host.querySelector('#f-deadline');
+    if (posted && dl) {
+      var sync = function () { dl.min = posted.value || ''; };
+      posted.addEventListener('change', sync);
+      sync();
+    }
+    var sel = host.querySelector('#f-emp');
+    if (sel) {
+      sel.addEventListener('change', function () { syncEmpField(host, true); });
+      syncEmpField(host, false);
+    }
+  }
+
+  function togglePublish(r, btn) {
+    if (!r) { return; }
+    var next = !r.active;
+    if (btn) { btn.disabled = true; }
+    /* حمولة جزئية عمداً — بخلاف سجل الاعتمادات: admin_save_job_post يحدّث
+       المفاتيح الحاضرة في الحمولة وحدها ويُبقي غيرها كما هو، فالمعرّف مع
+       active يكفي ولا يمحو الحفظُ حقلاً */
+    API.admin.saveJobPost({ id: r.id, active: next }).then(function () {
+      var closed = !isOpen(r, todayLocal());
+      var hid = hiddenByEmp(r);
+      A.toast(next
+        ? 'نُشرت «' + r.title + '»' + (hid ? ' — جهتها موقوفة فلا تظهر في التطبيق حتى تُفعَّل.'
+                                          : closed ? ' — موعدها منتهٍ فتظهر تحت «انتهى التقديم».' : '.')
+        : 'سُحبت «' + r.title + '» من التطبيق.', 'ok');
+      load();
+    }).catch(function (err) {
+      if (btn) { btn.disabled = false; }
+      A.toast(dbErr(err), 'bad');
+    });
+  }
+
+  function askDelete(r) {
+    if (!r) { return; }
+    A.confirm({
+      title: 'حذف فرصة العمل',
+      text: 'ستُحذف فرصة «' + r.title + '» لدى «' + r.employer + '» نهائياً ولا يمكن التراجع. '
+          + 'وإن كان القصد إخفاءها مؤقتاً فاستعمل «سحب» بدل الحذف — تبقى في السجل وتعود بضغطة.',
+      okLabel: 'حذف نهائي',
+      danger: true
+    }).then(function (ok) {
+      if (ok === null || !ok) { return; }
+      API.admin.deleteJobPost(r.id).then(function () {
+        A.toast('حُذفت فرصة «' + r.title + '».', 'ok');
+        load();
+      }).catch(function (err) { A.toast(dbErr(err), 'bad'); });
+    });
+  }
+
+  /* ---------- اللوحة الجانبية: الجهة المعلنة ---------- */
+
+  function kindSelect(current) {
+    var cur = txt(current) || 'company';
+    var opts = KINDS.slice();
+    if (!KINDS.filter(function (x) { return x.k === cur; }).length) {
+      opts.push({ k: cur, label: cur + ' (قيمة سابقة)' });
+    }
+    return '<select class="input" id="e-kind">' +
+      opts.map(function (K) {
+        return '<option value="' + A.esc(K.k) + '"' + (K.k === cur ? ' selected' : '') + '>' +
+          A.esc(K.label) + '</option>';
+      }).join('') + '</select>';
+  }
+
+  function empFieldsHTML(e) {
+    e = e || {};
+    var about = String(e.about || '');
+    return '' +
+      '<label class="field"><span>اسم الجهة</span>' +
+        '<input class="input" id="e-name" maxlength="200" placeholder="الاسم الرسمي كما يُعرض للمهندسين" value="' +
+          A.esc(e.name || '') + '"></label>' +
+      '<div class="sheet-pair">' +
+        '<label class="field"><span>نوع الجهة</span>' + kindSelect(e.kind) + '</label>' +
+        '<label class="field"><span>المحافظة</span>' + govSelect(e.governorate, 'e-gov') + '</label>' +
+      '</div>' +
+      '<div class="sheet-pair">' +
+        '<label class="field"><span>الهاتف</span>' +
+          '<input class="input" id="e-phone" dir="ltr" inputmode="tel" autocomplete="off" maxlength="40" placeholder="+963 11 000 0000" value="' +
+            A.esc(e.phone || '') + '"></label>' +
+        '<label class="field"><span>البريد الإلكتروني</span>' +
+          '<input class="input" id="e-email" dir="ltr" inputmode="email" autocomplete="off" spellcheck="false" maxlength="200" placeholder="hr@example.com" value="' +
+            A.esc(e.email || '') + '"></label>' +
+      '</div>' +
+      '<span class="emp-hint">الهاتف والبريد والموقع اختيارية، وما يُكتب منها يظهر للمهندسين في تفاصيل كل فرصة لهذه الجهة.</span>' +
+      '<label class="field"><span>الموقع الإلكتروني (اختياري)</span>' +
+        '<input class="input" id="e-site" dir="ltr" autocomplete="off" spellcheck="false" maxlength="300" placeholder="example.com" value="' +
+          A.esc(e.website || '') + '"></label>' +
+      '<label class="field"><span>نبذة عن الجهة (اختياري)</span>' +
+        '<textarea class="input" id="e-about" rows="4" maxlength="400">' + A.esc(about) + '</textarea>' +
+        '<span class="hint"><span id="e-about-n">' + A.toAr(about.length) + '</span> من 400 حرف — ' +
+          'تظهر للمهندسين تحت «عن الجهة المعلنة» في تفاصيل الفرصة.</span></label>' +
+      '<label class="job-check">' +
+        '<input type="checkbox" id="e-active"' + (e.active === false ? '' : ' checked') + '> مفعّلة</label>' +
+      '<span class="emp-hint">إيقاف الجهة يخفي كل فرصها من التطبيق دون حذفها، وتعود بإعادة التفعيل.</span>';
+  }
+
+  /* الهاتف: أرقام لاتينية (A.toAr يطوي الهندية)، والشرطات والأقواس والنقاط
+     التي يكتبها الناس عادةً «011-234 5678» تصير مسافات بدل رفض الرقم */
+  function normPhone(v) {
+    return oneLine(A.toAr(v).replace(/[\-\u2010-\u2015().\/]/g, ' '));
+  }
+  function normEmail(v) {
+    return oneLine(v).replace(/^mailto:/i, '').toLowerCase();
+  }
+  /* الموقع: «www.» ونطاقٌ مجرّد يُكمَلان بـhttps:// كما في رابط التقديم،
+     وما له مخطط غير مقبول يبقى كما هو فيرفضه الفحص برسالة صريحة */
+  function normSite(v) {
+    v = oneLine(v);
+    if (!v) { return ''; }
+    if (/^www\./i.test(v)) { return 'https://' + v; }
+    if (/^[a-z][a-z0-9+.\-]*:(?!\d)/i.test(v)) { return v; }
+    if (/^\/\//.test(v)) { return 'https:' + v; }
+    if (/^[^\s\/@:\\]+\.[^\s\/@:.\\]{2,}(:\d{1,5})?([\/?#]\S*)?$/.test(v)) { return 'https://' + v; }
+    return v;
+  }
+  /* النبذة تحفظ فواصل أسطرها (التطبيق يعرضها pre-line)، ويُطوى ما سواها */
+  function cleanAbout(v) {
+    return String(v == null ? '' : v)
+      .replace(/\r\n?/g, '\n')
+      .replace(/[\u200B-\u200F\u061C\uFEFF\t ]+/g, ' ')
+      .replace(/ ?\n ?/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/^[\s]+|[\s]+$/g, '');
+  }
+
+  function readEmployer(host) {
+    var g = function (id) { var el = host.querySelector('#' + id); return el ? el.value : ''; };
+    var chk = function (id) { var el = host.querySelector('#' + id); return !!(el && el.checked); };
+    /* حقول admin_save_job_employer وحدها، والفارغ null */
+    return {
+      name: oneLine(g('e-name')),
+      kind: txt(g('e-kind')) || 'company',
+      governorate: oneLine(g('e-gov')) || null,
+      phone: normPhone(g('e-phone')) || null,
+      email: normEmail(g('e-email')) || null,
+      website: normSite(g('e-site')) || null,
+      about: cleanAbout(g('e-about')) || null,
+      active: chk('e-active')
+    };
+  }
+
+  /* قيود جدول job_employers نفسها برسائل عربية — والبريد أضيق قليلاً من
+     القيد: عنوانٌ مجرّد بلا ? & % , ; / \ كي يصلح رابط «مراسلة» في التطبيق */
+  function checkEmployer(f, selfId) {
+    if (f.name.length < 2) { return 'اسم الجهة المعلنة مطلوب — حرفان على الأقل.'; }
+    if (f.name.length > 200) { return 'اسم الجهة المعلنة أطول من 200 حرف — اختصره.'; }
+    var low = f.name.toLowerCase();
+    var dup = employers.some(function (x) {
+      return String(x.id) !== String(selfId || '') && oneLine(x.name).toLowerCase() === low;
+    });
+    if (dup) { return 'توجد جهة معلنة بالاسم نفسه — عدّل بطاقتها القائمة بدل إضافة نسخة ثانية.'; }
+    if (!KINDS.filter(function (x) { return x.k === f.kind; }).length) {
+      return 'نوع الجهة غير معروف — اختر من القائمة.';
+    }
+    if (f.governorate && (f.governorate.length < 2 || f.governorate.length > 60)) {
+      return 'اسم المحافظة بين حرفين و60 حرفاً.';
+    }
+    if (f.phone) {
+      if (f.phone.length > 30) { return 'رقم الهاتف أطول من 30 محرفاً.'; }
+      if (!PHONE_RE.test(f.phone)) {
+        return 'رقم الهاتف أرقامٌ ومسافات فقط (6 أرقام على الأقل)، ويجوز «+» في أوله — مثال: +963 11 234 5678';
+      }
+    }
+    if (f.email) {
+      if (f.email.length > 200) { return 'البريد الإلكتروني أطول من 200 محرف.'; }
+      if (!EMAIL_RE.test(f.email) || !BARE_MAIL_RE.test(f.email)) {
+        return 'صيغة البريد الإلكتروني غير صحيحة — عنوانٌ واحد مجرّد، مثال: hr@example.com';
+      }
+    }
+    if (f.website) {
+      if (f.website.length > 300) { return 'رابط الموقع الإلكتروني أطول من 300 محرف.'; }
+      if (f.website.indexOf('\\') > -1) {
+        return 'رابط الموقع الإلكتروني لا يقبل الشرطة المائلة العكسية «\\» — استعمل «/».';
+      }
+      if (!WEB_RE.test(f.website)) {
+        return 'رابط الموقع الإلكتروني يبدأ بـ https:// — مثال: https://example.com';
+      }
+    }
+    if (f.about && f.about.length > 400) { return 'نبذة الجهة أطول من 400 حرف — اختصرها.'; }
+    return '';
+  }
+
+  function openEmployer(e) {
+    var sheet = A.sheet({
+      title: e ? 'تعديل الجهة المعلنة' : 'إضافة جهة معلنة',
+      okLabel: e ? 'حفظ التعديلات' : 'إضافة الجهة',
+      body: empFieldsHTML(e),
+      onOk: function (host) {
+        var f = readEmployer(host);
+        /* المُطبَّع يُعاد إلى حقوله: ترى الإدارة ما سيُحفظ فعلاً */
+        var put = function (id, v) { var el = host.querySelector('#' + id); if (el && v) { el.value = v; } };
+        put('e-phone', f.phone); put('e-email', f.email); put('e-site', f.website);
+        var bad = checkEmployer(f, e ? e.id : null);
+        if (bad) { return Promise.reject(new Error(bad)); }
+        var p = e ? { id: e.id } : {};
+        for (var k in f) { if (Object.prototype.hasOwnProperty.call(f, k)) { p[k] = f[k]; } }
+        return API.admin.saveJobEmployer(p).then(function () {
+          var s = e ? empStats(e) : { total: 0 };
+          var renamed = e && oneLine(e.name) !== f.name && s.total;
+          A.toast(e
+            ? 'حُفظت تعديلات «' + f.name + '»' +
+              (renamed ? ' — وحُدّث الاسم في فرصها المرتبطة بها كذلك.' : '.')
+            : 'أُضيفت «' + f.name + '» إلى سجل الجهات المعلنة — اخترها في لوحة الفرصة لتُنشر مرتبطةً بها.', 'ok');
+          load();
+        }, function (err) { throw new Error(empErr(err)); });
+      }
+    });
+    var host = sheet && sheet.el ? sheet.el : document;
+    var ab = host.querySelector('#e-about'), n = host.querySelector('#e-about-n');
+    if (ab && n) {
+      ab.addEventListener('input', function () { n.textContent = A.toAr(ab.value.length); });
+    }
+  }
+
+  function toggleEmployer(e, btn) {
+    var next = e.active === false;
+    if (btn) { btn.disabled = true; }
+    /* حمولة جزئية كتبديل نشر الفرصة: الحفظ يحدّث المفاتيح الحاضرة وحدها */
+    API.admin.saveJobEmployer({ id: e.id, active: next }).then(function () {
+      var s = empStats(e);
+      A.toast(next
+        ? 'فُعّلت «' + e.name + '»' + (s.total ? ' — تظهر فرصها المنشورة في التطبيق من جديد.' : '.')
+        : 'أُوقفت «' + e.name + '»' + (s.total ? ' — فرصها كلها مخفية الآن من التطبيق دون حذفها.' : '.'), 'ok');
+      load();
+    }).catch(function (err) {
+      if (btn) { btn.disabled = false; }
+      A.toast(empErr(err), 'bad');
+    });
+  }
+
+  function askDeleteEmployer(e) {
+    var s = empStats(e), off = e.active === false;
+    var text = 'ستُحذف «' + e.name + '» من سجل الجهات المعلنة نهائياً ولا يمكن التراجع. ';
+    if (s.total) {
+      text += 'عدد فرصها في «فرص العمل»: ' + A.toAr(s.total) + ' — لا تُحذف، بل تبقى باسمها الأخير «' +
+        e.name + '» غير مرتبطة بجهة مسجّلة. ';
+      /* الإيقاف يُخفي الفرص عبر الجهة: بعد حذفها لا جهة موقوفة تُخفيها */
+      text += off
+        ? 'وتنبيه: الجهة موقوفة الآن، فبعد حذفها تعود فرصها المنشورة إلى الظهور في التطبيق — اسحبها أولاً إن كان القصد إخفاءها.'
+        : 'وإن كان القصد إخفاء فرصها مؤقتاً فاستعمل «إيقاف» بدل الحذف.';
+    } else {
+      text += 'لا فرص مرتبطة بها.';
+    }
+    A.confirm({
+      title: 'حذف الجهة المعلنة',
+      text: text,
+      okLabel: 'حذف نهائي',
+      danger: true
+    }).then(function (ok) {
+      if (ok === null || !ok) { return; }
+      API.admin.deleteJobEmployer(e.id).then(function (res) {
+        var n = res && res.detached_jobs != null ? (+res.detached_jobs || 0) : 0;
+        A.toast('حُذفت «' + e.name + '» من سجل الجهات' +
+          (n ? ' — فُكّ ارتباط ' + A.count(n, 'فرصة واحدة', 'فرصتين', 'فرص', 'فرصة') + ' وبقيت باسمها.' : '.'), 'ok');
+        if (state.employer === String(e.id)) { state.employer = 'all'; }
+        load();
+      }).catch(function (err) { A.toast(empErr(err), 'bad'); });
+    });
+  }
+})();
+</script>
+</body>
+</html>

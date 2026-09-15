@@ -104,7 +104,13 @@
     'bulk:pending':    'إجراء جماعي',
     'staff:add':       'إدارة الطاقم',
     'staff:remove':    'إدارة الطاقم',
-    'release:publish': 'نشر إصدار'
+    'release:publish': 'نشر إصدار',
+    'job:save':        'حفظ فرصة عمل',
+    'job:delete':      'حذف فرصة عمل',
+    'discount:save':   'حفظ عرض خصم',
+    'discount:delete': 'حذف عرض خصم',
+    'employer:save':   'حفظ جهة معلنة',
+    'employer:delete': 'حذف جهة معلنة'
   };
 
   var ENTITY = {
@@ -113,7 +119,10 @@
     payment:     'دفعة',
     attempt:     'محاولة امتحان',
     certificate: 'شهادة',
-    app_release: 'إصدار تطبيق'
+    app_release: 'إصدار تطبيق',
+    job:         'فرصة عمل',
+    discount:    'عرض خصم',
+    employer:    'جهة معلنة'
   };
 
   /* مفاتيح حمولة detail كما تبنيها دوال القاعدة */
@@ -126,7 +135,9 @@
     active: 'مفعّل', code: 'الرمز', score: 'الدرجة', amount: 'المبلغ', op_no: 'رقم العملية',
     account_id: 'معرّف الحساب', holder_name: 'اسم صاحب الشهادة', cert_type: 'نوع الشهادة',
     id: 'المعرّف', title: 'العنوان', released_at: 'تاريخ النشر', issued_at: 'تاريخ الإصدار',
-    paid_at: 'تاريخ الدفع', taken_at: 'تاريخ المحاولة', created_at: 'تاريخ الإنشاء'
+    paid_at: 'تاريخ الدفع', taken_at: 'تاريخ المحاولة', created_at: 'تاريخ الإنشاء',
+    employer: 'الجهة', provider: 'مقدّم الخصم', percent: 'النسبة', created: 'إضافة جديدة',
+    kind: 'النوع', detached_jobs: 'فرص فُكّ ارتباطها', employer_id: 'الجهة المسجّلة'
   };
 
   var STATUS_AR = { approved: 'موافَق عليه', rejected: 'مرفوض', pending: 'قيد المراجعة' };

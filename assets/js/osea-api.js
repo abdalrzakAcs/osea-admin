@@ -915,6 +915,207 @@
     return r;
   }
 
+  /* ---------- فرص العمل الهندسية (ترحيلة ٠٣٣) ----------
+     جهاتٌ تعلن عبر النقابة عن وظائف هندسية، والإدارة وحدها تنشرها وتحرّرها
+     عبر دوال admin_* الآمنة (لا سياسة كتابة على الجدول). القراءة العلنية
+     للمنشور فقط (RLS)، والتقدّم رابطٌ تضعه الجهة يُفتح خارج المنصة. */
+  /* المراتب الهندسية — المفاتيح هي قيم عمود grade في القاعدة (قيد ٠٢٦ و٠٣٣).
+     الخريطة نفسها منسوخة اليوم في account.html وgrade.html وadmin-user-detail؛
+     الشاشات الجديدة تقرؤها من هنا بدل نسخةٍ رابعة تتباعد بعد أول تعديل. */
+  var ENG_GRADES = [
+    { k: 'trainee',    label: 'مهندس متدرب' },
+    { k: 'associate',  label: 'مهندس مشارك' },
+    { k: 'practicing', label: 'مهندس ممارس' },
+    { k: 'consultant', label: 'مهندس استشاري' }
+  ];
+  /* اسم المرتبة أو '' لمفتاحٍ مجهول أو فارغ — والمستدعي يقرّر نصّ الغياب */
+  function gradeLabel(k) {
+    for (var i = 0; i < ENG_GRADES.length; i++) {
+      if (ENG_GRADES[i].k === k) { return ENG_GRADES[i].label; }
+    }
+    return '';
+  }
+  /* تاريخ اليوم بتوقيت الجهاز «YYYY-MM-DD»: يُقارَن نصّاً بنصّ مع أعمدة date
+     الواردة بالشكل نفسه، فلا يمرّ أيٌّ منهما عبر new Date وانزياح UTC */
+  function todayIso() {
+    var d = new Date();
+    var mo = d.getMonth() + 1, dd = d.getDate();
+    return d.getFullYear() + '-' + (mo < 10 ? '0' : '') + mo + '-' + (dd < 10 ? '0' : '') + dd;
+  }
+  /* رقم اليوم من نصٍّ تاريخي — Date.UTC لا يعرف التوقيت الصيفي، فالفرق بين
+     يومين مضاعفٌ صحيح لطول اليوم ولا يخرج «الأيام الباقية» بكسرٍ أو بيومٍ ناقص */
+  function dayNo(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso == null ? '' : iso));
+    return m ? Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000) : null;
+  }
+  /* رابط التقدّم يُفحص هنا لا في الشاشة، على منطق shamStart: أي مخطط غير
+     الويب والبريد (javascript: أو intent:) يُنفَّذ داخل WebView أندرويد لو
+     وصل إلى href. قيد القاعدة هو الجدار الأول وهذا الثاني لكل مستدعٍ.
+     mailto مقبول لأن جهاتٍ كثيرة تستقبل طلبات التوظيف بالبريد وحده.
+     والجداران كقيد القاعدة (٠٣٣) حرفاً:
+     · لا شرطة عكسية «\» في رابط الويب — المتصفح يقرؤها «/»، فرابطٌ مثل
+       https://evil.example\@mohe.gov.sy يُفتح على evil.example ويبدو غيره.
+     · البريد عنوانٌ مجرّد بلا ? & % , ; — mailto:…?bcc= كان سيضيف مستلماً
+       مخفياً يصله طلب المهندس وسيرته، والشاشة لا تعرض إلا العنوان الأول. */
+  var WEB_HREF_RE = /^https?:\/\/[^\s\\]+$/i;
+  var MAIL_HREF_RE = /^mailto:[^\s@?&%,;\/\\]+@[^\s@?&%,;\/\\]+\.[^\s@?&%,;\/\\]+$/i;
+  function safeApplyHref(u) {
+    var s = String(u == null ? '' : u);
+    if (WEB_HREF_RE.test(s) || MAIL_HREF_RE.test(s)) { return s; }
+    return '';
+  }
+
+  /* أعمدة صريحة: الجدول مقروء كاملاً للعموم اليوم، لكن ما تحتاجه الشاشة
+     يُسمّى هنا كي لا يتسرّب إلى الردّ العلني أي عمود داخلي يُضاف لاحقاً.
+     employer_id (ترحيلة ٠٣٤) يربط الفرصة بسجل الجهات المعلنة، ويبقى employer
+     اسم العرض المنسوخ من السجل خادمياً — فالشاشة تعرضه دون ربطٍ بالجهات */
+  var JOB_COLS = 'id,ref_no,title,grade,employer,employer_id,governorate,posted_on,deadline,apply_url,details';
+
+  /* ---------- الجهات المعلنة (ترحيلة ٠٣٤) ----------
+     سجلٌّ تحفظه إدارة النقابة للجهات التي تعلن عبر المنصة عن وظائف هندسية،
+     وتُنشر كل فرصة مرتبطةً بجهتها. المفاتيح قيم عمود kind (قيد ٠٣٤).
+     إيقاف الجهة يُخفي سجلها وكل فرصها من القراءة العلنية (RLS) دون حذف،
+     والكتابة عبر دوال admin_* وحدها كسائر جداول ٠٣٣. */
+  var JOB_EMPLOYER_KINDS = [
+    { k: 'company', label: 'شركة هندسية' },
+    { k: 'office',  label: 'مكتب هندسي' },
+    { k: 'public',  label: 'جهة عامة' },
+    { k: 'org',     label: 'منظمة' },
+    { k: 'other',   label: 'جهة أخرى' }
+  ];
+  /* أعمدة صريحة كـJOB_COLS: active والطوابع الزمنية شأن اللوحة وحدها */
+  var EMPLOYER_COLS = 'id,name,kind,governorate,phone,email,website,about';
+
+  var jobs = {
+    /* المراتب والمحافظات مرفقتان بالواجهة: الجدول والفلترة يحتاجانهما */
+    GRADES: ENG_GRADES,
+    GOVERNORATES: GOVERNORATES,
+    EMPLOYER_KINDS: JOB_EMPLOYER_KINDS,
+    gradeLabel: gradeLabel,
+
+    /* الواجهة العلنية: المنشور فقط، الأحدث إعلاناً أولاً ثم الأحدث رقماً */
+    list: function () {
+      if (!LIVE) { return Promise.reject(new Error('قاعدة النقابة غير متاحة')); }
+      return sb.from('job_posts').select(JOB_COLS).eq('active', true)
+        .order('posted_on', { ascending: false })
+        .order('ref_no', { ascending: false })
+        .then(must).then(function (rows) { return (rows || []).map(jobDecorate); });
+    },
+
+    /* الجهات المفعّلة هجائياً — نداءٌ منفصل عن list كي لا يُسقط فشلُه قائمةَ
+       الفرص. شرط active صريحٌ لا تكرار لـRLS: سياسة قراءة الطاقم تُظهر
+       الموقوفة أيضاً لمديرٍ يفتح التطبيق بحسابه، والتطبيق لا يعرضها لأحد */
+    employers: function () {
+      if (!LIVE) { return Promise.reject(new Error('قاعدة النقابة غير متاحة')); }
+      return sb.from('job_employers').select(EMPLOYER_COLS).eq('active', true)
+        .order('name', { ascending: true })
+        .then(must).then(function (rows) { return (rows || []).map(employerDecorate); });
+    }
+  };
+
+  /* الفرصة جاهزةً للعرض — تُستعمل للتطبيق واللوحة معاً كي يرى المدير ما
+     يراه المهندس. «مفتوح» للفرصة بلا موعد نهائي، و«أي مرتبة» لغير المقيّدة */
+  function jobDecorate(r) {
+    r.grade_ar = gradeLabel(r.grade) || 'أي مرتبة';
+    r.posted_on_ar = r.posted_on ? arDate(r.posted_on) : '—';
+    r.deadline_ar = r.deadline ? arDate(r.deadline) : 'مفتوح';
+    var today = todayIso();
+    r.open = !r.deadline || String(r.deadline).slice(0, 10) >= today;
+    /* ٠ = ينتهي اليوم، والسالب = انقضى — الشاشة تصوغ النص */
+    r.days_left = r.deadline ? dayNo(r.deadline) - dayNo(today) : null;
+    r.apply_href = safeApplyHref(r.apply_url);
+    r.ref_no_ar = toAr(r.ref_no == null ? '' : r.ref_no);
+    return r;
+  }
+
+  /* الجهة المعلنة جاهزةً للعرض في التطبيق واللوحة معاً. روابط التواصل تُفحص
+     هنا بجدران رابط التقدّم نفسها، والشاشة لا تضع في href إلا ما خرج من هنا:
+     · الموقع ويبٌ صريح بلا فراغ ولا شرطة عكسية (WEB_HREF_RE كقيد ٠٣٤).
+     · البريد يُبنى منه mailto ثم يُفحص بـMAIL_HREF_RE: قيد القاعدة يقبل
+       «?» و«&» داخل العنوان، و mailto:…?bcc= يضيف مستلماً مخفياً للرسالة.
+     · الهاتف أرقامٌ لاتينية و«+» في أوله فقط بعد طيّ الفراغات — حرفٌ واحد
+       غير رقمي في tel: قد يصير رمز USSD («*» و«#») أو مخططاً آخر في WebView.
+     الرابط الفارغ '' يعني «لا زرّ»، والنص نفسه يُهرَّب في الشاشة كسائر الحقول. */
+  function employerDecorate(r) {
+    var label = '';
+    for (var i = 0; i < JOB_EMPLOYER_KINDS.length; i++) {
+      if (JOB_EMPLOYER_KINDS[i].k === r.kind) { label = JOB_EMPLOYER_KINDS[i].label; break; }
+    }
+    r.kind_ar = label || 'جهة أخرى';
+    var web = r.website == null ? '' : String(r.website);
+    r.website_href = WEB_HREF_RE.test(web) ? web : '';
+    var mail = r.email == null || r.email === '' ? '' : 'mailto:' + r.email;
+    r.email_href = MAIL_HREF_RE.test(mail) ? mail : '';
+    /* toAr يطوي أي رقمٍ هندي وارد إلى لاتيني قبل الفحص، كـlatin_digits خادمياً */
+    var tel = r.phone == null ? '' : toAr(r.phone).replace(/\s+/g, '');
+    r.phone_href = /^\+?[0-9]{6,20}$/.test(tel) ? 'tel:' + tel : '';
+    r.phone_ar = r.phone == null ? '' : toAr(r.phone);
+    return r;
+  }
+
+  /* ---------- خصوماتي — عروض الخصم للأعضاء (ترحيلة ٠٣٣) ----------
+     شركات وتطبيقات تمنح أعضاء النقابة نسبة خصم بكود. قائمة المقدّمين ونسبهم
+     علنية، أما الكود نفسه فسرّ: عمود coupon_code خارج المنح العمودي لدوري
+     anon وauthenticated، ولا يُقرأ إلا عبر member_discount_codes لعضوٍ
+     موافَقٍ على حسابه — فلا يلتقطه زائرٌ من الشبكة ولا من الشاشة. */
+  var DISCOUNT_KINDS = [
+    { k: 'company', label: 'شركة' },
+    { k: 'app',     label: 'تطبيق' }
+  ];
+  /* أعمدة صريحة إلزاماً لا اختياراً: «*» تُرفض من Postgres برمّتها حين ينقص
+     امتياز عمودٍ واحد (coupon_code هنا)، فتفشل القائمة كلها لا الكود وحده */
+  var DISCOUNT_COLS = 'id,provider,provider_kind,percent,about,valid_until,max_uses,link_url,sort';
+
+  var discounts = {
+    KINDS: DISCOUNT_KINDS,
+
+    /* الواجهة العلنية: المنشور فقط بترتيب الإدارة ثم هجائياً */
+    list: function () {
+      if (!LIVE) { return Promise.reject(new Error('قاعدة النقابة غير متاحة')); }
+      return sb.from('discount_offers').select(DISCOUNT_COLS).eq('active', true)
+        .order('sort', { ascending: true })
+        .order('provider', { ascending: true })
+        .then(must).then(function (rows) { return (rows || []).map(discDecorate); });
+    },
+
+    /* أكواد العروض السارية لحسابٍ موافَق عليه: خريطة id → الكود بنداءٍ واحد
+       لا نداءٍ لكل نقرة. معرّف الحساب هو الحامل كنمط codes.entitlements،
+       والخادم يتحقق من الموافقة والصلاحية؛ الحارس هنا راحة واجهة لا حماية. */
+    codes: function (accountId) {
+      if (!LIVE) { return Promise.reject(new Error('قاعدة النقابة غير متاحة')); }
+      if (!accountId) { return Promise.reject(new Error('أكواد الخصم متاحة للأعضاء الموافَق على حساباتهم')); }
+      return sb.rpc('member_discount_codes', { p_account: accountId }).then(must)
+        .then(function (r) { return (r && r.codes) || {}; });
+    }
+  };
+
+  /* نسبة الخصم «10٪» أو «12.5٪» — numeric(5,2) يصل 10 أو 12.5 أو نصّاً
+     أحياناً، فتُطوى الأصفار الزائدة كي لا تظهر «10.00٪» */
+  function pctText(n) {
+    if (n == null || n === '') { return ''; }
+    var x = parseFloat(toAr(n).replace('٫', '.'));
+    if (!isFinite(x)) { return ''; }
+    var s = (Math.round(x * 100) / 100).toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    return toAr(s) + '٪';
+  }
+
+  /* العرض جاهزاً للعرض في التطبيق واللوحة معاً. expired بتاريخ الجهاز للوسم
+     وحده — حجب الكود المنتهي قرار الخادم لا الشاشة */
+  function discDecorate(r) {
+    var kind = '';
+    for (var i = 0; i < DISCOUNT_KINDS.length; i++) {
+      if (DISCOUNT_KINDS[i].k === r.provider_kind) { kind = DISCOUNT_KINDS[i].label; }
+    }
+    r.kind_ar = kind || 'شركة';
+    r.percent_ar = pctText(r.percent);
+    r.valid_until_ar = r.valid_until ? arDate(r.valid_until) : '';
+    r.expired = !!r.valid_until && String(r.valid_until).slice(0, 10) < todayIso();
+    r.max_uses_ar = r.max_uses ? toAr(r.max_uses) : '';
+    /* رابط المقدّم ويبٌ فقط — نفس جدار safeApplyHref بلا بريد */
+    r.link_href = WEB_HREF_RE.test(r.link_url || '') ? r.link_url : '';
+    return r;
+  }
+
   /* ---------- مساعدتا رفع ملفات المحتوى (ترحيل 023) ---------- */
   /* ترميز مسار التخزين مقطعاً مقطعاً: معرّفات البنود قد تحمل مسافةً أو حرفاً
      عربياً، وencodeURIComponent على المسار كاملاً يقلب الشرطة المائلة إلى
@@ -1127,6 +1328,25 @@
       });
     },
     deleteDomain: function (id) { return rpc('admin_delete_domain', { p_id: id }); },
+    /* فرص العمل والخصومات (ترحيلة ٠٣٣): قراءة للطاقم وحفظ/حذف للمدير.
+       الحفظ جزئي على الخادم — المفتاح الغائب عن p يُبقي قيمته، فـ{id, active}
+       وحده إيقافٌ عن النشر — لذا لا تُبنى هنا حمولة كاملة كنمط saveDomain:
+       بناؤها يرسل كل حقل فيمحو ما لم يُمرَّر. المستدعي يرسل id وحقول الجدول
+       وحدها لا زينة *_ar. والصفوف تُزيَّن بدالتي التطبيق نفسيهما، ويصل
+       coupon_code إلى اللوحة من الدالة الآمنة لا من منح الأعمدة. */
+    jobPosts:            function ()   { return rpc('admin_job_posts').then(function (r) { return ((r && r.rows) || []).map(jobDecorate); }); },
+    saveJobPost:         function (p)  { return rpc('admin_save_job_post', { p: p }); },
+    deleteJobPost:       function (id) { return rpc('admin_delete_job_post', { p_id: id }); },
+    /* الجهات المعلنة (ترحيلة ٠٣٤) بالنمط نفسه: الحفظ جزئي، و{id, active}
+       وحده إيقافٌ يُخفي كل فرص الجهة من التطبيق. الصفوف تحمل jobs_count
+       وopen_jobs_count من الخادم وتُزيَّن بدالة التطبيق. الحذف يُرجع
+       detached_jobs — عدد الفرص التي فُكّ ارتباطها وبقيت باسم الجهة الأخير */
+    jobEmployers:        function ()   { return rpc('admin_job_employers').then(function (r) { return ((r && r.rows) || []).map(employerDecorate); }); },
+    saveJobEmployer:     function (p)  { return rpc('admin_save_job_employer', { p: p }); },
+    deleteJobEmployer:   function (id) { return rpc('admin_delete_job_employer', { p_id: id }); },
+    discountOffers:      function ()   { return rpc('admin_discount_offers').then(function (r) { return ((r && r.rows) || []).map(discDecorate); }); },
+    saveDiscountOffer:   function (p)  { return rpc('admin_save_discount_offer', { p: p }); },
+    deleteDiscountOffer: function (id) { return rpc('admin_delete_discount_offer', { p_id: id }); },
     /* رسوم الاختبار — جدول products (ترحيل 021) */
     products:    function () { return rpc('admin_products'); },
     saveProduct: function (p) {
@@ -1539,6 +1759,8 @@
     content: content,
     news: news,
     accredit: accredit,
+    jobs: jobs,
+    discounts: discounts,
     codes: codes,
     exam: exam,
     pricing: pricing,
