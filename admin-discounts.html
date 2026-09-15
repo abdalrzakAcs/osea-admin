@@ -61,8 +61,7 @@
           كود الخصم لا يظهر إلا للأعضاء الموافَق على حساباتهم: الزائر والحساب
           قيد المراجعة يريان مقدّم الخصم والنسبة والتعريف دون الكود. العرض الذي
           مضى تاريخ «صالح حتى» يختفي من التطبيق آلياً، و«سحب» يُخفي العرض عن
-          الجميع دون حذفه. والعرضان الأوّلان (ماي ستور، My Exams) أُدخلا بقيم
-          أولية للنسبة والكود والصلاحية — عدّلوها إلى القيم المتفق عليها.
+          الجميع دون حذفه.
         </span>
       </div>
 
@@ -413,7 +412,7 @@
             A.esc(r.percent == null ? '' : A.toAr(r.percent)) + '"></label>' +
       '</div>' +
       '<label class="field"><span>كود الخصم</span>' +
-        '<input class="input" id="f-code" maxlength="60" dir="ltr" autocomplete="off" spellcheck="false" placeholder="OSEA10" value="' +
+        '<input class="input" id="f-code" maxlength="60" dir="ltr" autocomplete="off" spellcheck="false" placeholder="ENG15" value="' +
           A.esc(r.coupon_code || '') + '">' +
         '<span class="hint">بلا فراغات — يُنسخ كما هو</span></label>' +
       '<label class="field"><span>التعريف بالجهة — سطران</span>' +
@@ -454,7 +453,7 @@
     host.querySelector('#w-uses').style.display = mode === 'date' ? 'none' : '';
   }
 
-  /* نطاقٌ مجرّد (mystore.sy) يُسبق بـ https:// كما يكتبه الناس عادةً،
+  /* نطاقٌ مجرّد (example.sy) يُسبق بـ https:// كما يكتبه الناس عادةً،
      وأي مخطط آخر (javascript: و data: وسواهما) يُترك كما هو ليرفضه الفحص */
   function linkValue(v) {
     if (!v) { return null; }
