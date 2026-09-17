@@ -27,6 +27,7 @@
     { key: 'content',   href: 'admin-content.html',   label: 'المحتوى' },
     { key: 'folders',   href: 'admin-folders.html',   label: 'المجلدات والتسعير' },
     { key: 'news',      href: 'admin-news.html',      label: 'الأخبار' },
+    { key: 'services',  href: 'admin-services.html',  label: 'الخدمات' },
     { key: 'accredit',  href: 'admin-accredit.html',  label: 'سجل الاعتمادات' },
     { key: 'jobs',      href: 'admin-jobs.html',      label: 'فرص العمل' },
     { key: 'discounts', href: 'admin-discounts.html', label: 'الخصومات' },

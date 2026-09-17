@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خدمات النقابة — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* أنماط الصفحة — بتوكنات الهوية حصراً */
+.svg-sprite{position:absolute;width:0;height:0;overflow:hidden}
+.sheet-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+/* خلية الخدمة: أيقونة البطاقة كما في التطبيق + الاسم + المعرّف الثابت */
+.svc-cell{display:flex;align-items:center;gap:11px;min-width:220px}
+.svc-cell .svc-ico{
+  flex:none;width:40px;height:40px;display:grid;place-items:center;
+  background:var(--cream-50);border:1px solid var(--gold-200);
+  border-radius:var(--radius-tool);color:var(--navy-700);
+}
+.svc-cell .svc-ico svg{width:21px;height:21px}
+.svc-cell b{display:block;font-size:14px;line-height:1.5;color:var(--navy-800)}
+.svc-cell code{direction:ltr;unicode-bidi:isolate;font-family:Consolas,'Courier New',monospace;
+  font-size:12px;color:var(--text-secondary)}
+/* مبدّل الحالة: ثلاث رقائق متجاورة، المختارة كحلية */
+.svc-seg{display:inline-flex;gap:4px;flex-wrap:wrap}
+.svc-seg .adm-chip{min-height:30px}
+.svc-msg{display:block;margin-block-start:5px;font-size:12px;line-height:1.7;color:var(--text-secondary);
+  max-width:260px;white-space:normal}
+.adm-table .svc-content-cell{white-space:normal;min-width:180px;max-width:260px;font-size:12.5px;line-height:1.8;
+  color:var(--text-secondary)}
+.svc-acts{display:flex;gap:6px}
+.ord-btn{min-width:34px;padding-inline:8px}
+.ord-cell{white-space:nowrap}
+.ord-cell .ord-n{display:inline-block;min-width:22px;text-align:center;color:var(--text-secondary);font-size:12.5px}
+/* نافذة التعديل */
+.svc-lines{min-height:120px;line-height:1.9;resize:vertical}
+.svc-act-rows{display:grid;gap:8px}
+.svc-act-row{display:grid;grid-template-columns:minmax(150px,1.2fr) minmax(120px,1fr) auto auto;gap:8px;align-items:center}
+.svc-act-row .input{min-height:40px}
+.svc-act-row label{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;white-space:nowrap}
+.svc-act-del{min-height:40px;padding-inline:10px}
+.svc-note-tools{display:flex;gap:8px;flex-wrap:wrap;margin-block-start:6px}
+.svc-icon-pick{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.svc-icon-pick label{
+  display:grid;place-items:center;gap:4px;padding:8px 4px;cursor:pointer;
+  border:1px solid var(--border);border-radius:var(--radius-tool);background:var(--surface);
+  font-size:11px;line-height:1.4;text-align:center;color:var(--text-secondary);
+}
+.svc-icon-pick label svg{width:22px;height:22px;color:var(--navy-700)}
+.svc-icon-pick input{position:absolute;opacity:0;width:0;height:0}
+.svc-icon-pick input:checked + label{border-color:var(--navy-700);background:var(--navy-50);color:var(--navy-800)}
+.svc-icon-pick label:focus-within{outline:2px solid var(--navy-300)}
+.svc-standalone-note{margin-block-start:4px}
+@media (max-width:640px){
+  .sheet-pair{grid-template-columns:1fr}
+  .svc-act-row{grid-template-columns:1fr 1fr;grid-auto-rows:auto}
+  .svc-icon-pick{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- مستودع أيقونات الخدمات — نسخة services.html حرفياً (حزمة اللوحة لا تحمل
+     أصول التطبيق): _servicescheck تتأكد من تطابق النسختين -->
+<svg class="svg-sprite" aria-hidden="true" focusable="false">
+  <symbol id="svc-exam" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>
+  </symbol>
+  <symbol id="svc-lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8"/><path d="M14 2v6h6"/>
+    <path d="M8 12h5"/><path d="M8 16h3"/><circle cx="18" cy="17" r="3"/><path d="M18 20v2l-1.4-.9-1.6 1"/>
+  </symbol>
+  <symbol id="svc-pens" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="11" cy="12" r="3.4"/>
+    <path d="M11 10.4V12l1.1.9"/><path d="M18 9v6"/>
+  </symbol>
+  <symbol id="svc-sub" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M3 9.5h18"/>
+    <path d="M8 2.5v4M16 2.5v4"/><path d="m9.5 15 2 2 3.5-3.5"/>
+  </symbol>
+  <symbol id="svc-grade" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 21h18"/><rect x="4" y="14" width="4.5" height="7" rx="1"/>
+    <rect x="10" y="9.5" width="4.5" height="11.5" rx="1"/><rect x="16" y="5" width="4.5" height="16" rx="1"/>
+  </symbol>
+  <symbol id="svc-health" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    <path d="M8 11.5h2l1.2-2.2 1.6 4 1.2-1.8H16"/>
+  </symbol>
+  <symbol id="svc-aid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 9.2 10.9 8a2.4 2.4 0 0 0-3.4 3.4l4.5 4.4 4.5-4.4A2.4 2.4 0 0 0 13.1 8z"/>
+    <path d="M3 15v2a4 4 0 0 0 4 4h10a4 4 0 0 0 4-4v-2"/>
+  </symbol>
+  <symbol id="svc-intl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="11" cy="11" r="8.6"/><path d="M2.4 11h17.2"/>
+    <path d="M11 2.4a14 14 0 0 1 3.6 8.6A14 14 0 0 1 11 19.6a14 14 0 0 1-3.6-8.6A14 14 0 0 1 11 2.4z"/>
+  </symbol>
+  <symbol id="svc-jobs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/>
+    <path d="M3 12.5h7.5M13.5 12.5H21"/><rect x="10.5" y="11" width="3" height="3" rx=".6"/>
+  </symbol>
+  <symbol id="svc-disc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2.5a2.5 2.5 0 0 0 0 5V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2.5a2.5 2.5 0 0 0 0-5z"/>
+    <path d="m9.5 14.5 5-5"/><circle cx="9.8" cy="9.8" r="1"/><circle cx="14.2" cy="14.2" r="1"/>
+  </symbol>
+</svg>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <div class="adm-kpis" id="kpis"></div>
+
+      <div class="notice" style="margin-block:22px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>
+          <strong>ما يُحفظ هنا يظهر في تبويب «الخدمات» بالتطبيق عند فتحه — بلا إصدار جديد.</strong>
+          لكل خدمة ثلاث حالات: <b>مفعّلة</b> تعمل كما هي؛ <b>قيد التطوير</b> تبقى بطاقتها
+          ظاهرة وعند فتحها يقرأ المهندس «قيد التطوير — سيتم إطلاقها قريباً» (أو الرسالة
+          التي تكتبونها)؛ <b>مخفية</b> لا تظهر إطلاقاً. فرص العمل وخصوماتي غير المفعّلتين
+          تُفرَغ قوائمهما في كل نسخ التطبيق. ونصوص البطاقة (العنوان والتعريف وما تشمله
+          والخطوات والأزرار) تُعدَّل من «تعديل». يلزم إصدار التطبيق 3.4 فما بعد.
+        </span>
+      </div>
+
+      <div class="adm-bar">
+        <div class="adm-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="input" id="q" type="search" autocomplete="off" placeholder="بحث باسم الخدمة أو عنوانها">
+        </div>
+        <span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" id="addBtn" data-write>إضافة خدمة</button>
+      </div>
+
+      <div class="adm-bar" style="margin-block-start:-8px">
+        <div class="adm-filters" id="filters" role="group" aria-label="تصفية الخدمات"></div>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2>خدمات النقابة في التطبيق</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="totalTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>الترتيب</th>
+                <th>الخدمة</th>
+                <th>محتوى البطاقة</th>
+                <th>الحالة في التطبيق</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="5"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="adm-pager">
+          <span>تُعرض البطاقات في التطبيق بهذا الترتيب. الخدمات العشر الأساسية لا تُحذف — تُخفى.</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+  var SVC = API.services || null;
+
+  /* الحالات والأيقونات والوجهات من الواجهة المشتركة (التطبيق واللوحة يقرآن
+     القائمة نفسها فلا يتباعدان)؛ البديل حارسٌ لنسخة قديمة في كاش المتصفح */
+  var STATES = (SVC && SVC.STATES) || [
+    { k: 'on', label: 'مفعّلة' }, { k: 'soon', label: 'قيد التطوير' }, { k: 'hidden', label: 'مخفية' }
+  ];
+  var SOON = (SVC && SVC.SOON) || 'قيد التطوير — سيتم إطلاقها قريباً';
+  var ICONS = (SVC && SVC.ICONS) || [];
+  var LINKS = (SVC && SVC.LINKS) || [];
+  var HREF_RE = (SVC && SVC.HREF_RE) || /^$/;
+  var CORE = ['exam', 'licenses', 'pension', 'subscription', 'grades', 'health', 'aid', 'intl', 'jobs', 'discounts'];
+  /* الخدمات التي لها شاشة مستقلة في التطبيق: بطاقتها اسمٌ وأيقونة ورابط،
+     ومحتواها يُدار من صفحته (فرص العمل / الخصومات) */
+  var STANDALONE = { 'jobs.html': 'صفحة فرص العمل', 'discounts.html': 'صفحة الخصومات' };
+  var CONTACT_NOTE =
+    'الإجراء يجري اليوم في فرع النقابة الذي تنتسب إليه، والتقديم الإلكتروني '
+    + 'لهذه الخدمة ضمن خطة تطوير المنصة. للاستفسار راجع فرعك أو تواصل مع النقابة المركزية.';
+  var MAX_ACTIONS = 6;
+
+  var STALE = 'هذه النسخة من ملف البيانات المشترك لا تعرف خدمات النقابة بعد — '
+            + 'أعد تحميل الصفحة تحميلاً قسرياً (Ctrl+Shift+R) ثم أعد المحاولة.';
+
+  var state = { status: 'all', search: '' };
+  var items = [];
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody, filtersEl;
+
+  A.boot({
+    page: 'services',
+    title: 'خدمات النقابة',
+    lead: 'بطاقات تبويب «الخدمات» في التطبيق: تفعيل كل خدمة أو جعلها قيد التطوير أو '
+        + 'إخفاؤها، وتعديل نصوصها وأزرارها وترتيبها — يظهر ذلك للمهندسين فور فتح الشاشة.',
+    crumb: 'الخدمات'
+  }).then(function (st) {
+    if (!st) { return; }
+    tbody = $('rows'); filtersEl = $('filters');
+    wire();
+    load();
+  });
+
+  function wire() {
+    $('q').addEventListener('input', A.debounce(function (e) {
+      state.search = A.norm(e.target.value);
+      render();
+    }, 160));
+    $('addBtn').addEventListener('click', function () { openEdit(null); });
+    filtersEl.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-status]') : null;
+      if (!b) { return; }
+      state.status = b.getAttribute('data-status');
+      render();
+    });
+    tbody.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-act]') : null;
+      if (!b) { return; }
+      var tr = b.closest('tr');
+      var r = tr ? byId(tr.getAttribute('data-id')) : null;
+      if (!r) { return; }
+      var act = b.getAttribute('data-act');
+      if (act === 'state') { setState(r, b.getAttribute('data-state'), b); }
+      else if (act === 'edit') { openEdit(r); }
+      else if (act === 'up') { nudge(r, -1); }
+      else if (act === 'down') { nudge(r, 1); }
+      else if (act === 'del') { askDelete(r); }
+    });
+  }
+
+  function load() {
+    if (!API.admin || typeof API.admin.appServices !== 'function') {
+      tbody.innerHTML = '<tr><td colspan="5">' + A.errorState(STALE) + '</td></tr>';
+      return;
+    }
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    }
+    API.admin.appServices().then(function (rows) {
+      items = rows || [];
+      render();
+    }).catch(function (err) {
+      tbody.innerHTML = '<tr><td colspan="5">' + A.errorState(dbErr(err), 'retry') + '</td></tr>';
+      var b = $('retry');
+      if (b) { b.addEventListener('click', load); }
+    });
+  }
+
+  /* دالة غائبة (PGRST202) معناها الوحيد أن ترحيلة ٠٣٦ لم تُطبَّق */
+  function dbErr(e) {
+    var m = (e && (e.message || e.hint || e.details)) || '';
+    if ((e && (e.code === 'PGRST202' || e.code === '42883')) ||
+        /Could not find the function|function .* does not exist/i.test(m)) {
+      return 'دوال خدمات النقابة غير موجودة في القاعدة بعد — ترحيلة 036 لم تُطبَّق. '
+           + 'نفّذوها ثم أعيدوا المحاولة.';
+    }
+    return A.errText(e);
+  }
+
+  function stateLabel(k) {
+    for (var i = 0; i < STATES.length; i++) { if (STATES[i].k === k) { return STATES[i].label; } }
+    return STATES[0].label;
+  }
+  function isStandalone(r) { return !!(r && r.href && STANDALONE[r.href]); }
+  function isCore(r) { return CORE.indexOf(r.id) > -1; }
+
+  function visible() {
+    return items.filter(function (r) {
+      if (state.status !== 'all' && r.state !== state.status) { return false; }
+      if (!state.search) { return true; }
+      var hay = A.norm([r.label, r.title, r.id, r.lead].join(' '));
+      return hay.indexOf(state.search) > -1;
+    });
+  }
+
+  function render() {
+    var on = items.filter(function (r) { return r.state === 'on'; }).length;
+    var soon = items.filter(function (r) { return r.state === 'soon'; }).length;
+    var hidden = items.filter(function (r) { return r.state === 'hidden'; }).length;
+
+    $('kpis').innerHTML =
+      kpi('إجمالي الخدمات', items.length, 'بطاقات تبويب «الخدمات» في التطبيق') +
+      kpi('مفعّلة', on, 'تعمل كما هي للمهندسين') +
+      kpi('قيد التطوير', soon, 'ظاهرة بنص الانتظار عند فتحها', soon ? 'adm-kpi--warm' : '') +
+      kpi('مخفية', hidden, 'لا تظهر في التطبيق إطلاقاً');
+
+    filtersEl.innerHTML = [
+      ['all', 'الكل', items.length],
+      ['on', 'مفعّلة', on],
+      ['soon', 'قيد التطوير', soon],
+      ['hidden', 'مخفية', hidden]
+    ].map(function (f) {
+      var isOn = state.status === f[0];
+      return '<button type="button" class="adm-chip" data-status="' + f[0] +
+        '" aria-pressed="' + (isOn ? 'true' : 'false') + '">' + A.esc(f[1]) +
+        '<span class="n">' + A.toAr(f[2]) + '</span></button>';
+    }).join('');
+
+    var rows = visible();
+    $('totalTag').textContent = A.toAr(rows.length) + ' من ' + A.toAr(items.length);
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="5">' +
+        A.emptyState(items.length ? 'لا نتائج مطابقة.' : 'لا خدمات في القاعدة بعد — نفّذوا ترحيلة 036.') +
+        '</td></tr>';
+      return;
+    }
+
+    /* الترتيب على القائمة كاملة لا على المرشَّح: الأسهم تحرّك الصف بين جيرانه الفعليين */
+    tbody.innerHTML = rows.map(function (r) {
+      var pos = items.indexOf(r);
+      return '<tr data-id="' + A.esc(r.id) + '">' +
+        '<td class="ord-cell">' +
+          '<button class="btn btn-outline btn-sm ord-btn" data-act="up" data-write aria-label="تقديم «' + A.esc(r.label) + '»"' +
+            (pos <= 0 ? ' disabled' : '') + '>↑</button> ' +
+          '<span class="ord-n">' + A.toAr(pos + 1) + '</span> ' +
+          '<button class="btn btn-outline btn-sm ord-btn" data-act="down" data-write aria-label="تأخير «' + A.esc(r.label) + '»"' +
+            (pos >= items.length - 1 ? ' disabled' : '') + '>↓</button>' +
+        '</td>' +
+        '<td><span class="svc-cell">' +
+          '<span class="svc-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#' + A.esc(r.icon) + '"></use></svg></span>' +
+          '<span><b>' + A.esc(r.label) + '</b><code>' + A.esc(r.id) + '</code></span>' +
+        '</span></td>' +
+        '<td class="svc-content-cell">' + contentCell(r) + '</td>' +
+        '<td>' + stateCell(r) + '</td>' +
+        '<td class="adm-actions"><span class="svc-acts">' +
+          '<button class="btn btn-outline btn-sm" data-act="edit" data-write>تعديل</button>' +
+          (isCore(r) ? '' : '<button class="btn btn-outline btn-sm" data-act="del" data-write>حذف</button>') +
+        '</span></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function contentCell(r) {
+    if (isStandalone(r)) {
+      return 'شاشة مستقلة — محتواها يُدار من ' + A.esc(STANDALONE[r.href]);
+    }
+    return '<b style="color:var(--navy-800)">' + A.esc(r.title || '—') + '</b><br>' +
+      A.esc(A.count((r.points || []).length, 'بند واحد', 'بندان', 'بنود', 'بنداً')) + ' · ' +
+      A.esc(A.count((r.steps || []).length, 'خطوة واحدة', 'خطوتان', 'خطوات', 'خطوة')) + ' · ' +
+      A.esc(A.count((r.actions || []).length, 'زر واحد', 'زرّان', 'أزرار', 'زراً')) +
+      (r.note ? ' · سطر حالة' : '');
+  }
+
+  /* مبدّل الحالة على الصف: ثلاث رقائق، المختارة مضاءة — ضغطة واحدة تكفي */
+  function stateCell(r) {
+    return '<span class="svc-seg" role="group" aria-label="حالة «' + A.esc(r.label) + '»">' +
+      STATES.map(function (s) {
+        var on = r.state === s.k;
+        return '<button type="button" class="adm-chip" data-act="state" data-state="' + s.k + '"' +
+          ' aria-pressed="' + (on ? 'true' : 'false') + '"' + (on ? '' : ' data-write') + '>' +
+          A.esc(s.label) + '</button>';
+      }).join('') +
+    '</span>' +
+    (r.state === 'soon'
+      ? '<span class="svc-msg">يقرأ المهندس: «' + A.esc(r.state_msg || SOON) + '»</span>'
+      : '');
+  }
+
+  function byId(id) {
+    return items.filter(function (r) { return String(r.id) === String(id); })[0];
+  }
+
+  function kpi(label, n, hint, mod) {
+    return '<div class="adm-kpi' + (mod ? ' ' + mod : '') + '">' +
+      '<span class="adm-kpi-label">' + A.esc(label) + '</span>' +
+      '<span class="adm-kpi-num">' + A.toAr(n) + '</span>' +
+      '<span class="adm-kpi-hint">' + A.esc(hint) + '</span></div>';
+  }
+
+  /* ---------- تبديل الحالة من الصف ---------- */
+  function setState(r, next, btn) {
+    if (!r || !next || r.state === next) { return; }
+    if (!API.admin || typeof API.admin.saveAppService !== 'function') { A.toast(STALE, 'bad'); return; }
+    var go = function () {
+      if (btn) { btn.disabled = true; }
+      /* الحفظ الجزئي: المعرّف مع الحالة يكفي — لا تُعاد النصوص */
+      API.admin.saveAppService({ id: r.id, state: next }).then(function () {
+        A.toast(
+          next === 'on'     ? 'فُعِّلت «' + r.label + '» — تعمل الآن في التطبيق.' :
+          next === 'soon'   ? '«' + r.label + '» صارت قيد التطوير — يقرأ المهندس عند فتحها: «' + (r.state_msg || SOON) + '».' :
+                              'أُخفيت «' + r.label + '» من التطبيق — تعود بضغطة.', 'ok');
+        load();
+      }).catch(function (err) {
+        if (btn) { btn.disabled = false; }
+        A.toast(dbErr(err), 'bad');
+      });
+    };
+    /* خدمات لها بيانات حيّة أو مسار عمل: تأكيد قبل الحجب */
+    if (next !== 'on' && (r.id === 'exam' || isStandalone(r))) {
+      A.confirm({
+        title: next === 'soon' ? 'جعل الخدمة قيد التطوير' : 'إخفاء الخدمة',
+        text: (next === 'soon'
+          ? 'ستبقى بطاقة «' + r.label + '» ظاهرة، وعند فتحها يقرأ المهندس «' + (r.state_msg || SOON) + '». '
+          : 'ستختفي «' + r.label + '» من قائمة الخدمات ومن الرئيسية. ')
+          + (isStandalone(r) ? 'وتُفرَغ قائمتها في كل نسخ التطبيق حتى تُفعَّل من جديد.'
+                             : 'وتُحجب بوابة الاختبار والنموذج التجريبي حتى تُفعَّل من جديد.'),
+        okLabel: 'تأكيد'
+      }).then(function (ok) { if (ok !== null) { go(); } });
+      return;
+    }
+    go();
+  }
+
+  /* ---------- الترتيب: سهمان يحرّكان الصف موضعاً واحداً ---------- */
+  function nudge(r, dir) {
+    if (!API.admin || typeof API.admin.reorderAppServices !== 'function') { A.toast(STALE, 'bad'); return; }
+    var ids = items.map(function (x) { return x.id; });
+    var i = ids.indexOf(r.id), j = i + dir;
+    if (i < 0 || j < 0 || j >= ids.length) { return; }
+    ids.splice(i, 1);
+    ids.splice(j, 0, r.id);
+    API.admin.reorderAppServices(ids).then(function () {
+      load();
+    }).catch(function (err) { A.toast(dbErr(err), 'bad'); });
+  }
+
+  /* ---------- اللوحة الجانبية: إنشاء وتعديل ---------- */
+
+  function opt(v, label, sel) {
+    return '<option value="' + A.esc(v) + '"' + (sel ? ' selected' : '') + '>' + A.esc(label) + '</option>';
+  }
+
+  function actionRowHtml(a, i) {
+    a = a || {};
+    var known = LINKS.some(function (L) { return L.href === a.href; });
+    return '<div class="svc-act-row" data-row="' + i + '">' +
+      '<select class="input" data-f="href" aria-label="وجهة الزر">' +
+        opt('', '— وجهة الزر —', !a.href) +
+        LINKS.map(function (L) { return opt(L.href, L.label, L.href === a.href); }).join('') +
+        (!known && a.href ? opt(a.href, a.href, true) : '') +
+      '</select>' +
+      '<input class="input" data-f="label" maxlength="80" placeholder="نص الزر" aria-label="نص الزر" value="' + A.esc(a.label || '') + '">' +
+      '<label><input type="radio" name="f-primary" value="' + i + '"' + (a.primary ? ' checked' : '') + '> رئيسي</label>' +
+      '<button type="button" class="btn btn-outline btn-sm svc-act-del" data-act-del aria-label="حذف الزر">✕</button>' +
+    '</div>';
+  }
+
+  function fieldsHTML(r) {
+    var isNew = !r;
+    r = r || {};
+    var standalone = isStandalone(r);
+    var icon = r.icon || 'svc-exam';
+    var st = r.state || 'on';
+    var acts = (r.actions || []).slice(0, MAX_ACTIONS);
+    return '' +
+      (isNew
+        ? '<label class="field"><span>المعرّف الثابت (لاتيني صغير — للروابط ?s=…)</span>' +
+            '<input class="input" id="f-id" dir="ltr" maxlength="24" autocomplete="off" spellcheck="false" placeholder="training" pattern="[a-z][a-z_]{0,23}">' +
+            '<span class="hint">لا يُغيَّر بعد الإنشاء.</span></label>'
+        : '') +
+      '<label class="field"><span>اسم البطاقة</span>' +
+        '<input class="input" id="f-label" maxlength="60" value="' + A.esc(r.label || '') + '"></label>' +
+      '<div class="field"><span>الأيقونة</span>' +
+        '<div class="svc-icon-pick">' +
+        ICONS.map(function (I, i) {
+          return '<input type="radio" name="f-icon" id="f-icon-' + i + '" value="' + A.esc(I.k) + '"' + (I.k === icon ? ' checked' : '') + '>' +
+            '<label for="f-icon-' + i + '"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#' + A.esc(I.k) + '"></use></svg>' +
+            '<span>' + A.esc(I.label.split(' — ')[0]) + '</span></label>';
+        }).join('') +
+        '</div></div>' +
+      '<div class="sheet-pair">' +
+        '<label class="field"><span>الحالة في التطبيق</span>' +
+          '<select class="input" id="f-state">' +
+            STATES.map(function (s) { return opt(s.k, s.label, s.k === st); }).join('') +
+          '</select></label>' +
+        '<label class="field"><span>رسالة «قيد التطوير» (اختيارية)</span>' +
+          '<input class="input" id="f-msg" maxlength="200" placeholder="' + A.esc(SOON) + '" value="' + A.esc(r.state_msg || '') + '">' +
+          '<span class="hint">فارغة = النص المعتمد من النقابة.</span></label>' +
+      '</div>' +
+      (standalone
+        ? '<div class="notice svc-standalone-note"><span>هذه الخدمة تفتح شاشة مستقلة في التطبيق (' + A.esc(r.href) +
+            ')، ومحتواها يُدار من ' + A.esc(STANDALONE[r.href]) + '. هنا الاسم والأيقونة والحالة فقط.</span></div>'
+        : '<label class="field"><span>عنوان شاشة الخدمة</span>' +
+            '<input class="input" id="f-title" maxlength="120" value="' + A.esc(r.title || '') + '"></label>' +
+          '<label class="field"><span>التعريف بالخدمة</span>' +
+            '<textarea class="input svc-lines" id="f-lead" rows="3" maxlength="600" style="min-height:84px">' + A.esc(r.lead || '') + '</textarea></label>' +
+          '<label class="field"><span>ما تشمله الخدمة — كل سطر بند</span>' +
+            '<textarea class="input svc-lines" id="f-points" rows="5">' + A.esc((r.points || []).join('\n')) + '</textarea>' +
+            '<span class="hint">12 بنداً على الأكثر، 300 حرف للبند.</span></label>' +
+          '<label class="field"><span>خطوات الحصول عليها — كل سطر خطوة مرقّمة</span>' +
+            '<textarea class="input svc-lines" id="f-steps" rows="5">' + A.esc((r.steps || []).join('\n')) + '</textarea></label>' +
+          '<div class="field"><span>أزرار الخدمة (' + A.toAr(MAX_ACTIONS) + ' على الأكثر — وجهاتها شاشات التطبيق فقط)</span>' +
+            '<div class="svc-act-rows" id="f-actions">' +
+              acts.map(actionRowHtml).join('') +
+            '</div>' +
+            '<div class="svc-note-tools"><button type="button" class="btn btn-outline btn-sm" data-act-add>إضافة زر</button></div>' +
+          '</div>' +
+          '<label class="field"><span>سطر «حالة الخدمة» أسفل البطاقة (اختياري — معه زر الاتصال بالنقابة)</span>' +
+            '<textarea class="input svc-lines" id="f-note" rows="3" maxlength="600" style="min-height:84px">' + A.esc(r.note || '') + '</textarea>' +
+            '<span class="svc-note-tools"><button type="button" class="btn btn-outline btn-sm" data-note-std>إدراج النص الموحّد</button></span></label>');
+  }
+
+  function readActions(host) {
+    var out = [];
+    var rows = host.querySelectorAll('#f-actions .svc-act-row');
+    var prim = host.querySelector('input[name="f-primary"]:checked');
+    var primIdx = prim ? prim.value : '';
+    Array.prototype.forEach.call(rows, function (row) {
+      var href = row.querySelector('[data-f="href"]').value.trim();
+      var label = row.querySelector('[data-f="label"]').value.replace(/\s+/g, ' ').trim();
+      if (!href && !label) { return; }
+      out.push({ href: href, label: label, primary: row.getAttribute('data-row') === primIdx });
+    });
+    return out;
+  }
+
+  function readFields(host, r) {
+    var g = function (id) { var el = host.querySelector('#' + id); return el ? el.value.trim() : ''; };
+    var iconEl = host.querySelector('input[name="f-icon"]:checked');
+    var f = {
+      label: g('f-label').replace(/\s+/g, ' '),
+      icon: iconEl ? iconEl.value : 'svc-exam',
+      state: g('f-state') || 'on',
+      state_msg: g('f-msg').replace(/\s+/g, ' ')
+    };
+    if (!r) { f.id = A.toAr(g('f-id')).toLowerCase(); }
+    if (!isStandalone(r || {})) {
+      f.title = g('f-title').replace(/\s+/g, ' ');
+      f.lead = g('f-lead').replace(/\s+/g, ' ');
+      f.points = g('f-points');
+      f.steps = g('f-steps');
+      f.actions = readActions(host);
+      f.note = g('f-note').replace(/\s+/g, ' ');
+    }
+    return f;
+  }
+
+  /* الفحص بالرسائل نفسها التي ترميها admin_save_app_service — فلا يصل الموظّف
+     إلى قيد القاعدة ولا يرى رسالة Postgres إنجليزية */
+  function validate(f, isNew, standalone) {
+    if (isNew && !/^[a-z][a-z_]{0,23}$/.test(f.id || '')) {
+      return 'معرّف الخدمة أحرف لاتينية صغيرة وشرطة سفلية — 24 حرفاً على الأكثر';
+    }
+    if (isNew && byId(f.id)) { return 'المعرّف مستعمل لخدمة أخرى.'; }
+    if (!f.label || f.label.length < 2 || f.label.length > 60) { return 'اسم الخدمة بين حرفين و60 حرفاً'; }
+    if (!ICONS.some(function (I) { return I.k === f.icon; })) { return 'أيقونة الخدمة غير معروفة'; }
+    if (!STATES.some(function (s) { return s.k === f.state; })) { return 'حالة الخدمة: مفعّلة أو قيد التطوير أو مخفية'; }
+    if (f.state_msg.length > 200) { return 'رسالة «قيد التطوير» 200 حرف على الأكثر'; }
+    if (standalone) { return ''; }
+    if (!f.title || f.title.length < 2) { return 'عنوان الخدمة مطلوب — حرفان على الأقل'; }
+    if (f.title.length > 120) { return 'عنوان الخدمة 120 حرفاً على الأكثر'; }
+    if (f.lead.length > 600) { return 'التعريف بالخدمة 600 حرف على الأكثر'; }
+    var lines = function (s) { return s.split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean); };
+    var pts = lines(f.points), stp = lines(f.steps);
+    if (pts.length > 12) { return 'ما تشمله الخدمة — 12 بنداً على الأكثر'; }
+    if (stp.length > 12) { return 'خطوات الحصول عليها — 12 بنداً على الأكثر'; }
+    if (pts.some(function (x) { return x.length > 300; })) { return 'ما تشمله الخدمة — كل بند 300 حرفاً على الأكثر'; }
+    if (stp.some(function (x) { return x.length > 300; })) { return 'خطوات الحصول عليها — كل بند 300 حرفاً على الأكثر'; }
+    if (f.actions.length > MAX_ACTIONS) { return 'أزرار الخدمة — ستة على الأكثر'; }
+    for (var i = 0; i < f.actions.length; i++) {
+      var a = f.actions[i];
+      if (!HREF_RE.test(a.href)) { return 'وجهة الزر «' + (a.label || a.href) + '» ليست من شاشات التطبيق المعتمدة'; }
+      if (a.label.length < 2 || a.label.length > 80) { return 'اسم الزر بين حرفين و80 حرفاً'; }
+    }
+    if (f.actions.filter(function (a) { return a.primary; }).length > 1) { return 'زرٌّ رئيسي واحد على الأكثر'; }
+    if (f.note.length > 600) { return 'سطر حالة الخدمة 600 حرف على الأكثر'; }
+    return '';
+  }
+
+  function openEdit(r) {
+    var standalone = isStandalone(r || {});
+    var sheet = A.sheet({
+      title: r ? 'تعديل «' + r.label + '»' : 'إضافة خدمة',
+      okLabel: r ? 'حفظ التعديلات' : 'إضافة الخدمة',
+      body: fieldsHTML(r),
+      onOk: function (host) {
+        if (!API.admin || typeof API.admin.saveAppService !== 'function') {
+          return Promise.reject(new Error(STALE));
+        }
+        var f = readFields(host, r);
+        var bad = validate(f, !r, standalone);
+        if (bad) { return Promise.reject(new Error(bad)); }
+        /* الحمولة حقول القاعدة وحدها — والقوائم نصّاً متعدد الأسطر تقسمه الدالة */
+        var payload = { id: r ? r.id : f.id, label: f.label, icon: f.icon, state: f.state, state_msg: f.state_msg };
+        if (!standalone) {
+          payload.title = f.title; payload.lead = f.lead; payload.points = f.points;
+          payload.steps = f.steps; payload.actions = f.actions; payload.note = f.note;
+        }
+        return API.admin.saveAppService(payload).then(function () {
+          A.toast((r ? 'حُفظت تعديلات «' + f.label + '».' : 'أُضيفت خدمة «' + f.label + '».') +
+            (f.state === 'on' ? ' تظهر الآن في التطبيق.' :
+             f.state === 'soon' ? ' ظاهرة كـ«قيد التطوير».' : ' مخفيّة عن التطبيق.'), 'ok');
+          load();
+        }).catch(function (err) { throw new Error(dbErr(err)); });
+      }
+    });
+    var host = sheet && sheet.el ? sheet.el : document;
+    /* أزرار الخدمة: إضافة وحذف صفوف بالتفويض على جسم النافذة */
+    host.addEventListener('click', function (e) {
+      var t = e.target;
+      var add = t.closest ? t.closest('[data-act-add]') : null;
+      var del = t.closest ? t.closest('[data-act-del]') : null;
+      var std = t.closest ? t.closest('[data-note-std]') : null;
+      if (add) {
+        var box = host.querySelector('#f-actions');
+        var n = box.querySelectorAll('.svc-act-row').length;
+        if (n >= MAX_ACTIONS) { A.toast('ستة أزرار على الأكثر.', 'bad'); return; }
+        var maxIdx = -1;
+        Array.prototype.forEach.call(box.querySelectorAll('.svc-act-row'), function (row) {
+          maxIdx = Math.max(maxIdx, parseInt(row.getAttribute('data-row'), 10) || 0);
+        });
+        box.insertAdjacentHTML('beforeend', actionRowHtml({}, maxIdx + 1));
+        var sel = box.lastElementChild.querySelector('select');
+        if (sel) { sel.focus(); }
+      } else if (del) {
+        var row = del.closest('.svc-act-row');
+        if (row) { row.remove(); }
+      } else if (std) {
+        var note = host.querySelector('#f-note');
+        if (note) { note.value = CONTACT_NOTE; note.focus(); }
+      }
+    });
+  }
+
+  function askDelete(r) {
+    if (!r) { return; }
+    A.confirm({
+      title: 'حذف الخدمة',
+      text: 'سيُحذف بطاقة «' + r.label + '» ونصوصها نهائياً ولا يمكن التراجع. '
+          + 'وإن كان القصد إخفاءها مؤقتاً فاجعلها «مخفية» بدل الحذف.',
+      okLabel: 'حذف نهائي',
+      danger: true
+    }).then(function (ok) {
+      if (ok === null) { return; }
+      if (!API.admin || typeof API.admin.deleteAppService !== 'function') { A.toast(STALE, 'bad'); return; }
+      API.admin.deleteAppService(r.id).then(function () {
+        A.toast('حُذفت خدمة «' + r.label + '».', 'ok');
+        load();
+      }).catch(function (err) { A.toast(dbErr(err), 'bad'); });
+    });
+  }
+})();
+</script>
+</body>
+</html>

@@ -1116,6 +1116,127 @@
     return r;
   }
 
+  /* ---------- خدمات النقابة: حالة كل تبويب ونصوص بطاقته (ترحيل 036) ----------
+     شاشة الخدمات تقرأ بطاقاتها من جدول app_services: الإدارة تعدّل النصوص
+     وتجعل الخدمة مفعّلة أو «قيد التطوير» أو مخفية، فيظهر ذلك في التطبيق
+     عند فتح الشاشة بلا إصدار جديد. التطبيق يحمل نسخة مضمّنة (services.html)
+     احتياطاً لأول تشغيل بلا شبكة، وapp.js يحفظ آخر قراءة ناجحة محلياً. */
+  var SERVICE_STATES = [
+    { k: 'on',     label: 'مفعّلة' },
+    { k: 'soon',   label: 'قيد التطوير' },
+    { k: 'hidden', label: 'مخفية' }
+  ];
+  /* النص المعتمد من النقابة (١٧ أيلول ٢٠٢٦) لخدمة قيد التطوير */
+  var SERVICE_SOON = 'قيد التطوير — سيتم إطلاقها قريباً';
+  var SERVICE_ICONS = [
+    { k: 'svc-exam',   label: 'ورقة بعلامة صح — الاختبار' },
+    { k: 'svc-lic',    label: 'وثيقة مختومة — التراخيص' },
+    { k: 'svc-pens',   label: 'خزنة — التقاعد' },
+    { k: 'svc-sub',    label: 'تقويم — الاشتراك' },
+    { k: 'svc-grade',  label: 'درجات صاعدة — المراتب' },
+    { k: 'svc-health', label: 'درع بنبضة — الضمان الصحي' },
+    { k: 'svc-aid',    label: 'يدان وقلب — التكافل' },
+    { k: 'svc-intl',   label: 'كرة أرضية — الاعتماد الدولي' },
+    { k: 'svc-jobs',   label: 'حقيبة عمل — فرص العمل' },
+    { k: 'svc-disc',   label: 'قسيمة خصم — خصوماتي' }
+  ];
+  /* وجهات الأزرار المسموحة — القائمة المغلقة نفسها في app_service_href_ok
+     بالقاعدة: شاشات التطبيق الداخلية ورقم هاتف، لا رابط خارجياً ولا javascript:
+     (الزر يُفتح داخل WebView التطبيق). تُفحص هنا مرة ثانية بعد القاعدة. */
+  var SERVICE_HREF_RE = /^(?:(?:exam|exam-demo|verify|account|accredit|news|codes|videos|jobs|discounts|grade|pay)\.html|grade\.html\?do=course|pay\.html\?svc=[a-z][a-z-]{0,23}|accredit-list\.html\?kind=(?:engineer|org|company|sy_company|sy_office)|services\.html\?s=[a-z][a-z_]{0,23}|tel:\+?[0-9]{6,20})$/;
+  /* وجهات جاهزة تختار منها اللوحة بأسمائها العربية */
+  var SERVICE_LINKS = [
+    { href: 'exam.html',                          label: 'بوابة الاختبار' },
+    { href: 'exam-demo.html',                     label: 'النموذج التجريبي المجاني' },
+    { href: 'verify.html',                        label: 'التحقق من شهادة' },
+    { href: 'account.html',                       label: 'حسابي' },
+    { href: 'pay.html',                           label: 'الدفع والتفعيل' },
+    { href: 'pay.html?svc=renewal',               label: 'دفع رسوم تجديد الاشتراك' },
+    { href: 'grade.html',                         label: 'الارتقاء بالمرتبة — التعهد والدفع' },
+    { href: 'grade.html?do=course',               label: 'حجز موعد دورة الارتقاء' },
+    { href: 'accredit-list.html?kind=engineer',   label: 'سجل المهندسين المعتمدين وفق الاختبارات' },
+    { href: 'accredit-list.html?kind=org',        label: 'سجل المنظمات المعتمدة' },
+    { href: 'accredit-list.html?kind=company',    label: 'سجل الشركات العربية والأجنبية المعتمدة' },
+    { href: 'accredit-list.html?kind=sy_company', label: 'سجل الشركات الهندسية السورية' },
+    { href: 'accredit-list.html?kind=sy_office',  label: 'سجل المكاتب الهندسية السورية' },
+    { href: 'accredit.html',                      label: 'مدخل الاعتمادات' },
+    { href: 'codes.html',                         label: 'مكتبة الأكواد' },
+    { href: 'videos.html',                        label: 'الدروس' },
+    { href: 'news.html',                          label: 'الأخبار' },
+    { href: 'jobs.html',                          label: 'فرص عمل هندسية' },
+    { href: 'discounts.html',                     label: 'خصوماتي' },
+    { href: 'tel:+963940900457',                  label: 'الاتصال بالنقابة المركزية' }
+  ];
+
+  /* قائمة نصوص من القاعدة أو من اللوحة: مصفوفة أو نص متعدد الأسطر */
+  function serviceTextList(v) {
+    if (v == null) { return []; }
+    if (typeof v === 'string') { v = v.split(/\r?\n/); }
+    if (!Array.isArray(v)) { return []; }
+    var out = [];
+    for (var i = 0; i < v.length; i++) {
+      var t = String(v[i] == null ? '' : v[i]).replace(/\s+/g, ' ').trim();
+      if (t) { out.push(t); }
+    }
+    return out;
+  }
+
+  /* الصف جاهزاً للشاشة واللوحة: النصوص مصفوفات، والأزرار بوجهات معتمدة فقط،
+     والحالة إحدى الثلاث — أي شيء آخر يُقرأ «مفعّلة» فلا يُحجب سهواً */
+  function serviceDecorate(r) {
+    r = r || {};
+    r.state = (r.state === 'soon' || r.state === 'hidden') ? r.state : 'on';
+    /* الرسالة البديلة لـ«قيد التطوير» وحدها — القاعدة تحجبها لغيرها أصلاً */
+    r.state_msg = r.state === 'soon' ? String(r.state_msg == null ? '' : r.state_msg).trim() : '';
+    r.points = serviceTextList(r.points);
+    r.steps = serviceTextList(r.steps);
+    var acts = Array.isArray(r.actions) ? r.actions : [];
+    r.actions = [];
+    for (var i = 0; i < acts.length; i++) {
+      var a = acts[i] || {};
+      var href = String(a.href == null ? '' : a.href).trim();
+      var label = String(a.label == null ? '' : a.label).trim();
+      if (!SERVICE_HREF_RE.test(href) || !label) { continue; }
+      r.actions.push({ href: href, label: label, primary: a.primary === true });
+    }
+    var iconOk = false;
+    for (var k = 0; k < SERVICE_ICONS.length; k++) {
+      if (SERVICE_ICONS[k].k === r.icon) { iconOk = true; }
+    }
+    if (!iconOk) { r.icon = 'svc-exam'; }
+    r.href = (r.href === 'jobs.html' || r.href === 'discounts.html') ? r.href : null;
+    r.label = String(r.label == null ? '' : r.label).trim();
+    r.title = r.title == null ? null : String(r.title).trim();
+    r.lead = r.lead == null ? '' : String(r.lead).trim();
+    r.note = r.note == null ? null : (String(r.note).trim() || null);
+    r.sort = r.sort | 0;
+    return r;
+  }
+
+  var services = {
+    STATES: SERVICE_STATES,
+    SOON: SERVICE_SOON,
+    ICONS: SERVICE_ICONS,
+    LINKS: SERVICE_LINKS,
+    HREF_RE: SERVICE_HREF_RE,
+    textList: serviceTextList,
+    decorate: serviceDecorate,
+    stateLabel: function (k) {
+      for (var i = 0; i < SERVICE_STATES.length; i++) {
+        if (SERVICE_STATES[i].k === k) { return SERVICE_STATES[i].label; }
+      }
+      return SERVICE_STATES[0].label;
+    },
+    /* الواجهة العلنية: { rev, rows } — المفعّلة بمحتواها، وغيرها اسمٌ وحالة */
+    list: function () {
+      if (!LIVE) { return Promise.reject(new Error('قاعدة النقابة غير متاحة')); }
+      return sb.rpc('public_app_services', {}).then(must).then(function (r) {
+        var rows = (r && Array.isArray(r.rows)) ? r.rows : [];
+        return { rev: (r && r.rev) || '', rows: rows.map(serviceDecorate) };
+      });
+    }
+  };
+
   /* ---------- مساعدتا رفع ملفات المحتوى (ترحيل 023) ---------- */
   /* ترميز مسار التخزين مقطعاً مقطعاً: معرّفات البنود قد تحمل مسافةً أو حرفاً
      عربياً، وencodeURIComponent على المسار كاملاً يقلب الشرطة المائلة إلى
@@ -1347,6 +1468,11 @@
     discountOffers:      function ()   { return rpc('admin_discount_offers').then(function (r) { return ((r && r.rows) || []).map(discDecorate); }); },
     saveDiscountOffer:   function (p)  { return rpc('admin_save_discount_offer', { p: p }); },
     deleteDiscountOffer: function (id) { return rpc('admin_delete_discount_offer', { p_id: id }); },
+    /* خدمات النقابة (ترحيل 036): الحفظ جزئي — {id, state} وحدهما يبدّلان الحالة */
+    appServices:         function ()    { return rpc('admin_app_services').then(function (r) { return ((r && r.rows) || []).map(serviceDecorate); }); },
+    saveAppService:      function (p)   { return rpc('admin_save_app_service', { p: p }); },
+    reorderAppServices:  function (ids) { return rpc('admin_reorder_app_services', { p_ids: ids }); },
+    deleteAppService:    function (id)  { return rpc('admin_delete_app_service', { p_id: id }); },
     /* رسوم الاختبار — جدول products (ترحيل 021) */
     products:    function () { return rpc('admin_products'); },
     saveProduct: function (p) {
@@ -1761,6 +1887,7 @@
     accredit: accredit,
     jobs: jobs,
     discounts: discounts,
+    services: services,
     codes: codes,
     exam: exam,
     pricing: pricing,

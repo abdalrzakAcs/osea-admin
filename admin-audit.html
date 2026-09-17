@@ -110,7 +110,10 @@
     'discount:save':   'حفظ عرض خصم',
     'discount:delete': 'حذف عرض خصم',
     'employer:save':   'حفظ جهة معلنة',
-    'employer:delete': 'حذف جهة معلنة'
+    'employer:delete': 'حذف جهة معلنة',
+    'service:save':    'حفظ خدمة',
+    'service:order':   'ترتيب الخدمات',
+    'service:delete':  'حذف خدمة'
   };
 
   var ENTITY = {
@@ -122,7 +125,8 @@
     app_release: 'إصدار تطبيق',
     job:         'فرصة عمل',
     discount:    'عرض خصم',
-    employer:    'جهة معلنة'
+    employer:    'جهة معلنة',
+    service:     'خدمة'
   };
 
   /* مفاتيح حمولة detail كما تبنيها دوال القاعدة */
@@ -137,7 +141,9 @@
     id: 'المعرّف', title: 'العنوان', released_at: 'تاريخ النشر', issued_at: 'تاريخ الإصدار',
     paid_at: 'تاريخ الدفع', taken_at: 'تاريخ المحاولة', created_at: 'تاريخ الإنشاء',
     employer: 'الجهة', provider: 'مقدّم الخصم', percent: 'النسبة', created: 'إضافة جديدة',
-    kind: 'النوع', detached_jobs: 'فرص فُكّ ارتباطها', employer_id: 'الجهة المسجّلة'
+    kind: 'النوع', detached_jobs: 'فرص فُكّ ارتباطها', employer_id: 'الجهة المسجّلة',
+    label: 'اسم البطاقة', state: 'الحالة في التطبيق', keys: 'الحقول المعدَّلة',
+    changed: 'صفوف تغيّر ترتيبها'
   };
 
   var STATUS_AR = { approved: 'موافَق عليه', rejected: 'مرفوض', pending: 'قيد المراجعة' };
