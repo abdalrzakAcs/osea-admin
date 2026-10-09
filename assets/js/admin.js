@@ -23,7 +23,11 @@
     { key: 'overview',  href: 'admin.html',           label: 'نظرة عامة' },
     { key: 'users',     href: 'admin-users.html',     label: 'الحسابات' },
     { key: 'payments',  href: 'admin-payments.html',  label: 'المدفوعات' },
-    { key: 'results',   href: 'admin-results.html',   label: 'النتائج والشهادات' },
+    /* مطابقة كشف شام كاش بدفتر المنصة (٠٣٨) — بجوار المدفوعات لأنها امتدادها */
+    { key: 'shamrecon', href: 'admin-sham-recon.html', label: 'مطابقة شام كاش' },
+    { key: 'results',  href: 'admin-results.html',   label: 'النتائج والشهادات' },
+    /* سجل الشهادات (٠٣٩): كل شهادة صالحة أو مسحوبة بفلترة خادمية */
+    { key: 'certs',     href: 'admin-certificates.html', label: 'سجل الشهادات' },
     { key: 'content',   href: 'admin-content.html',   label: 'المحتوى' },
     { key: 'folders',   href: 'admin-folders.html',   label: 'المجلدات والتسعير' },
     { key: 'news',      href: 'admin-news.html',      label: 'الأخبار' },
@@ -31,7 +35,7 @@
     { key: 'accredit',  href: 'admin-accredit.html',  label: 'سجل الاعتمادات' },
     { key: 'jobs',      href: 'admin-jobs.html',      label: 'فرص العمل' },
     { key: 'discounts', href: 'admin-discounts.html', label: 'الخصومات' },
-    { key: 'codes',     href: 'admin-codes.html',     label: 'الأكواد المُوجَّهة' },
+    { key: 'codes',     href: 'admin-codes.html',     label: 'كوبونات التطبيق' },
     { key: 'reports',   href: 'admin-reports.html',   label: 'التقارير' },
     { key: 'questions', href: 'admin-questions.html', label: 'بنك الأسئلة' },
     { key: 'releases',  href: 'admin-releases.html',  label: 'إصدارات التطبيق' },
@@ -47,7 +51,8 @@
     empty:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 7 5 3h14l2 4"/><path d="M9 12h6"/></svg>',
     ok:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
     bad:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>',
-    info:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>'
+    info:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+    menu:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>'
   };
 
   /* ---------------------------------------------------------------- تنسيق */
@@ -140,11 +145,13 @@
 
   /* ---------------------------------------------------------------- القشرة */
   function shellHTML(cfg) {
-    var nav = NAV.map(function (n) {
-      return '<a class="nav-item' + (n.key === cfg.page ? ' active' : '') + '" href="' +
-        n.href + '"' + (n.key === cfg.page ? ' aria-current="page"' : '') + '>' +
-        esc(n.label) + '</a>';
-    }).join('');
+    function links(cls) {
+      return NAV.map(function (n) {
+        var on = n.key === cfg.page;
+        return '<a class="' + cls + (on ? ' active' : '') + '" href="' + esc(n.href) + '"' +
+          (on ? ' aria-current="page"' : '') + '>' + esc(n.label) + '</a>';
+      }).join('');
+    }
 
     return '' +
     '<div class="statebar"><div class="container">' +
@@ -164,18 +171,38 @@
         '<span class="en">Syrian Engineers Syndicate</span></span>' +
       '</a>' +
       '<div class="masthead-tools">' +
-        '<span class="tag tag--navy">لوحة الإدارة</span>' +
-        '<button class="btn btn-outline btn-sm" id="admLogout" hidden>خروج</button>' +
-        '<a href="index.html" class="btn btn-outline btn-sm">العودة إلى المنصة</a>' +
+        '<span class="tag tag--navy adm-mast-wide">لوحة الإدارة</span>' +
+        '<button class="btn btn-outline btn-sm adm-mast-wide" id="admLogout" hidden>خروج</button>' +
+        '<a href="index.html" class="btn btn-outline btn-sm adm-mast-wide">العودة إلى المنصة</a>' +
+        /* زر الدرج: يظهر على 1080 فما دون مكان شريط التنقل */
+        '<button type="button" class="adm-menu-btn" id="admMenuBtn" aria-controls="admDrawer" ' +
+          'aria-expanded="false" aria-haspopup="dialog">' + ICONS.menu +
+          '<span class="adm-menu-txt">القائمة</span></button>' +
       '</div>' +
     '</div></header>' +
 
     '<nav class="navbar" aria-label="تنقل لوحة الإدارة"><div class="container">' +
-      '<button class="nav-toggle" id="admNavToggle" aria-expanded="false" aria-controls="admNavMenu">' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>' +
-        'القائمة</button>' +
-      '<div class="nav-menu" id="admNavMenu">' + nav + '</div>' +
+      /* صفّان متساويان على الشاشة الواسعة: الأعمدة نصف عدد العناصر (admin.css) */
+      '<div class="nav-menu" id="admNavMenu" style="--adm-nav-cols:' + Math.ceil(NAV.length / 2) + '">' +
+        links('nav-item') + '</div>' +
     '</div></nav>' +
+
+    '<div class="adm-drawer" id="admDrawer" hidden>' +
+      '<div class="adm-drawer-veil" data-drawer-close></div>' +
+      '<div class="adm-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="admDrawerTitle" tabindex="-1">' +
+        '<div class="adm-drawer-head">' +
+          '<img src="assets/img/logo-mark-96.png" alt="" width="96" height="96">' +
+          '<span class="adm-drawer-id"><strong id="admDrawerTitle">لوحة الإدارة</strong>' +
+            '<span id="admDrawerWho"></span></span>' +
+          '<button type="button" class="adm-x" data-drawer-close aria-label="إغلاق القائمة">' + ICONS.x + '</button>' +
+        '</div>' +
+        '<nav class="adm-drawer-nav" aria-label="أقسام لوحة الإدارة">' + links('adm-drawer-item') + '</nav>' +
+        '<div class="adm-drawer-foot">' +
+          '<a href="index.html" class="btn btn-ghost-dark btn-sm">العودة إلى المنصة</a>' +
+          '<button type="button" class="btn btn-ghost-dark btn-sm" id="admLogout2" hidden>خروج</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
 
     '<section class="page-head"><div class="container">' +
       '<span class="tag tag--dark adm-mode" id="admMode">جارٍ التحقق…</span>' +
@@ -260,13 +287,42 @@
     return fallback || ('تعذّر إتمام العملية' + (m ? ' — ' + m : ''));
   }
 
+  /* ---------------------------------------------------------------- قفل التمرير والتركيز
+     عدّاد لا راية: الدرج واللوحة الجانبية والتأكيد قد تتراكب، والقفل يُرفع مع آخرها */
+  var locks = 0;
+  function lockScroll(on) {
+    var root = document.documentElement;
+    /* شريط تمرير ظاهر يختفي مع القفل فتقفز الصفحة بعرضه: يُحجز مكانه (admin.css) */
+    if (on && !locks) { root.classList.toggle('adm-locked-bar', window.innerWidth > root.clientWidth); }
+    locks = Math.max(0, locks + (on ? 1 : -1));
+    root.classList.toggle('adm-locked', locks > 0);
+  }
+  var FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' +
+                  'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  /* إبقاء Tab داخل الحوار المفتوح: من الأخير إلى الأول وبالعكس */
+  function trapTab(e, box) {
+    if (e.key !== 'Tab') return;
+    var list = Array.prototype.filter.call(box.querySelectorAll(FOCUSABLE), function (el) {
+      return el.offsetWidth > 0 || el.offsetHeight > 0;
+    });
+    if (!list.length) { e.preventDefault(); return; }
+    var first = list[0], last = list[list.length - 1], cur = document.activeElement;
+    if (e.shiftKey && (cur === first || cur === box || !box.contains(cur))) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (cur === last || !box.contains(cur))) { e.preventDefault(); first.focus(); }
+  }
+  /* لمس بلا فأرة: لا يُفتح حقلٌ تلقائياً فتقفز لوحة المفاتيح فوق نصف الشاشة */
+  function coarse() {
+    return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  }
+
   /* ---------------------------------------------------------------- اللوحة الجانبية */
   function sheet(opts) {
+    var opener = document.activeElement;
     var host = document.createElement('div');
     host.className = 'adm-sheet on';
     host.innerHTML =
       '<div class="adm-sheet-veil" data-close></div>' +
-      '<div class="adm-sheet-panel" role="dialog" aria-modal="true" aria-label="' + esc(opts.title) + '">' +
+      '<div class="adm-sheet-panel" role="dialog" aria-modal="true" aria-label="' + esc(opts.title) + '" tabindex="-1">' +
         '<div class="adm-sheet-head"><h2>' + esc(opts.title) + '</h2>' +
           '<button class="adm-x" data-close aria-label="إغلاق">' + ICONS.x + '</button></div>' +
         '<div class="adm-sheet-body">' + (opts.body || '') + '</div>' +
@@ -277,11 +333,27 @@
         '</div>' +
       '</div>';
     document.body.appendChild(host);
+    lockScroll(true);
 
-    function close() { document.removeEventListener('keydown', onKey); host.remove(); }
+    var closed = false;
+    function close() {
+      if (closed) return;
+      closed = true;
+      document.removeEventListener('keydown', onKey);
+      /* لا يُسحب التركيز من لوحةٍ أخرى فُتحت فوقها قبل إغلاقها */
+      var inside = host.contains(document.activeElement);
+      host.remove();
+      lockScroll(false);
+      if ((inside || document.activeElement === document.body) &&
+          opener && opener.focus && document.contains(opener)) { opener.focus(); }
+    }
     /* الهروب يسلك طريق زر الإلغاء نفسه: نقرته تُشغّل مستمع الإغلاق ومستمع
-       confirmAsk (حلّ الوعد بـnull) معاً — فلا يبقى تأكيد معلّقاً بلا جواب */
+       confirmAsk (حلّ الوعد بـnull) معاً — فلا يبقى تأكيد معلّقاً بلا جواب.
+       ولوحةٌ فوق لوحة: الأعلى وحدها تستجيب */
     function onKey(e) {
+      var all = document.querySelectorAll('.adm-sheet.on');
+      if (all[all.length - 1] !== host) return;
+      if (e.key === 'Tab') { trapTab(e, host.querySelector('.adm-sheet-panel')); return; }
       if (e.key !== 'Escape') return;
       var b = host.querySelector('[data-close]');
       if (b) { b.click(); } else { close(); }
@@ -307,7 +379,8 @@
       }
     });
     var first = host.querySelector('.adm-sheet-body input, .adm-sheet-body select, .adm-sheet-body textarea');
-    if (first) { first.focus(); }
+    if (first && !coarse()) { first.focus(); }
+    else { host.querySelector('.adm-sheet-panel').focus({ preventScroll: true }); }
     return { el: host, close: close };
   }
 
@@ -338,6 +411,8 @@
       s.el.querySelectorAll('[data-close]').forEach(function (b) {
         b.addEventListener('click', function () { resolve(null); });
       });
+      /* التأكيد القصير لوحةٌ سفلية على الهاتف لا شاشة كاملة (admin.css) */
+      s.el.classList.add('adm-sheet--ask');
       var ok = s.el.querySelector('[data-ok]');
       if (opts.danger) { ok.className = 'btn btn-danger'; }
     });
@@ -500,20 +575,210 @@
       '</div>';
   }
 
+  /* ---------------------------------------------------------------- الجداول على الشاشات الضيقة
+     تحت 720 يصير كل صف بطاقة «تسمية: قيمة» (admin.css)، والتسمية من رأس العمود
+     تُكتب هنا في data-label لكل خلية — مرةً عند الإقلاع ثم عند كل إعادة رسم.
+     عمود الإجراءات يُعرَّف بالصنف acts، ومن رأسه «إجراءات/الإجراءات» إن غاب الصنف؛
+     ما سواهما (ومنه «الإجراء») عمود بيانات لا أزرار.
+     الجدول الذي يجب أن يبقى شبكة يحمل adm-table--grid. */
+  var ACTS_RX = /^(ال)?إجراءات$/;
+  var TITLE_RX = /^(العنوان|الاسم)$/;
+  var ORDINAL_RX = /^(#|الرقم|الترتيب|المعرّف)$/;   /* أعمدة تسلسل لا تصلح عنواناً */
+
+  function headCols(table) {
+    var head = table.tHead;
+    if (!head || !head.rows.length) return null;
+    var cols = [], pick = false;
+    Array.prototype.forEach.call(head.rows[head.rows.length - 1].cells, function (th) {
+      var txt = (th.getAttribute('data-label') || th.textContent || '').replace(/\s+/g, ' ').trim();
+      var acts = th.classList.contains('acts') || ACTS_RX.test(txt);
+      if (acts) { th.classList.add('acts'); }
+      /* «تحديد الكل» في رأسٍ يُخفى على الهاتف: يبقى وحده شريطاً فوق البطاقات */
+      var box = !txt && th.querySelector('input[type="checkbox"]');
+      if (box) {
+        pick = true;
+        if (!th.hasAttribute('data-pick')) {
+          th.addEventListener('click', function (e) {
+            var b = th.querySelector('input[type="checkbox"]');
+            if (e.target === th && b && !b.disabled) { b.click(); }
+          });
+        }
+        th.classList.add('adm-head-pick');
+        th.setAttribute('data-pick', box.getAttribute('aria-label') || 'تحديد الكل');
+      }
+      for (var k = 0; k < (th.colSpan || 1); k++) {
+        cols.push({ label: txt, acts: acts, title: th.classList.contains('adm-card-title') });
+      }
+    });
+    table.classList.toggle('adm-has-pick', pick);
+    return cols;
+  }
+
+  function labelTable(table) {
+    if (table.classList.contains('adm-table--grid')) return;
+    var cols = headCols(table);
+    if (!cols) return;
+    /* عنوان البطاقة: المعلَّم صراحةً (th.adm-card-title)، ثم «العنوان/الاسم»، ثم أول
+       عمود ذي تسمية ليس تسلسلاً، ثم أول عمود ذي تسمية */
+    var title = -1, i;
+    for (i = 0; i < cols.length && title < 0; i++) { if (cols[i].title) title = i; }
+    for (i = 0; i < cols.length && title < 0; i++) { if (TITLE_RX.test(cols[i].label)) title = i; }
+    for (i = 0; i < cols.length && title < 0; i++) {
+      if (cols[i].label && !cols[i].acts && !ORDINAL_RX.test(cols[i].label)) title = i;
+    }
+    for (i = 0; i < cols.length && title < 0; i++) { if (cols[i].label && !cols[i].acts) title = i; }
+
+    Array.prototype.forEach.call(table.tBodies, function (tb) {
+      Array.prototype.forEach.call(tb.rows, function (tr) {
+        var cells = tr.cells;
+        /* صف حالة (تحميل/فراغ/خطأ): خلية واحدة ممتدة بلا تسمية */
+        var full = cells.length === 1 && (cells[0].colSpan > 1 || cols.length === 1);
+        tr.classList.toggle('adm-row-full', full);
+        if (full) return;
+        var c = 0;
+        Array.prototype.forEach.call(cells, function (td) {
+          var span = td.colSpan || 1, col = span === 1 ? cols[c] : null;
+          var bare = !td.textContent.trim();
+          if (col && col.label && !col.acts) { td.setAttribute('data-label', col.label); }
+          else { td.removeAttribute('data-label'); }
+          if (col && col.acts) { td.classList.add('acts'); }
+          td.classList.toggle('adm-cell-title', span === 1 && c === title);
+          /* مقبض السحب لا يعمل باللمس (البديل سهما الترتيب)، ومربع التحديد إلى زاوية البطاقة */
+          td.classList.toggle('adm-cell-drag', bare && !!td.querySelector('[draggable="true"]'));
+          td.classList.toggle('adm-cell-pick', bare && !(col && col.label) &&
+            !!td.querySelector('input[type="checkbox"]'));
+          c += span;
+        });
+      });
+    });
+  }
+
+  /* فوق 720 أزرار الصف سطرٌ واحد (admin.css). فإن جعل ذلك الجدولَ يتمرّر وكان التفافها
+     يكفي لاحتوائه، تلتفّ في العرض المتبقّي بالضبط (--adm-acts-min) بدل أن يغطّي العمود
+     الملتصق أعمدةً من البيانات. وجدولٌ يتمرّر في الحالين تبقى أزراره سطراً */
+  function fitActs(s) {
+    var t = s.querySelector('table.adm-table');
+    var th = t && t.querySelector('thead th.acts');
+    if (!th) return;
+    t.classList.remove('adm-acts-wrap');
+    if (window.innerWidth <= 720 || !s.clientWidth) return;
+    var over = s.scrollWidth - s.clientWidth;
+    if (over <= 1) return;
+    var widest = 0;
+    t.querySelectorAll('td.acts .btn').forEach(function (b) { widest = Math.max(widest, b.offsetWidth); });
+    var cs = window.getComputedStyle(th);
+    var room = Math.floor(th.getBoundingClientRect().width - over -
+      parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) - 1;
+    if (!widest || room < widest) return;
+    t.style.setProperty('--adm-acts-min', room + 'px');
+    t.classList.add('adm-acts-wrap');
+    if (s.scrollWidth > s.clientWidth + 1) { t.classList.remove('adm-acts-wrap'); }
+  }
+
+  /* هل يتمرّر الجدول أفقياً؟ يُظهر فاصل عمود الإجراءات الملتصق حين يغطّي ما خلفه */
+  function markOverflow() {
+    document.querySelectorAll('.adm-scroll').forEach(function (s) {
+      fitActs(s);
+      s.toggleAttribute('data-overflow', s.scrollWidth > s.clientWidth + 1);
+    });
+  }
+
+  /* جدول يظهر بلا تغيير في محتواه (تبويب كان مخفياً، خط تأخّر تحميله) يُعاد قياسه */
+  var sizeWatch = window.ResizeObserver ? new ResizeObserver(debounce(markOverflow, 80)) : null;
+
+  var pendingTables = null;
+  function queueTables(list) {
+    if (!pendingTables) {
+      pendingTables = [];
+      (window.requestAnimationFrame || setTimeout)(function () {
+        var todo = pendingTables;
+        pendingTables = null;
+        todo.forEach(function (t) {
+          if (!t.isConnected) return;
+          labelTable(t);
+          var s = t.closest('.adm-scroll');
+          if (sizeWatch && s) { sizeWatch.observe(s); sizeWatch.observe(t); }
+        });
+        markOverflow();
+      });
+    }
+    list.forEach(function (t) { if (pendingTables.indexOf(t) < 0) pendingTables.push(t); });
+  }
+
+  function watchTables() {
+    queueTables(Array.prototype.slice.call(document.querySelectorAll('table.adm-table')));
+    if (!window.MutationObserver) return;
+    new MutationObserver(function (muts) {
+      var found = [];
+      muts.forEach(function (m) {
+        var t = m.target.closest ? m.target.closest('table.adm-table') : null;
+        if (t) { found.push(t); return; }
+        Array.prototype.forEach.call(m.addedNodes, function (n) {
+          if (n.nodeType !== 1) return;
+          if (n.matches('table.adm-table')) { found.push(n); }
+          else if (n.querySelector('table.adm-table')) {
+            Array.prototype.push.apply(found, n.querySelectorAll('table.adm-table'));
+          }
+        });
+      });
+      if (found.length) { queueTables(found); }
+    }).observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('resize', debounce(markOverflow, 150));
+  }
+
+  /* ---------------------------------------------------------------- درج التنقل */
+  function wireDrawer() {
+    var btn = document.getElementById('admMenuBtn');
+    var dr = document.getElementById('admDrawer');
+    if (!btn || !dr) return;
+    var panel = dr.querySelector('.adm-drawer-panel');
+    var wide = window.matchMedia ? window.matchMedia('(min-width: 1081px)') : null;
+
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); close(true); return; }
+      trapTab(e, panel);
+    }
+    function open() {
+      if (!dr.hidden) return;
+      dr.hidden = false;
+      btn.setAttribute('aria-expanded', 'true');
+      lockScroll(true);
+      document.addEventListener('keydown', onKey);
+      /* العنصر الحالي في وسط القائمة: عشرون عنصراً تتجاوز ارتفاع الهاتف */
+      var nav = panel.querySelector('.adm-drawer-nav');
+      var cur = nav.querySelector('[aria-current="page"]');
+      if (cur) {
+        nav.scrollTop = Math.max(0, cur.offsetTop - nav.offsetTop - (nav.clientHeight - cur.offsetHeight) / 2);
+      }
+      panel.focus({ preventScroll: true });
+    }
+    function close(back) {
+      if (dr.hidden) return;
+      dr.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+      lockScroll(false);
+      document.removeEventListener('keydown', onKey);
+      if (back) { btn.focus(); }
+    }
+    btn.addEventListener('click', function () { if (dr.hidden) { open(); } else { close(true); } });
+    dr.addEventListener('click', function (e) {
+      if (e.target.closest('[data-drawer-close]')) { close(true); }
+    });
+    /* الرجوع إلى صفحة محفوظة في ذاكرة المتصفح بعد التنقل من الدرج: تعود مغلقة */
+    window.addEventListener('pageshow', function (e) { if (e.persisted) { close(false); } });
+    /* اتساع النافذة إلى عرض الشريط الكامل يُسقط الدرج */
+    if (wide) {
+      var onWide = function () { if (wide.matches) { close(false); } };
+      if (wide.addEventListener) { wide.addEventListener('change', onWide); }
+      else if (wide.addListener) { wide.addListener(onWide); }
+    }
+  }
+
   /* ---------------------------------------------------------------- الإقلاع */
   function boot(cfg) {
     document.body.insertAdjacentHTML('afterbegin', shellHTML(cfg));
-
-    /* قائمة الموبايل */
-    var tg = document.getElementById('admNavToggle');
-    var menu = document.getElementById('admNavMenu');
-    if (tg) {
-      tg.addEventListener('click', function () {
-        var open = tg.getAttribute('aria-expanded') === 'true';
-        tg.setAttribute('aria-expanded', open ? 'false' : 'true');
-        menu.classList.toggle('open', !open);
-      });
-    }
+    wireDrawer();
+    watchTables();
     /* ظل الترويسة اللاصقة */
     var mast = document.getElementById('masthead');
     if (mast) {
@@ -541,13 +806,17 @@
       modeTag.textContent = 'بيانات حيّة';
       modeTag.setAttribute('data-live', '1');
       document.documentElement.setAttribute('data-role', st.role || 'admin');
-      if (who) {
-        who.textContent = (st.name || 'موظف') +
-          (st.role === 'viewer' ? ' — صلاحية اطّلاع' : '');
-      }
-      logout.hidden = false;
-      logout.addEventListener('click', function () {
-        API.signOut().then(function () { window.location.replace('admin-login.html'); });
+      var whoText = (st.name || 'موظف') + (st.role === 'viewer' ? ' — صلاحية اطّلاع' : '');
+      if (who) { who.textContent = whoText; }
+      var dWho = document.getElementById('admDrawerWho');
+      if (dWho) { dWho.textContent = whoText; }
+      /* زر الخروج في الترويسة وفي الدرج: الثاني وحده ظاهر على الهاتف */
+      [logout, document.getElementById('admLogout2')].forEach(function (b) {
+        if (!b) return;
+        b.hidden = false;
+        b.addEventListener('click', function () {
+          API.signOut().then(function () { window.location.replace('admin-login.html'); });
+        });
       });
       return st;
     });

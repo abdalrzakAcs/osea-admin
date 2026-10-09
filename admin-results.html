@@ -27,6 +27,29 @@
   color: var(--text-secondary);
 }
 .res-acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.res-m-only { display: none; }
+
+/* من 721: الاسم يلتفّ بعرض أدنى أصغر من .wrap العامة (220)، فيتّسع الجدولان للّوحيّ */
+@media (min-width: 721px) {
+  .adm-table td.res-name { min-width: 140px; max-width: 260px; }
+}
+/* حتى 1080: الساعة سطرٌ تحت التاريخ، وحشوة أضيق — عمود الإجراءات الملتصق لا يغطّي البيانات */
+@media (max-width: 1080px) {
+  .res-time { display: block; font-size: 12.5px; color: var(--text-secondary); }
+  .res-sep { display: none; }
+}
+@media (min-width: 721px) and (max-width: 1080px) {
+  .res-table th, .res-table td { padding-inline: 10px; }
+}
+
+/* الهاتف: المدة تُقرأ في التصدير وتُطوى من البطاقة، ونوع الشهادة وسمٌ بجوار نسبتها،
+   وأعمدة الرسم أضيق كي يبقى للأشرطة عرضٌ يُقارَن */
+@media (max-width: 720px) {
+  .res-chart-body { padding: 14px; }
+  .res-chart-body .adm-chart-row { grid-template-columns: 84px 1fr 36px; gap: 10px; }
+  .adm-table td.res-m-hide { display: none !important; }
+  .res-m-only { display: inline; }
+}
 </style>
 </head>
 <body>
@@ -78,7 +101,7 @@
           <span class="tag" id="attTag">—</span>
         </div>
         <div class="adm-scroll">
-          <table class="adm-table">
+          <table class="adm-table res-table">
             <thead>
               <tr>
                 <th>الاسم</th>
@@ -87,7 +110,7 @@
                 <th>الحكم</th>
                 <th>المدة (دق:ث)</th>
                 <th>التوقيت</th>
-                <th>إجراءات</th>
+                <th class="acts">إجراءات</th>
               </tr>
             </thead>
             <tbody id="attRows">
@@ -119,19 +142,20 @@
           <h2 id="certTitle">الشهادات الصادرة</h2>
           <span class="spacer"></span>
           <span class="tag" id="certTag">—</span>
+          <a class="btn btn-outline btn-sm" href="admin-certificates.html">السجل الكامل</a>
         </div>
         <div class="adm-scroll">
-          <table class="adm-table">
+          <table class="adm-table res-table">
             <thead>
               <tr>
-                <th>رمز الشهادة</th>
+                <th class="adm-card-title">رمز الشهادة</th>
                 <th>صاحبها</th>
                 <th>الفرع</th>
                 <th>النوع</th>
                 <th>النسبة</th>
                 <th>تاريخ الإصدار</th>
                 <th>التحقق</th>
-                <th>إجراءات</th>
+                <th class="acts">إجراءات</th>
               </tr>
             </thead>
             <tbody id="certRows">
@@ -185,7 +209,7 @@
   A.boot({
     page: 'results',
     title: 'النتائج والشهادات',
-    lead: 'كل محاولة امتحان صُحّحت وحُفظت، وتوزيع الدرجات على الشرائح، وسجل الشهادات الصادرة '
+    lead: 'كل محاولة امتحان صُحّحت وحُفظت، وتوزيع الدرجات على الشرائح، وأحدث الشهادات الصادرة '
         + 'برموز التحقق — مع إصدار شهادة لحساب موافَق عليه، وسحب شهادة صادرة، وحذف محاولة خاطئة.',
     crumb: 'النتائج والشهادات'
   }).then(function (st) {
@@ -299,9 +323,18 @@
     });
   }
 
+  /* التاريخ والساعة: سطرٌ واحد على الشاشة الواسعة، والساعة تحت التاريخ حتى 1080 */
+  function when(iso) {
+    var s = A.arDateTime(iso), i = s.indexOf(' — ');
+    if (i < 0) return A.esc(s);
+    return A.esc(s.slice(0, i)) + '<span class="res-time"><span class="res-sep"> — </span>' +
+      A.esc(s.slice(i + 3)) + '</span>';
+  }
+  function attCount(n) { return A.count(n, 'محاولة واحدة', 'محاولتان', 'محاولات', 'محاولة'); }
+
   function paintAttempts() {
     var rows = attView();
-    $('attTag').textContent = A.toAr(rows.length) + ' محاولة';
+    $('attTag').textContent = attCount(rows.length);
     $('attTitle').textContent = attTrunc()
       ? ('أحدث ' + A.toAr(CAP) + ' محاولة (سقف الجلب)')
       : 'المحاولات المسجّلة';
@@ -329,13 +362,13 @@
         : '<span class="tag tag--error">لم يجتز</span>';
       if (r.distinction) { verdict += ' <span class="tag tag--gold">تميّز</span>'; }
       return '<tr data-id="' + A.esc(r.id) + '">' +
-        '<td class="wrap">' + who + '</td>' +
+        '<td class="wrap res-name">' + who + '</td>' +
         '<td>' + A.esc(a.branch || '—') + '</td>' +
         '<td class="num strong">' + A.toAr(r.score) + '٪</td>' +
         '<td>' + verdict + '</td>' +
-        '<td class="num adm-mono">' + (r.duration_s ? A.secDur(r.duration_s) : '—') + '</td>' +
-        '<td>' + A.arDateTime(r.taken_at) + '</td>' +
-        '<td><span class="res-acts">' +
+        '<td class="num adm-mono res-m-hide">' + (r.duration_s ? A.secDur(r.duration_s) : '—') + '</td>' +
+        '<td>' + when(r.taken_at) + '</td>' +
+        '<td class="acts"><span class="res-acts">' +
           '<button class="btn btn-outline btn-sm" data-act="delAtt" data-write>حذف المحاولة</button>' +
         '</span></td>' +
       '</tr>';
@@ -385,7 +418,7 @@
     var n = attAll.length;
     var passed = counts[0];
 
-    distTag.textContent = A.toAr(n) + ' محاولة';
+    distTag.textContent = attCount(n);
     distBody.innerHTML =
       '<div class="adm-chart">' + BANDS.map(function (b, i) {
         var c = counts[i];
@@ -433,7 +466,7 @@
 
   function paintCerts() {
     var rows = certView();
-    $('certTag').textContent = A.toAr(rows.length) + ' شهادة';
+    $('certTag').textContent = A.count(rows.length, 'شهادة واحدة', 'شهادتان', 'شهادات', 'شهادة');
     $('certTitle').textContent = certTrunc()
       ? ('أحدث ' + A.toAr(CAP) + ' شهادة (سقف الجلب)')
       : 'الشهادات الصادرة';
@@ -461,15 +494,16 @@
         : '<span class="tag tag--success">' + A.esc(c.cert_type) + '</span>';
       return '<tr data-id="' + A.esc(c.id) + '">' +
         '<td class="num strong adm-mono" dir="ltr" style="text-align:start">' + A.esc(c.code) + '</td>' +
-        '<td class="wrap">' + who + '</td>' +
+        '<td class="wrap res-name">' + who + '</td>' +
         '<td>' + A.esc(c.branch) + '</td>' +
-        '<td>' + type + '</td>' +
-        '<td class="num">' + A.esc(c.score) + '</td>' +
+        '<td class="res-m-hide">' + type + '</td>' +
+        /* على الهاتف يُطوى عمود النوع ويُقرأ وسمُه بجوار النسبة */
+        '<td class="num">' + A.esc(c.score) + '<span class="res-m-only"> ' + type + '</span></td>' +
         '<td>' + A.esc(c.issued_at_ar) + '</td>' +
         '<td><a class="link" href="' +
           A.esc((window.OSEA_VERIFY_BASE || 'verify.html') + '?code=' + encodeURIComponent(c.code)) +
           '" target="_blank" rel="noopener">صفحة التحقق</a></td>' +
-        '<td><span class="res-acts">' +
+        '<td class="acts"><span class="res-acts">' +
           '<button class="btn btn-outline btn-sm" data-act="revoke" data-write>سحب الشهادة</button>' +
         '</span></td>' +
       '</tr>';
@@ -484,15 +518,16 @@
     if (c) { askRevoke(c); }
   }
 
-  /* السحب حذف نهائي في القاعدة يبطل رمز التحقق، فالسبب إلزامي عملياً:
+  /* السحب يبطل رمز التحقق ويوقف بند الشهادة في سجل المعتمدين (039)، فالسبب إلزامي:
      إن تُرك فارغاً يُعاد طلبه بدل تمرير سحب بلا مبرّر إلى سجل التدقيق. */
   function askRevoke(c) {
     A.confirm({
       title: 'سحب الشهادة',
       danger: true,
       okLabel: 'سحب الشهادة',
-      text: 'ستُسحب الشهادة ' + c.code + ' الصادرة باسم «' + c.holder_name + '» نهائياً، '
-          + 'ويصبح رمزها غير صالح في صفحة التحقق العلنية. يُحفظ السبب في سجل التدقيق باسمك.',
+      text: 'ستُسحب الشهادة ' + c.code + ' الصادرة باسم «' + c.holder_name + '»، '
+          + 'ويصبح رمزها غير صالح في صفحة التحقق العلنية، ويُوقف نشر بندها في سجل المهندسين المعتمدين. '
+          + 'يُحفظ السبب في سجل التدقيق باسمك، وتمكن إعادتها من «سجل الشهادات».',
       reason: 'سبب السحب (إلزامي)'
     }).then(function (reason) {
       if (reason === null) return;                       /* أُلغي */
@@ -607,7 +642,8 @@
         ' شهادة فقط' +
         (totals.certs != null
           ? ' من أصل ' + A.toAr(totals.certs) + ' شهادة صادرة.'
-          : '، وقد تكون هناك شهادات أقدم غير معروضة.');
+          : '، وقد تكون هناك شهادات أقدم غير معروضة.') +
+        ' <a class="link-navy" href="admin-certificates.html">السجل الكامل في «سجل الشهادات»</a>';
     }
   }
 

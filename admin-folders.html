@@ -20,9 +20,36 @@
 @media (max-width:520px){.adm-kpis--5{grid-template-columns:1fr}}
 
 .sheet-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+/* حشوة أضيق كي تتّسع جداول الشاشة لعرض ١٢٨٠ بلا تمرير أفقي */
+.adm-table th,.adm-table td{padding-inline:11px}
 .adm-table td.wrap{min-width:180px}
+.adm-table td.cnt{min-width:150px}
+/* في مدى الدرج تضيق الخليتان العريضتان كي يتّسع الجدول لعرض ١٠٢٤ */
+@media (max-width:1080px){.adm-table td.wrap{min-width:150px}.adm-table td.cnt{min-width:120px}}
 /* أزرار الصف في سطر واحد — الجدول يتمرّر أفقياً بدلاً من تضخيم ارتفاع الصفوف */
 .row-acts{display:flex;gap:6px;flex-wrap:nowrap}
+.row-acts .btn{padding-inline:11px}
+/* الشاشة الضيقة قبل تحوّل الجدول إلى بطاقات: عمودان من الأزرار كي لا يغطّي عمود الإجراءات الجدول */
+@media (max-width:760px){.row-acts{display:grid;grid-template-columns:repeat(2,auto);justify-content:start}}
+/* واللوحي حتى 1023 لجدول المجلدات: عمودان من الأزرار، ورأسا العددين يلتفّان،
+   وعمود «الترتيب» يغني عنه السهمان — كي تبقى الحالة ظاهرة بجوار العمود الملتصق */
+@media (min-width:721px) and (max-width:1023px){
+  #rows .row-acts{display:grid;grid-template-columns:repeat(2,auto);justify-content:start}
+  .fold-table th{white-space:normal}
+  .fold-table th.ord-col,.fold-table td.ord-col{display:none}
+}
+/* الهاتف: سهما الترتيب بهدف لمس كامل */
+@media (max-width:720px){
+  .row-acts .ord-btn{min-width:44px}
+}
+
+/* خلية المجلد: الاسم، فالملاحظة تحته، فسطر المجال ووسم الإخفاء */
+.fold-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-block-start:6px;
+  font-size:12px;color:var(--text-secondary);white-space:normal}
+.fold-meta .tag{min-height:22px;padding-inline:9px;font-size:11.5px}
+
+/* خلية الاشتراك: وسم الطريقة وأسعارها تحته */
+.acc-cell{display:grid;gap:6px;justify-items:start}
 
 /* الأسعار الثلاثة في خلية واحدة: سطر لكل طريقة، والغائبة «—» */
 .price-lines{display:grid;gap:2px;font-size:12.5px;white-space:nowrap}
@@ -64,7 +91,7 @@
 .adm-table tbody tr.drop-before td{box-shadow:inset 0 2px 0 0 var(--gold-600)}
 .adm-table tbody tr.drop-after td{box-shadow:inset 0 -2px 0 0 var(--gold-600)}
 /* زرّا ↑/↓ — بديل المقبض لمن لا يستطيع السحب */
-.ord-btn{padding-inline:10px;font-size:15px;line-height:1}
+.row-acts .ord-btn,.ord-btn{padding-inline:10px;font-size:15px;line-height:1}
 /* شريط حفظ الترتيب: .adm-pager تضبط display:flex فيلزم كبح hidden صراحةً */
 .ord-bar{background:var(--cream-50);border-block-start:2px solid var(--gold-600)}
 .ord-bar[hidden]{display:none}
@@ -93,10 +120,11 @@
         </span>
       </div>
 
-      <!-- ============================ رسوم الاختبارات ============================ -->
+      <!-- ======================= الرسوم الثابتة (products) ======================= -->
+      <!-- الخمسة كلها منذ ٠٣٨: رسما الاختبار + التجديد والارتقاء ودورته (٠٢٦) -->
       <div class="adm-table-card">
         <div class="adm-table-head">
-          <h2>رسوم الاختبارات</h2>
+          <h2>رسوم الاختبار والعضوية والمراتب</h2>
           <span class="spacer"></span>
           <span class="tag" id="prodTag">—</span>
         </div>
@@ -108,7 +136,7 @@
                 <th>المبلغ</th>
                 <th>الحالة</th>
                 <th>آخر تحديث</th>
-                <th>إجراءات</th>
+                <th class="acts">إجراءات</th>
               </tr>
             </thead>
             <tbody id="prodRows">
@@ -121,7 +149,7 @@
             <input class="adm-check" type="checkbox" id="enfToggle" data-write disabled style="margin-block-start:3px">
             <span><b>إنفاذ رسم الامتحان</b>
               <span class="adm-sub">عند التفعيل لا تصدر ورقة امتحان إلا لحساب لديه رسم محاولة
-              مدقَّق (استحقاق محاولة غير مستهلَك — من دفعة موافَق عليها أو كود تفعيل)،
+              مدقَّق (استحقاق محاولة غير مستهلَك — من دفعة موافَق عليها أو كوبون التطبيق)،
               ويُستهلَك استحقاق واحد عند كل تسليم للتصحيح.
               عند الإطفاء تصدر الأوراق كما اليوم بلا شرط الرسم.</span></span>
           </label>
@@ -164,7 +192,7 @@
                 <th>بنوده</th>
                 <th>الترتيب</th>
                 <th>الحالة</th>
-                <th>إجراءات</th>
+                <th class="acts">إجراءات</th>
               </tr>
             </thead>
             <tbody id="domRows">
@@ -204,24 +232,21 @@
           <span class="tag" id="totalTag">—</span>
         </div>
         <div class="adm-scroll">
-          <table class="adm-table">
+          <table class="adm-table fold-table">
             <thead>
               <tr>
                 <th class="drag-cell" data-write aria-label="مقبض الترتيب"></th>
-                <th>المجال</th>
-                <th>محتواه</th>
-                <th>الاسم</th>
-                <th>طريقة الاشتراك</th>
-                <th>الأسعار</th>
-                <th>البنود</th>
-                <th>الاشتراكات النشطة</th>
-                <th>الترتيب</th>
+                <th class="adm-card-title">المجلد</th>
+                <th>المحتوى</th>
+                <th>الاشتراك</th>
+                <th>اشتراكات نشطة</th>
+                <th class="ord-col">الترتيب</th>
                 <th>الحالة</th>
-                <th>إجراءات</th>
+                <th class="acts">إجراءات</th>
               </tr>
             </thead>
             <tbody id="rows">
-              <tr><td colspan="11"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+              <tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -235,7 +260,7 @@
         </div>
         <div class="adm-pager">
           <span>المجلد المدفوع يظهر في التطبيق ولا تُفتح بنوده إلا باشتراك ساري أو
-          اشتراك «كامل المكتبة» — ويصل المشترك إليه من شاشة الدفع أو بكود مُوجَّه.
+          اشتراك «كامل المكتبة» — ويصل المشترك إليه من شاشة الدفع أو بكوبون التطبيق.
           المجلد لا يُقيَّد بنوع: يستقبل كتباً واستمارات ودروساً معاً، والشجرة
           في التطبيق «المجال ← المجلد ← البند».
           لتغيير الترتيب اسحب المجلد بمقبضه أو استعمل زرّي ↑/↓، والحركة داخل
@@ -303,7 +328,7 @@
     page: 'folders',
     title: 'المجلدات والتسعير',
     lead: 'مجلدات المكتبة وطرق الاشتراك بها — مجاني أو بحساب موافَق أو مدفوع '
-        + '(شهري/سنوي/دائم)، مع رسوم اختبار الاعتماد ومفتاح إنفاذها.',
+        + '(شهري/سنوي/دائم)، مع رسوم الاختبار والتجديد والمراتب ومفتاح إنفاذ رسم الاختبار.',
     crumb: 'المجلدات والتسعير'
   }).then(function (st) {
     if (!st) return;
@@ -360,7 +385,7 @@
     /* أي تحميل يأتي بترتيب القاعدة — فالترتيب المحلي المعلَّق ينتهي هنا */
     orderBackup = null; orderDirty = false; paintOrderBar();
     domOrderBackup = null; domOrderDirty = false; paintDomOrderBar();
-    tbody.innerHTML = '<tr><td colspan="11"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
     prodBody.innerHTML = '<tr><td colspan="5"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
     domBody.innerHTML = '<tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
     Promise.all([
@@ -386,7 +411,7 @@
       paintFolders();
     }).catch(function (e) {
       $('kpis').innerHTML = '';
-      tbody.innerHTML = '<tr><td colspan="11">' + A.errorState(A.errText(e), 'retry') + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8">' + A.errorState(A.errText(e), 'retry') + '</td></tr>';
       var b = $('retry'); if (b) b.addEventListener('click', load);
       prodBody.innerHTML = '<tr><td colspan="5">' + A.emptyState('تعذّر تحميل الرسوم') + '</td></tr>';
       /* عطل الشبكة ليس غياب ترحيلة: البطاقة تبقى ظاهرة برسالة تعذّر بدل سطر
@@ -430,11 +455,11 @@
 
   /* ---------------------------------------------------------------- الرسوم */
   function paintProducts() {
-    $('prodTag').textContent = A.toAr(products.length) + ' من رسمين';
+    $('prodTag').textContent = A.toAr(products.length) + ' من خمسة رسوم';
     if (!products.length) {
       prodBody.innerHTML = '<tr><td colspan="5">' + A.emptyState(
         'لا رسوم معرَّفة',
-        'صفّا الرسمين يُبذران بترحيل القاعدة ٠٢١ — طبّق الترحيل ثم أعد التحميل.') + '</td></tr>';
+        'صفوف الرسوم الخمسة تُبذر بترحيلتي القاعدة ٠٢١ و٠٢٦ — طبّقهما ثم أعد التحميل.') + '</td></tr>';
       return;
     }
     prodBody.innerHTML = products.map(function (p) {
@@ -447,7 +472,7 @@
           ? '<span class="tag tag--success">نشط</span>'
           : '<span class="tag tag--error">معطّل</span>') + '</td>' +
         '<td>' + A.arDate(p.updated_at) + '</td>' +
-        '<td><button class="btn btn-outline btn-sm" data-act="edit" data-write>تعديل</button></td>' +
+        '<td class="acts"><button class="btn btn-outline btn-sm" data-act="edit" data-write>تعديل</button></td>' +
       '</tr>';
     }).join('');
   }
@@ -462,7 +487,12 @@
     if (p) openProduct(p);
   }
 
+  /* رسما الاختبار يُدفعان آلياً أو يدوياً، ورسوم العضوية والمراتب (٠٢٦)
+     يدوية وحدها — لا فاتورة شام كاش آلية لها (خارج AUTO_SERVICES) */
+  var EXAM_FEES = ['exam', 'exam-re'];
+
   function openProduct(p) {
+    var exam = EXAM_FEES.indexOf(p.id) > -1;
     A.sheet({
       title: 'تعديل «' + p.title + '»',
       okLabel: 'حفظ الرسم',
@@ -471,6 +501,9 @@
           'المبلغ الجديد يسري فوراً على الدفعات التالية — ' +
           'دفعة برقم عملية على المبلغ القديم تُرفض آلياً، ' +
           'والمبلغ صفر يبقى مقبولاً كإعفاء بتقدير الإدارة.' +
+          (exam
+            ? ' وهو المبلغ الذي تُفتح به فاتورة شام كاش الآلية حين يكون الدفع الإلكتروني مفعّلاً.'
+            : ' هذا الرسم يُسدَّد تحويلاً يدوياً يدقّقه الطاقم — لا دفع آلي له عبر شام كاش.') +
         '</span></div>' +
         '<div class="field"><label for="pTitle">العنوان</label>' +
           '<input class="input" id="pTitle" maxlength="120" value="' + A.esc(p.title) + '"></div>' +
@@ -500,6 +533,13 @@
         }).then(function () {
           A.toast('حُفظ رسم «' + title + '».', 'ok');
           load();
+        }).catch(function (e) {
+          /* قبل ترحيلة ٠٣٨ تقبل admin_save_product رسمَي الاختبار وحدهما وتردّ
+             غيرهما بـ«الرسم غير موجود» — رسالة تكذب: الصفّ موجود ومعروض أعلاه */
+          if (!exam && /الرسم غير موجود/.test((e && e.message) || '')) {
+            throw new Error('تعديل هذا الرسم يحتاج ترحيلة ٠٣٨ — قبلها يُعدَّل رسما الاختبار وحدهما.');
+          }
+          throw e;
         });
       }
     });
@@ -540,7 +580,7 @@
       A.confirm({
         title: 'تفعيل إنفاذ رسم الامتحان؟',
         text: 'من هذه اللحظة لا يستطيع أي عضو فتح ورقة امتحان إلا برسم محاولة مدقَّق: '
-            + 'دفعة موافَق عليها من الإدارة أو كود تفعيل مُوجَّه. '
+            + 'دفعة موافَق عليها من الإدارة أو كوبون التطبيق. '
             + 'من هو في منتصف محاولة مفتوحة الآن قد يُمنع من طلب ورقة جديدة. '
             + 'تأكد أولاً أن الرسمين معرَّفان بمبلغيهما الصحيحين أعلاه.',
         okLabel: 'تفعيل الإنفاذ', danger: true
@@ -649,7 +689,7 @@
         '<td>' + (d.active !== false
           ? '<span class="tag tag--success">نشط</span>'
           : '<span class="tag tag--error">معطّل</span>') + '</td>' +
-        '<td><span class="row-acts">' +
+        '<td class="acts"><span class="row-acts">' +
           '<button class="btn btn-outline btn-sm ord-btn" data-act="up" data-write' +
             (upOk ? '' : ' disabled') + ' aria-label="تحريك المجال لأعلى"' +
             ' title="تحريك لأعلى">&#8593;</button>' +
@@ -973,12 +1013,14 @@
       : '<span>' + A.esc(label) + ': <b>' + A.num(v) + '</b>' + A.esc(CUR) + '</span>';
   }
 
-  /* خلية «محتواه»: عدّ البنود بنوعها داخل المجلد الواحد — فالمجلد يجمع
+  /* خلية «المحتوى»: عدّ البنود بنوعها داخل المجلد الواحد — فالمجلد يجمع
      الأنواع الثلاثة معاً ولم يبقَ له نوع يُوسَم به. قبل تطبيق ٠٣١ لا تصل
-     أعداد الأنواع من admin_folders، فتُقال «—» لا صفرٌ يكذب. */
+     أعداد الأنواع من admin_folders، فيُقال عدد البنود وحده. */
   function contentsCell(f) {
     var hasKinds = f.books != null || f.forms != null || f.lessons != null;
-    if (!hasKinds) return '<span class="adm-sub" style="margin:0">—</span>';
+    if (!hasKinds) {
+      return '<span>' + A.esc(A.count(f.items | 0, 'بند واحد', 'بندان', 'بنود', 'بنداً')) + '</span>';
+    }
     var parts = [];
     if (f.books | 0) parts.push(A.count(f.books, 'كتاب', 'كتابان', 'كتب', 'كتاباً'));
     if (f.forms | 0) parts.push(A.count(f.forms, 'استمارة', 'استمارتان', 'استمارات', 'استمارة'));
@@ -1010,7 +1052,7 @@
     paintOrderBar();
 
     if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="11">' + A.emptyState(
+      tbody.innerHTML = '<tr><td colspan="8">' + A.emptyState(
         folders.length ? 'لا نتائج مطابقة' : 'لا مجلدات بعد',
         folders.length
           ? 'جرّب توسيع البحث.'
@@ -1032,7 +1074,7 @@
             priceLine('شهري', f.price_month) +
             priceLine('سنوي', f.price_year) +
             priceLine('دائم', f.price_once) + '</div>'
-        : '<span class="adm-sub" style="margin:0">—</span>';
+        : '';
       return '<tr data-id="' + A.esc(f.id) + '">' +
         '<td class="drag-cell" data-write>' +
           '<span class="drag-h" data-drag draggable="true" role="img" ' +
@@ -1044,24 +1086,23 @@
            الفرعية (٠٢٨) فلا يُبلَغ المجلدُ من شاشة المجال، ومجالٌ أُوقف
            فيسقط هو وكل ما تحته. والموقوف يغلب حين تجتمعان: نفيٌ للمجال
            كلّه لا لطريق الوصول إليه وحده، فذكرُ الأضعف بجانبه يُلبس. */
-        '<td>' + A.esc(f.domain) +
-          (domActiveOff(f.domain)
-            ? ' <span class="tag tag--gold">لا يظهر — المجال موقوف</span>'
-            : (domSubsOff(f.domain)
-              ? ' <span class="tag tag--gold">لا يظهر — المجال بلا مجلدات فرعية</span>'
-              : '')) + '</td>' +
-        '<td class="wrap">' + contentsCell(f) + '</td>' +
         '<td class="wrap"><span class="strong">' + A.esc(f.name) + '</span>' +
-          (f.note ? '<span class="adm-sub">' + A.esc(f.note) + '</span>' : '') + '</td>' +
-        '<td><span class="tag ' + ac.cls + '">' + A.esc(ac.label) + '</span></td>' +
-        '<td>' + prices + '</td>' +
-        '<td class="num">' + A.toAr(f.items | 0) + '</td>' +
+          (f.note ? '<span class="adm-sub">' + A.esc(f.note) + '</span>' : '') +
+          '<span class="fold-meta"><span>المجال: ' + A.esc(f.domain) + '</span>' +
+          (domActiveOff(f.domain)
+            ? '<span class="tag tag--gold">لا يظهر — المجال موقوف</span>'
+            : (domSubsOff(f.domain)
+              ? '<span class="tag tag--gold">لا يظهر — المجال بلا مجلدات فرعية</span>'
+              : '')) + '</span></td>' +
+        '<td class="wrap cnt">' + contentsCell(f) + '</td>' +
+        '<td><span class="acc-cell"><span class="tag ' + ac.cls + '">' + A.esc(ac.label) + '</span>' +
+          prices + '</span></td>' +
         '<td class="num">' + A.toAr(f.subs | 0) + '</td>' +
-        '<td class="num">' + A.toAr(f.sort | 0) + '</td>' +
+        '<td class="num ord-col">' + A.toAr(f.sort | 0) + '</td>' +
         '<td>' + (f.active
           ? '<span class="tag tag--success">نشط</span>'
           : '<span class="tag tag--error">معطّل</span>') + '</td>' +
-        '<td><span class="row-acts">' +
+        '<td class="acts"><span class="row-acts">' +
           '<button class="btn btn-outline btn-sm ord-btn" data-act="up" data-write' +
             (upOk ? '' : ' disabled') + ' aria-label="تحريك المجلد لأعلى"' +
             ' title="تحريك لأعلى ضمن «' + A.esc(grpName) + '»">&#8593;</button>' +

@@ -35,11 +35,33 @@
    — ومن يمنح إذناً أمنياً يقرّر بما يراه أمامه لا بما يبلغه بالتمرير */
 .cap-multi{min-height:172px;height:auto;padding-block:9px;line-height:1.9}
 
+/* فحص الرقم النقابي داخل بطاقة التوثيق: الصيغة ثم الحسابات الأخرى التي تحمله */
+.sc-box{display:grid;gap:12px;margin-block-start:16px;padding:14px 16px;
+  background:var(--navy-25);border:var(--adm-hair);border-radius:var(--adm-tool)}
+.sc-box[hidden]{display:none}
+.sc-title{font-size:14px;line-height:1.5;margin:0;color:var(--text-display)}
+.sc-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.sc-head .adm-mono{font-size:15px;font-weight:700;color:var(--navy-800)}
+.sc-list{display:grid;gap:8px}
+.sc-item{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:11px 13px;
+  background:var(--surface);border:var(--adm-hair);border-radius:var(--adm-tool)}
+.sc-main{flex:1 1 190px;min-width:0}
+.sc-main a{color:var(--navy-700);font-weight:700;text-decoration:underline;
+  text-underline-offset:3px;text-decoration-color:var(--navy-200)}
+.sc-main a:hover{text-decoration-color:var(--gold-600)}
+.sc-tags{display:flex;flex-wrap:wrap;gap:6px}
+
 /* رقم تسلسلي صغير للمحاولات والدروس */
 .seq{
   display:inline-grid;place-items:center;width:26px;height:26px;
   background:var(--cream-100);color:var(--navy-700);border-radius:var(--radius-tool,8px);
   font-weight:700;font-size:13px;
+}
+
+/* الهاتف: ترتيب البطاقات يغني عن عمود رقم المحاولة، وصف الإجمالي بخلفية الخلاصة */
+@media (max-width:720px){
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.ud-seq{display:none}
+  .adm-table:not(.adm-table--grid) > tbody > tr.tot{background:var(--navy-25)}
 }
 </style>
 </head>
@@ -93,6 +115,7 @@
           </div>
           <div class="prof-body">
             <dl class="adm-kv" id="verifyKv"></dl>
+            <div class="sc-box" id="syndCheck" aria-live="polite" hidden></div>
             <div class="prof-acts" id="verifyBtns" style="margin-block-start:16px"></div>
             <p class="adm-sub" id="verifyNote" hidden></p>
           </div>
@@ -178,7 +201,7 @@
                   <th>الحكم</th>
                   <th>مدة الجلسة</th>
                   <th>التوقيت</th>
-                  <th>إجراء</th>
+                  <th class="acts">إجراء</th>
                 </tr>
               </thead>
               <tbody id="attemptRows"></tbody>
@@ -201,7 +224,7 @@
                   <th>النوع</th>
                   <th>المبلغ</th>
                   <th>التوقيت</th>
-                  <th>إجراء</th>
+                  <th class="acts">إجراء</th>
                 </tr>
               </thead>
               <tbody id="paymentRows"></tbody>
@@ -225,7 +248,7 @@
                   <th>النسبة</th>
                   <th>تاريخ الإصدار</th>
                   <th>التحقق</th>
-                  <th>إجراء</th>
+                  <th class="acts">إجراء</th>
                 </tr>
               </thead>
               <tbody id="certRows"></tbody>
@@ -339,10 +362,11 @@
     ['services',      'الخدمات'],
     ['jobs',          'فرص العمل الهندسية'],
     ['discounts',     'خصوماتي'],
+    ['certificates',  'سجل الشهادات'],
     ['grade',         'المراتب الهندسية'],
     ['account',       'حسابي'],
     ['pay',           'الدفع والتفعيل'],
-    ['verify',        'التحقق من الشهادات'],
+    ['verify',        'التحقق من الشهادات والرقم النقابي'],
     ['profile',       'استكمال بيانات الحساب'],
     ['exam-demo',     'النموذج التجريبي']
   ];
@@ -356,6 +380,11 @@
 
   /* أنواع بنود المحتوى كما تكتبها admin_content → عربية في قائمة الاختيار */
   var CAP_KIND = { book: 'كتاب', form: 'استمارة', lesson: 'درس' };
+
+  /* إرشاد القائمة المتعددة: باللمس تُفتح منتقيةً يُبدَّل فيها كل بند بلمسة */
+  var CAP_MULTI = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+    ? 'اختيار متعدد: المس البند لتحديده أو إلغاء تحديده'
+    : 'اختيار متعدد: Ctrl (أو Cmd) مع النقر';
 
   /* أفعال سجل التدقيق كما تكتبها القاعدة → عربية مقروءة */
   var ACTIONS = {
@@ -573,6 +602,7 @@
     vt.hidden = !ready;
 
     $('verifyBtns').innerHTML = verifyActions(a, ready);
+    paintSyndCheck(a, ready);
     var note = $('verifyNote');
     note.textContent = ready ? '' :
       'حالتا التوثيق غير متاحتين بعد — إمّا أن ترحيلة ٠٢٩ لم تُطبَّق على القاعدة، '
@@ -611,13 +641,11 @@
     var a = P.account, k = btn.getAttribute('data-vact');
 
     if (k === 'synd-ok') {
-      return A.confirm({
-        title: 'توثيق الرقم النقابي', okLabel: 'توثيق الرقم',
-        text: 'سيُعتمد الرقم ' + (a.synd_no || '—') + ' لـ«' + a.name + '» في فرع ' +
-              (a.branch || '—') + '. بعد التوثيق يتعذّر على العضو تعديله من التطبيق.'
-      }).then(function (r) {
-        if (r === null) return;
-        act(API.admin.verifySyndNo(id, true, null), 'وُثّق الرقم النقابي لـ«' + a.name + '».');
+      /* الفحص قبل التأكيد: نتيجة الرسم إن كانت للرقم نفسه، وإلا فحصٌ جديد */
+      btn.disabled = true;
+      return syndCheck(a).then(function (c) {
+        btn.disabled = false;
+        askVerifySynd(a, c);
       });
     }
     if (k === 'synd-no') {
@@ -642,6 +670,143 @@
       });
     }
     if (k === 'grade-ok') { return openGradeVerify(a); }
+  }
+
+  /* ---------------------------------------------------------------- فحص الرقم النقابي */
+  /* admin_check_synd_no (٠٣٩): صيغة الرقم والحسابات الأخرى التي تحمله.
+     نتيجة واحدة لكل رسم للملف، يقرؤها زر التوثيق ما دام الرقم نفسه. */
+  var SC = null;
+
+  function syndCheck(a) {
+    if (SC && SC.no === a.synd_no) { return SC.p; }
+    var entry = { no: a.synd_no, r: null, err: null };
+    entry.p = Promise.resolve().then(function () {
+      if (!API.admin.checkSyndNo) {
+        throw new Error('أداة فحص الرقم غير متاحة في نسخة اللوحة المحمّلة — حدّث الصفحة.');
+      }
+      return API.admin.checkSyndNo(a.synd_no, id);
+    }).then(function (r) {
+      entry.r = r || {};
+      return entry;
+    }, function (e) {
+      entry.err = e;
+      if (SC === entry) { SC = null; }          /* الضغطة التالية تعيد المحاولة */
+      return entry;
+    });
+    SC = entry;
+    return entry.p;
+  }
+
+  function errBox(msg) {
+    return '<div class="notice notice--error">' + A.ICONS.bad + '<span>' + A.esc(msg) + '</span></div>';
+  }
+
+  function otherMatches(r) {
+    return ((r && r.matches) || []).filter(function (m) { return m.account_id !== id; });
+  }
+  function verifiedElsewhere(r) {
+    return otherMatches(r).filter(function (m) { return m.synd_no_status === 'verified'; });
+  }
+
+  function matchHtml(m) {
+    var s = STATUS[m.status] || { label: m.status || '—', cls: '' };
+    var v = VSTATUS[m.synd_no_status || ''];
+    return '<li class="sc-item">' +
+      '<div class="sc-main">' +
+        '<a href="admin-user-detail.html?id=' + A.esc(m.account_id) + '">' + A.esc(m.name || '—') + '</a>' +
+        '<span class="adm-sub">رقم العضوية <span dir="ltr">' + A.esc(A.toAr(m.member_no || '—')) + '</span>' +
+          (m.branch ? ' · فرع ' + A.esc(m.branch) : '') + '</span>' +
+      '</div>' +
+      '<div class="sc-tags">' +
+        '<span class="tag ' + s.cls + '">' + A.esc(s.label) + '</span>' +
+        (v ? '<span class="tag ' + v[2] + '">الرقم ' + A.esc(v[0]) + '</span>' : '') +
+      '</div>' +
+    '</li>';
+  }
+
+  function checkHtml(r, a) {
+    var list = otherMatches(r);
+    var html = '<div class="sc-head">' +
+      (r.format_ok
+        ? '<span class="tag tag--success">الصيغة سليمة</span>'
+        : '<span class="tag tag--error">صيغة غير صحيحة</span>') +
+      '<span class="adm-mono" dir="ltr">' + A.esc(A.toAr(r.normalized || '—')) + '</span>' +
+    '</div>';
+    if (verifiedElsewhere(r).length) {
+      html += errBox(a && a.synd_no_status === 'verified'
+        ? 'الرقم موثَّق على حساب آخر أيضاً.'
+        : 'الرقم موثَّق على حساب آخر. توثيقه هنا يحتاج تأكيداً صريحاً.');
+    } else if (list.length) {
+      html += '<div class="notice">' + A.ICONS.info + '<span>الرقم مستخدم أيضاً في ' +
+        A.esc(A.count(list.length, 'حساب آخر', 'حسابين آخرين', 'حسابات أخرى', 'حساباً آخر')) + '.</span></div>';
+    }
+    html += list.length
+      ? '<ul class="sc-list">' + list.map(matchHtml).join('') + '</ul>'
+      : '<p class="adm-sub" style="margin:0">لا حساب آخر يحمل هذا الرقم.</p>';
+    return html;
+  }
+
+  function paintSyndCheck(a, ready) {
+    var box = $('syndCheck');
+    SC = null;
+    var hasNo = !!a.synd_no && a.synd_no !== 'غير مسجّل';
+    if (!ready || !hasNo || !API.admin.checkSyndNo) {
+      box.hidden = true;
+      box.innerHTML = '';
+      return;
+    }
+    var head = '<h3 class="sc-title">فحص الرقم في المنصة</h3>';
+    box.innerHTML = head + '<p class="adm-sub" style="margin:0">جارٍ الفحص…</p>';
+    box.hidden = false;
+    var no = a.synd_no;
+    syndCheck(a).then(function (c) {
+      /* رسمٌ أحدث سبق الجواب: لا يُكتب فوقه */
+      if (!P || !P.account || P.account.synd_no !== no) { return; }
+      box.innerHTML = head + (c.err
+        ? errBox('تعذّر فحص الرقم: ' + A.errText(c.err))
+        : checkHtml(c.r, a));
+    });
+  }
+
+  /* التأكيد يذكر نتيجة الفحص؛ والرقم الموثَّق على حساب آخر يحتاج تأكيداً
+     صريحاً بسببٍ يُحفظ في سجل التدقيق */
+  function askVerifySynd(a, c) {
+    var dup = c.r ? verifiedElsewhere(c.r) : [];
+    if (dup.length) {
+      var first = dup[0];
+      return A.confirm({
+        title: 'الرقم موثَّق على حساب آخر', danger: true, okLabel: 'توثيق رغم ذلك',
+        text: 'الرقم ' + A.toAr(a.synd_no) + ' موثَّق على حساب «' + (first.name || '—') + '» (رقم العضوية ' +
+              A.toAr(first.member_no || '—') + ')' +
+              (dup.length > 1 ? ' و' + A.count(dup.length - 1, 'حساب آخر', 'حسابين آخرين', 'حسابات أخرى', 'حساباً آخر') : '') +
+              '. توثيقه لـ«' + a.name + '» يجعله موثَّقاً على أكثر من حساب، فتأكد من صاحب الرقم قبل المتابعة.',
+        reason: 'سبب التوثيق رغم التكرار (يُسجَّل في سجل التدقيق)',
+        reasonRequired: true
+      }).then(function (note) {
+        if (note === null) return;
+        act(API.admin.verifySyndNo(id, true, note), 'وُثّق الرقم النقابي لـ«' + a.name + '».');
+      });
+    }
+    var notes = [];
+    if (c.err) {
+      notes.push('تعذّر فحص تكرار الرقم: ' + A.errText(c.err));
+    } else {
+      if (c.r.format_ok === false) { notes.push('صيغة الرقم غير صحيحة.'); }
+      var used = otherMatches(c.r).length;
+      if (used) {
+        notes.push('الرقم مستخدم أيضاً في ' +
+          A.count(used, 'حساب آخر', 'حسابين آخرين', 'حسابات أخرى', 'حساباً آخر') + '.');
+      }
+    }
+    return A.confirm({
+      title: 'توثيق الرقم النقابي', okLabel: 'توثيق الرقم',
+      text: 'سيُعتمد الرقم ' + (a.synd_no || '—') + ' لـ«' + a.name + '» في فرع ' +
+            (a.branch || '—') + '. بعد التوثيق يتعذّر على العضو تعديله من التطبيق.' +
+            (notes.length ? ' ' + notes.join(' ') : '')
+    }).then(function (r) {
+      if (r === null) return;
+      act(API.admin.verifySyndNo(id, true, null), 'وُثّق الرقم النقابي لـ«' + a.name + '».');
+    });
   }
 
   /* الاعتماد لوحةٌ لا تأكيد: القرار «وفقًا للرقم النقابي والفرع» يعني أن
@@ -836,7 +1001,7 @@
         '<div class="field" id="capScreensField" hidden>' +
           '<label for="capScreens">الشاشات المسموح التقاطها</label>' +
           '<select class="input cap-multi" id="capScreens" multiple size="8">' + screenOpts + '</select>' +
-          '<span class="hint">اختيار متعدد: Ctrl (أو Cmd) مع النقر.</span></div>' +
+          '<span class="hint">' + A.esc(CAP_MULTI) + '.</span></div>' +
         '<div class="field" id="capItemsField">' +
           '<label for="capItems">البنود المسموح التقاطها</label>' +
           '<select class="input cap-multi" id="capItems" multiple size="8"></select>' +
@@ -910,7 +1075,7 @@
         sel.appendChild(o);
       });
       s.el.querySelector('#capItemsHint').textContent = list.length
-        ? 'اختيار متعدد: Ctrl (أو Cmd) مع النقر — ' +
+        ? CAP_MULTI + ' — ' +
           count(list.length, 'بند واحد مفعّل', 'بندان مفعّلان', 'بنود مفعّلة', 'بنداً مفعّلاً') +
           ' في الكتالوج.'
         : 'لا بنود مفعّلة في كتالوج المحتوى — اختر نطاق «شاشات محددة» أو فعّل بنداً من صفحة المحتوى.';
@@ -1215,12 +1380,12 @@
         : (r.passed ? '<span class="tag tag--success">ناجح</span>'
                     : '<span class="tag tag--error">راسب</span>');
       return '<tr data-id="' + A.esc(r.id) + '" data-n="' + A.esc(i + 1) + '">' +
-        '<td><span class="seq">' + A.toAr(i + 1) + '</span></td>' +
+        '<td class="ud-seq"><span class="seq">' + A.toAr(i + 1) + '</span></td>' +
         '<td class="num strong">' + A.toAr(r.score | 0) + '٪</td>' +
         '<td>' + verdict + '</td>' +
         '<td class="num">' + (r.duration_s ? A.secDur(r.duration_s) : '—') + '</td>' +
         '<td>' + A.arDateTime(r.taken_at) + '</td>' +
-        '<td><button class="btn btn-outline btn-sm" data-del data-write>حذف</button></td>' +
+        '<td class="acts"><button class="btn btn-outline btn-sm" data-del data-write>حذف</button></td>' +
       '</tr>';
     }).join('');
     var best = rows.reduce(function (m, r) { return Math.max(m, r.score | 0); }, 0);
@@ -1263,7 +1428,7 @@
                            : '<span class="tag">مدفوع</span>') + '</td>' +
         '<td class="num strong">' + (r.exempt ? '—' : A.toAr(r.amount | 0) + ' ل.س') + '</td>' +
         '<td>' + A.arDateTime(r.paid_at) + '</td>' +
-        '<td><button class="btn btn-outline btn-sm" data-del data-write>حذف</button></td>' +
+        '<td class="acts"><button class="btn btn-outline btn-sm" data-del data-write>حذف</button></td>' +
       '</tr>';
     }).join('');
     /* صف الإجمالي داخل tbody: الإجمالي خلاصة الصفوف لا سطر منفصل عنها */
@@ -1310,7 +1475,7 @@
         '<td><a class="link" href="' +
           A.esc((window.OSEA_VERIFY_BASE || 'verify.html') + '?code=' + encodeURIComponent(c.code)) + '" ' +
           'target="_blank" rel="noopener">سجل التحقق</a></td>' +
-        '<td><button class="btn btn-outline btn-sm" data-revoke data-write>سحب</button></td>' +
+        '<td class="acts"><button class="btn btn-outline btn-sm" data-revoke data-write>سحب</button></td>' +
       '</tr>';
     }).join('');
     var dist = rows.filter(function (c) { return c.cert_type === 'تميّز'; }).length;
@@ -1352,7 +1517,7 @@
       return '<tr>' +
         '<td>' + A.arDateTime(r.at) + '</td>' +
         '<td class="wrap">' + A.esc(r.title || r.item_id) +
-          (r.title ? '<span class="adm-sub" dir="ltr">' + A.esc(r.item_id) + '</span>' : '') + '</td>' +
+          (r.title ? '<span class="adm-sub"><span dir="ltr">' + A.esc(r.item_id) + '</span></span>' : '') + '</td>' +
       '</tr>';
     }).join('');
     $('accessTag').textContent = 'آخر ' +
@@ -1370,27 +1535,56 @@
       return;
     }
     $('auditRows').innerHTML = rows.map(function (r) {
-      /* التفصيل jsonb يُقرأ لاتينياً: بلا dir=ltr تُبعثر الأقواس والفواصل بين العربية */
-      var isJson = r.detail != null && typeof r.detail !== 'string';
       return '<tr>' +
         '<td>' + A.arDateTime(r.at) + '</td>' +
         '<td class="strong">' + A.esc(ACTIONS[r.action] || r.action) + '</td>' +
         '<td>' + A.esc(r.actor_name || '—') + '</td>' +
-        '<td class="wrap"><span class="adm-sub" style="margin:0"' +
-          (isJson ? ' dir="ltr"' : '') + '>' + A.esc(detailText(r.detail)) + '</span></td>' +
+        '<td class="wrap adm-cell-stack"><span class="adm-sub" style="margin:0">' +
+          detailHtml(r.detail) + '</span></td>' +
       '</tr>';
     }).join('');
     $('auditTag').textContent =
       count(rows.length, 'إجراء واحد', 'إجراءان', 'إجراءات', 'إجراءً');
   }
 
-  /* تفصيل التدقيق jsonb: يُعرض مختصراً — الصورة الكاملة في صفحة سجل التدقيق */
-  function detailText(d) {
-    if (d == null) return '—';
-    if (typeof d === 'string') return d;
-    var s;
-    try { s = JSON.stringify(d); } catch (err) { return '—'; }
-    return s.length > 160 ? s.slice(0, 160) + '…' : s;
+  /* تفصيل التدقيق jsonb مختصراً «الحقل: القيمة» لأول أربعة حقول — الصورة الكاملة
+     في صفحة سجل التدقيق. كل قيمة معزولة الاتجاه (bdi) فلا تتبعثر الأرقام والرموز
+     اللاتينية بين العربية، والتغيير [قبل، بعد] سهمٌ بينهما */
+  var DETAIL_LBL = {
+    name: 'الاسم', synd_no: 'الرقم النقابي', national_id: 'رقم الهوية', member_no: 'رقم العضوية',
+    branch: 'الفرع', phone: 'الموبايل', email: 'البريد', exempt: 'معفى من الرسوم',
+    note: 'الملاحظة', reason: 'السبب', status: 'الحالة', grade: 'المرتبة',
+    grade_requested: 'المرتبة المطلوبة', by: 'بواسطة', field: 'الحقل', value: 'القيمة',
+    code: 'الرمز', score: 'الدرجة', amount: 'المبلغ', op_no: 'رقم العملية', bill_no: 'رقم الفاتورة',
+    service: 'الخدمة', scope: 'النطاق', count: 'العدد', row: 'السجل المحذوف'
+  };
+  var DETAIL_VAL = { member: 'العضو', admin: 'الإدارة', auto: 'تلقائي' };
+
+  function detailVal(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    if (typeof v === 'boolean') return v ? 'نعم' : 'لا';
+    if (typeof v === 'object') return '…';
+    var s = String(v);
+    if (STATUS[s]) return STATUS[s].label;
+    if (DETAIL_VAL[s]) return DETAIL_VAL[s];
+    if (DETAIL_LBL[s]) return DETAIL_LBL[s];
+    if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return A.arDateTime(s);
+    return s.length > 60 ? s.slice(0, 60) + '…' : s;
+  }
+
+  function detailHtml(d) {
+    if (d == null || d === '') return '—';
+    if (typeof d !== 'object') return '<bdi>' + A.esc(detailVal(d)) + '</bdi>';
+    if (Array.isArray(d)) return '<bdi>' + A.esc(d.map(detailVal).join('، ')) + '</bdi>';
+    var keys = Object.keys(d);
+    if (!keys.length) return '—';
+    return keys.slice(0, 4).map(function (k) {
+      var v = d[k];
+      var val = Array.isArray(v) && v.length === 2
+        ? '<bdi>' + A.esc(detailVal(v[0])) + '</bdi> ← <bdi>' + A.esc(detailVal(v[1])) + '</bdi>'
+        : '<bdi>' + A.esc(Array.isArray(v) ? v.map(detailVal).join('، ') : detailVal(v)) + '</bdi>';
+      return A.esc(DETAIL_LBL[k] || k) + ': ' + val;
+    }).join(' · ') + (keys.length > 4 ? ' …' : '');
   }
 })();
 </script>

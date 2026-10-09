@@ -15,6 +15,8 @@
   .aud-block{margin-block-end:20px}
   /* سطر يوضّح حدود التصفية: الدالة لا تقبل وسيط نوع كيان */
   .aud-hint{flex:1 1 100%;font-size:12.5px;line-height:1.7;color:var(--text-secondary)}
+  /* رمز في ملخص التفاصيل: لا ينقسم عند الشرطة إلا إن تجاوز السطر كله */
+  .aud-tok{display:inline-block;max-width:100%;overflow-wrap:anywhere}
   /* الحمولة الخام في اللوحة الجانبية: لاتينية بالكامل فتبقى بمحاذاة اليسار */
   .aud-json{
     margin:0;padding:14px;overflow-x:auto;
@@ -62,7 +64,7 @@
               <tr>
                 <th>التوقيت</th>
                 <th>المنفِّذ</th>
-                <th>الإجراء</th>
+                <th class="adm-card-title">العملية</th>
                 <th>نوع الكيان</th>
                 <th>معرّف الكيان</th>
                 <th>التفاصيل</th>
@@ -126,8 +128,18 @@
     job:         'فرصة عمل',
     discount:    'عرض خصم',
     employer:    'جهة معلنة',
-    service:     'خدمة'
+    service:     'خدمة',
+    access_code: 'كوبون تطبيق'
   };
+
+  /* «revoke» تُسجَّل لسحب الشهادة ولإبطال الكوبون معاً — فالترجمة بحسب الكيان */
+  var ACTION_BY_ENTITY = {
+    access_code: { issue: 'إصدار كوبون', revoke: 'إبطال كوبون', redeem: 'استرداد كوبون' }
+  };
+  function actLabel(r) {
+    var m = ACTION_BY_ENTITY[r.entity];
+    return (m && m[r.action]) || ACTION[r.action] || '';
+  }
 
   /* مفاتيح حمولة detail كما تبنيها دوال القاعدة */
   var LBL = {
@@ -246,19 +258,19 @@
     }
 
     tbody.innerHTML = list.map(function (r) {
-      var act = ACTION[r.action] || r.action || '—';
+      var act = actLabel(r) || r.action || '—';
       var ent = ENTITY[r.entity] || r.entity || '—';
       var brief = briefDetail(r.detail);
       return '<tr data-id="' + A.esc(r.id) + '">' +
         '<td class="num">' + A.arDateTime(r.at) + '</td>' +
         '<td class="wrap">' + actorCell(r) + '</td>' +
-        /* رمز الإجراء الخام يبقى ظاهراً تحت الترجمة: به يُطابَق السجل مع كود القاعدة */
+        /* رمز العملية الخام يبقى ظاهراً تحت الترجمة: به يُطابَق السجل مع كود القاعدة */
         '<td class="strong">' + A.esc(act) +
-          (ACTION[r.action] ? '<span class="adm-sub adm-mono" dir="ltr" style="text-align:end">' +
+          (actLabel(r) ? '<span class="adm-sub adm-mono" dir="ltr" style="text-align:end">' +
             A.esc(r.action) + '</span>' : '') + '</td>' +
         '<td><span class="tag">' + A.esc(ent) + '</span></td>' +
         '<td>' + entityCell(r) + '</td>' +
-        '<td class="wrap">' + (brief ? '<span>' + A.esc(brief) + '</span>' : '<span>—</span>') +
+        '<td class="wrap">' + (brief ? '<span>' + brief + '</span>' : '<span>—</span>') +
           (r.detail
             ? '<span class="adm-sub"><button class="btn btn-outline btn-sm" data-detail>' +
               'عرض التفاصيل كاملة</button></span>'
@@ -314,13 +326,23 @@
     });
   }
 
+  /* ملخص مُهرَّب جاهز للإدراج: كل قيمة معزولة الاتجاه (bdi) كي لا تتبعثر
+     الرموز اللاتينية بين العربية حين يلتفّ السطر */
   function briefDetail(detail) {
     if (!detail) return '';
-    if (typeof detail !== 'object') return String(detail).slice(0, 90);
+    if (typeof detail !== 'object') return A.esc(String(detail).slice(0, 90));
     var p = pairs(detail);
     if (!p.length) return '';
-    var s = p.slice(0, 3).map(function (x) { return x[0] + ': ' + x[1]; }).join(' · ');
-    return s.length > 90 ? s.slice(0, 88) + '…' : s;
+    var left = 88, out = [];
+    p.slice(0, 3).forEach(function (x) {
+      if (left <= 0) return;
+      left -= x[0].length + 2;
+      var v = x[1].length > left ? x[1].slice(0, Math.max(left, 4)) + '…' : x[1];
+      left -= x[1].length + 3;
+      /* قيمة بلا مسافات (رمز، معرّف، رابط) كتلةٌ واحدة تنزل إلى السطر التالي كاملة */
+      out.push(A.esc(x[0]) + ': <bdi' + (/\s/.test(v) ? '' : ' class="aud-tok"') + '>' + A.esc(v) + '</bdi>');
+    });
+    return out.join(' · ');
   }
 
   function onRowClick(e) {
@@ -347,7 +369,7 @@
         '<dl class="adm-kv">' +
           '<dt>التوقيت</dt><dd>' + A.arDateTime(r.at) + '</dd>' +
           '<dt>المنفِّذ</dt><dd>' + A.esc(r.actor_name || '—') + '</dd>' +
-          '<dt>الإجراء</dt><dd>' + A.esc(ACTION[r.action] || r.action || '—') + '</dd>' +
+          '<dt>العملية</dt><dd>' + A.esc(actLabel(r) || r.action || '—') + '</dd>' +
           '<dt>نوع الكيان</dt><dd>' + A.esc(ENTITY[r.entity] || r.entity || '—') + '</dd>' +
           '<dt>معرّف الكيان</dt><dd class="adm-mono" dir="ltr" style="text-align:start">' +
             A.esc(r.entity_id || '—') + '</dd>' +
@@ -373,11 +395,11 @@
         return state.entity === 'all' || r.entity === state.entity;
       });
       A.exportCsv('osea-audit.csv',
-        ['التوقيت', 'المنفِّذ', 'الإجراء', 'رمز الإجراء', 'نوع الكيان', 'معرّف الكيان', 'التفاصيل'],
+        ['التوقيت', 'المنفِّذ', 'العملية', 'رمز العملية', 'نوع الكيان', 'معرّف الكيان', 'التفاصيل'],
         all.map(function (r) {
           var raw = '';
           try { raw = r.detail ? JSON.stringify(r.detail) : ''; } catch (e) { raw = ''; }
-          return [r.at || '', r.actor_name || '', ACTION[r.action] || r.action || '',
+          return [r.at || '', r.actor_name || '', actLabel(r) || r.action || '',
                   r.action || '', ENTITY[r.entity] || r.entity || '', r.entity_id || '', raw];
         }));
       A.toast('صُدّر ' + A.toAr(all.length) + ' سجلاً.' +

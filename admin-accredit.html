@@ -13,7 +13,10 @@
 <style>
 /* أنماط الصفحة — بتوكنات الهوية حصراً */
 .sheet-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.accr-name-cell{max-width:320px}
+.adm-table td.accr-name-cell{white-space:normal;min-width:200px;max-width:270px}
+.accr-date{display:block;margin-block-start:2px;font-size:12px;color:var(--text-secondary)}
+.accr-name-cell small{overflow-wrap:anywhere}
+.adm-table td.accr-field{white-space:normal;min-width:120px;max-width:190px}
 .accr-name-cell b{display:block;font-size:14px;line-height:1.55;color:var(--navy-800)}
 .accr-name-cell small{display:block;margin-block-start:3px;font-size:12px;line-height:1.7;
   color:var(--text-secondary);overflow:hidden;display:-webkit-box;
@@ -28,6 +31,18 @@
    والقياس على قياس الرقاقة لا على قياس حقل النموذج، وإلا ارتفع الشريط كله
    عشرة بكسلات لأجل عنصرين. */
 .adm-filters .input{flex:0 1 190px;min-height:38px;font-size:13.5px;padding-inline:12px}
+.accr-sep{width:1px;align-self:stretch;background:var(--border);margin-inline:6px}
+.adm-sheet .input[readonly]{background:var(--navy-25);color:var(--text-secondary)}
+.accr-cert a{color:var(--navy-700);text-decoration:underline;text-underline-offset:3px;
+  text-decoration-color:var(--navy-200)}
+/* الهاتف: الرقائق صفٌّ يتمرّر أفقياً، فالقائمتان في أوله بعرض ثابت لا تنضغطان */
+@media (max-width:720px){
+  .accr-sep{display:none}
+  .adm-filters .input{flex:0 0 140px;min-height:44px;order:-1}
+}
+@media (max-width:640px){
+  .sheet-pair{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -77,15 +92,14 @@
                 <th>النوع</th>
                 <th>المحافظة</th>
                 <th>فرع النقابة</th>
-                <th>رقم الشهادة</th>
-                <th>تاريخ الاعتماد</th>
+                <th>الشهادة</th>
                 <th>مجال الاعتماد</th>
                 <th>الحالة</th>
-                <th>إجراءات</th>
+                <th class="acts">إجراءات</th>
               </tr>
             </thead>
             <tbody id="rows">
-              <tr><td colspan="9"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+              <tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -147,7 +161,13 @@
     return String(b == null ? '' : b).trim().replace(/^فرع\s+/, '').trim();
   }
 
-  var state = { kind: 'all', status: 'all', gov: 'all', branch: 'all', search: '' };
+  var state = { kind: 'all', status: 'all', source: 'all', gov: 'all', branch: 'all', search: '' };
+
+  /* بنود سجل المهندسين المرتبطة بشهادات الاختبار (ترحيلة 039) */
+  function fromExam(r) { return !!r && r.source === 'exam'; }
+  function verifyHref(code) {
+    return (window.OSEA_VERIFY_BASE || 'verify.html') + '?code=' + encodeURIComponent(code);
+  }
   var items = [];
   var $ = function (id) { return document.getElementById(id); };
   var tbody, filtersEl;
@@ -162,6 +182,9 @@
   }).then(function (st) {
     if (!st) { return; }
     tbody = $('rows'); filtersEl = $('filters');
+    /* ?q= من سجل الشهادات: يفتح السجل على البند المطلوب */
+    var q0 = new URLSearchParams(location.search).get('q');
+    if (q0) { $('q').value = q0; state.search = A.norm(q0); }
     wire();
     load();
   });
@@ -173,9 +196,10 @@
     }, 160));
     $('addBtn').addEventListener('click', function () { openEdit(null); });
     filtersEl.addEventListener('click', function (e) {
-      var b = e.target.closest ? e.target.closest('button[data-kind],button[data-status]') : null;
+      var b = e.target.closest ? e.target.closest('button[data-kind],button[data-status],button[data-source]') : null;
       if (!b) { return; }
       if (b.hasAttribute('data-kind')) { state.kind = b.getAttribute('data-kind'); }
+      else if (b.hasAttribute('data-source')) { state.source = b.getAttribute('data-source'); }
       else { state.status = b.getAttribute('data-status'); }
       render();
     });
@@ -197,7 +221,7 @@
       items = rows || [];
       render();
     }).catch(function (err) {
-      tbody.innerHTML = '<tr><td colspan="9">' + A.errorState(A.errText(err)) + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8">' + A.errorState(A.errText(err)) + '</td></tr>';
     });
   }
 
@@ -213,6 +237,8 @@
       if (state.kind !== 'all' && r.kind !== state.kind) { return false; }
       if (state.status === 'live' && !r.active) { return false; }
       if (state.status === 'draft' && r.active) { return false; }
+      if (state.source === 'exam' && !fromExam(r)) { return false; }
+      if (state.source === 'manual' && fromExam(r)) { return false; }
       /* المقارنة بالقيمة الخام لا بالمفتاح المطويّ: خيارات القائمة تُبنى من
          القيم المسجّلة فعلاً، فتظهر الصيغة القديمة «فرع حلب» خياراً مستقلاً
          تُنتقى به صفوفها وحدها — وهذا هو المطلوب هنا بعكس التطبيق: اللوحة
@@ -272,9 +298,10 @@
     var noPlace = items.filter(function (r) {
       return !r.governorate || !r.branch || !r.email;
     }).length;
+    var nExam = items.filter(fromExam).length;
     $('kpis').innerHTML =
       kpi('إجمالي السجل', items.length, 'منشور منها ' + A.toAr(live)) +
-      kpi('المهندسون', countKind('engineer'), 'مهندسون معتمدون') +
+      kpi('المهندسون', countKind('engineer'), nExam ? 'منهم ' + A.toAr(nExam) + ' من الاختبار' : 'مهندسون معتمدون') +
       kpi('المنظمات', countKind('org'), 'منظمات معتمدة') +
       kpi('الشركات المعتمدة', countKind('company'), 'شركات عربية وأجنبية ومحلية') +
       kpi('شركات ومكاتب سورية', countKind('sy_company') + countKind('sy_office'),
@@ -284,26 +311,27 @@
     var kindChips = [['all', 'الكل', items.length]].concat(KINDS.map(function (K) {
       return [K.k, kindShort(K.k), countKind(K.k)];
     })).map(function (f) {
-      var on = state.kind === f[0];
-      return '<button type="button" class="tag' + (on ? ' is-on' : '') + '" data-kind="' + f[0] +
-        '" aria-pressed="' + (on ? 'true' : 'false') + '">' + f[1] + ' (' + A.toAr(f[2]) + ')</button>';
+      return chip('data-kind', f[0], f[1], f[2], state.kind === f[0]);
     });
     var statusChips = [
       ['all', 'كل الحالات', items.length],
       ['live', 'منشور', live],
       ['draft', 'غير منشور', items.length - live]
     ].map(function (f) {
-      var on = state.status === f[0];
-      return '<button type="button" class="tag' + (on ? ' is-on' : '') + '" data-status="' + f[0] +
-        '" aria-pressed="' + (on ? 'true' : 'false') + '">' + f[1] + ' (' + A.toAr(f[2]) + ')</button>';
+      return chip('data-status', f[0], f[1], f[2], state.status === f[0]);
     });
+    var sourceChips = [
+      ['all', 'كل المصادر', items.length],
+      ['manual', 'يدوي', items.length - nExam],
+      ['exam', 'من الاختبار', nExam]
+    ].map(function (f) {
+      return chip('data-source', f[0], f[1], f[2], state.source === f[0]);
+    });
+    var SEP = '<span class="accr-sep" aria-hidden="true"></span>';
     /* المحافظة والفرع قائمتين لا رقائق: «يجب تطبيق هذه الفلاتر على جميع
        قوائم الاعتمادات» بطلب النقابة، وأربع عشرة رقاقة محافظةٍ ومثلها فرعاً
        تدفن رقائق النوع والحالة القائمة */
-    filtersEl.innerHTML = kindChips.join('') +
-      '<span style="width:1px;align-self:stretch;background:var(--border);margin-inline:6px"></span>' +
-      statusChips.join('') +
-      '<span style="width:1px;align-self:stretch;background:var(--border);margin-inline:6px"></span>' +
+    filtersEl.innerHTML = kindChips.join('') + SEP + statusChips.join('') + SEP + sourceChips.join('') + SEP +
       placeFilter('fGov', 'تصفية بالمحافظة', 'كل المحافظات', state.gov, placeOptions('governorate')) +
       placeFilter('fBranch', 'تصفية بفرع النقابة', 'كل الفروع', state.branch, placeOptions('branch'));
 
@@ -311,7 +339,7 @@
     $('totalTag').textContent = A.toAr(rows.length) + ' من ' + A.toAr(items.length);
 
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="9">' +
+      tbody.innerHTML = '<tr><td colspan="8">' +
         A.emptyState(items.length ? 'لا نتائج مطابقة.' : 'السجل فارغ — ابدأ بإضافة أول بند اعتماد.') +
         '</td></tr>';
       return;
@@ -331,19 +359,25 @@
          والنقابة رأت في تجربتها «القائمة بلا بريد» فطلبت ما كان أصلاً
          حقلاً فارغاً — الوسم هنا يقود الموظّف إلى الخانة التي تنقص. */
       var noMail = r.email ? '' : '<span class="tag tag--error">بلا بريد</span>';
+      var exam = fromExam(r);
+      var cert = A.esc(A.toAr(r.cert_no));
       return '<tr>' +
-        '<td class="accr-name-cell"><b>' + A.esc(r.name) + '</b> ' + noMail +
+        '<td class="accr-name-cell"><b>' + A.esc(r.name) + '</b> ' +
+          (exam ? '<span class="tag tag--gold">من الاختبار</span> ' : '') + noMail +
           (whereBits.length ? '<small>' + A.esc(whereBits.join(' · ')) + '</small>' : '') + '</td>' +
         '<td><span class="tag">' + A.esc(kindLabel(r.kind)) + '</span></td>' +
         '<td class="accr-where">' + (r.governorate ? A.esc(r.governorate) : miss) + '</td>' +
         '<td class="accr-where">' + (r.branch ? A.esc(r.branch) : miss) + '</td>' +
-        '<td><span class="accr-cert">' + A.esc(A.toAr(r.cert_no)) + '</span></td>' +
-        '<td>' + A.esc(r.cert_date_ar || '—') + '</td>' +
-        '<td>' + A.esc(r.field || '—') + '</td>' +
+        '<td><span class="accr-cert">' + (exam && r.cert_no
+            ? '<a href="' + A.esc(verifyHref(A.toAr(r.cert_no))) + '" target="_blank" rel="noopener" ' +
+                'title="صفحة التحقق من الشهادة">' + cert + '</a>'
+            : cert) + '</span>' +
+          '<small class="accr-date">' + A.esc(r.cert_date_ar || '—') + '</small></td>' +
+        '<td class="accr-field">' + A.esc(r.field || '—') + '</td>' +
         '<td>' + (r.active
             ? '<span class="tag tag--success">منشور</span>'
             : '<span class="tag">غير منشور</span>') + '</td>' +
-        '<td class="adm-actions">' +
+        '<td class="acts adm-actions">' +
           '<button class="btn btn-outline btn-sm" data-edit="' + A.esc(r.id) + '" data-write>تعديل</button>' +
           '<button class="btn btn-outline btn-sm" data-toggle="' + A.esc(r.id) + '" data-write>' +
             (r.active ? 'سحب' : 'نشر') + '</button>' +
@@ -367,6 +401,11 @@
     return items.filter(function (r) { return String(r.id) === String(id); })[0];
   }
 
+  function chip(attr, val, label, n, on) {
+    return '<button type="button" class="adm-chip" ' + attr + '="' + A.esc(val) + '" aria-pressed="' +
+      (on ? 'true' : 'false') + '">' + A.esc(label) + '<span class="n">' + A.toAr(n) + '</span></button>';
+  }
+
   function kpi(label, n, hint) {
     return '<div class="adm-kpi">' +
       '<span class="adm-kpi-label">' + A.esc(label) + '</span>' +
@@ -378,9 +417,17 @@
 
   function fieldsHTML(r) {
     r = r || {};
+    /* بند الاختبار: نوعه ورقمه من الشهادة نفسها فلا يُعدَّلان هنا */
+    var exam = fromExam(r);
     return '' +
+      (exam
+        ? '<div class="notice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/>' +
+            '<path d="M12 16v-4M12 8h.01"/></svg><span>مرتبط بالشهادة <b class="accr-cert">' +
+            A.esc(A.toAr(r.cert_no)) + '</b>، وسحب الشهادة يُخفي هذا البند من السجل.</span></div>'
+        : '') +
       '<label class="field"><span>النوع</span>' +
-        '<select class="input" id="f-kind">' +
+        '<select class="input" id="f-kind"' + (exam ? ' disabled' : '') + '>' +
         KINDS.map(function (K) {
           return '<option value="' + K.k + '"' + (r.kind === K.k ? ' selected' : '') + '>' +
             K.label + '</option>';
@@ -389,7 +436,8 @@
         '<input class="input" id="f-name" maxlength="200" value="' + A.esc(r.name || '') + '"></label>' +
       '<div class="sheet-pair">' +
         '<label class="field"><span>رقم شهادة الاعتماد</span>' +
-          '<input class="input" id="f-cert" maxlength="60" dir="ltr" value="' + A.esc(r.cert_no || '') + '"></label>' +
+          '<input class="input" id="f-cert" maxlength="60" dir="ltr" value="' + A.esc(r.cert_no || '') + '"' +
+            (exam ? ' readonly' : '') + '></label>' +
         '<label class="field"><span>تاريخ الاعتماد</span>' +
           '<input class="input" id="f-date" type="date" value="' + A.esc(r.cert_date || '') + '"></label>' +
       '</div>' +
@@ -544,6 +592,7 @@
     A.confirm({
       title: 'حذف بند الاعتماد',
       text: 'سيُحذف «' + r.name + '» نهائياً ولا يمكن التراجع. '
+          + (fromExam(r) ? 'البند مرتبط بالشهادة ' + A.toAr(r.cert_no) + '، وحذفه لا يسحبها. ' : '')
           + 'وإن كان القصد إخفاءه مؤقتاً فاستعمل «سحب» بدل الحذف — يبقى في السجل ويعود بضغطة.',
       okLabel: 'حذف نهائي'
     }).then(function (ok) {

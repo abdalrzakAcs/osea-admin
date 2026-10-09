@@ -16,33 +16,91 @@
 }
 
 /* ---------------------------------------------------------------- شريط التنقل
-   قائمة اللوحة ثمانية عشر عنصراً (منذ «الخدمات»، ترحيلة ٠٣٦)، ونصوصها وحدها
-   نحو ٩٤٠ بكسل — فبحشوة الموقع العام (20 بكسل لكل جانب) تحتاج ١٣٢٠ بكسل
-   وتفيض عن الحاوية (١٢٣٢ على شاشة ١٢٨٠) فينقصّ آخر العناصر («سجل التدقيق»،
-   «الطاقم») خارج الصفحة. identity.css مشترك مع الموقع العام فلا يُمسّ؛ التعديل
-   هنا للوحة وحدها وفوق عتبة الموبايل وحدها (القائمة المطويّة ≤720 كما هي):
-   · من ١٢٨٠ فأوسع صفٌّ واحد بخط 14 وحشوة 6 (كانت 8: بالعنصر الثامن عشر صار
-     مجموع العروض الطبيعية ١٢٣٤ على حاوية ١٢٣٢ فالتفّ الصف على ١٢٨٠ بالضبط)،
-     والعناصر تتمدّد بالتساوي لتملأ الحاوية فلا يبقى فراغ في طرفها. والالتفاف
-     مفتوح احتياطاً لخطٍّ أعرض من Arial على نظام آخر: عنصرٌ يلتفّ خيرٌ من
-     عنصرٍ مقصوص.
-   · بين ٧٢١ و١٢٧٩ صفّان متوازنان مقصودان: عنصرٌ فارغ بعرض السطر (::after على
-     القائمة) يكسر السطر بعد التاسع، وما بعده يُرتَّب بعده بـorder — بدل التفاف
-     طبيعي يترك عنصراً أو اثنين وحدهما في سطرٍ ثانٍ ممدود.
-   الخط الذهبي للعنصر النشط (.nav-item.active::after) يبقى على حافة عنصره
-   السفلى في الحالتين لأن العنصر نفسه ما يزال position:relative. */
-@media (min-width:721px){
-  .navbar .nav-menu{flex-wrap:wrap;min-width:0}
-  .navbar .nav-item{flex:1 1 auto;justify-content:center;padding-inline:8px;
-    font-size:14px;white-space:nowrap}
+   عشرون عنصراً (منذ «سجل الشهادات»، ٠٣٩). identity.css مشترك مع الموقع العام فلا
+   يُمسّ؛ التعديل هنا للوحة وحدها:
+   · من 1081: شبكة صفّين بأعمدة متساوية، عددها نصف عدد العناصر (--adm-nav-cols من
+     admin.js). الحاوية لا تتجاوز 1280، والعشرون في صفٍّ واحد تتلاصق بلا فاصل يُقرأ
+     (مجموع عروضها الطبيعية 1249 بخط 14) — فالصفّان هما التخطيط من 1081 إلى أي عرض.
+     العنوان الأعرض من عموده (خطٌّ أعرض من Arial) يلتفّ داخل خليته ولا يتجاوزها.
+   · على 1080 فما دون يحلّ محلّ الشريط درجٌ جانبي (.adm-drawer أدناه).
+   الخط الذهبي للعنصر النشط (.nav-item.active::after) يبقى على حافته السفلى. */
+@media (min-width:1081px){
+  .navbar .nav-menu{
+    display:grid;grid-template-columns:repeat(var(--adm-nav-cols,10),minmax(0,1fr));min-width:0;
+    /* صفّان متساويا الارتفاع وإن التفّ عنوان، فيبقى الفاصل الخفيف بينهما في المنتصف */
+    grid-auto-rows:1fr;
+    background:linear-gradient(rgba(255,255,255,.12),rgba(255,255,255,.12)) center / 100% 1px no-repeat}
+  .navbar .nav-item{justify-content:center;min-width:0;min-height:46px;padding:6px 8px;
+    font-size:14px;line-height:1.4;text-align:center;white-space:normal}
 }
-@media (min-width:721px) and (max-width:1279px){
-  .navbar .nav-menu::after{content:'';flex-basis:100%;height:0;order:1}
-  .navbar .nav-item:nth-child(n+10){order:2}
-  .navbar .nav-item{min-height:44px}
+@media (max-width:1080px){
+  .navbar{display:none}
 }
-@media (min-width:1280px){
-  .navbar .nav-item{padding-inline:6px}
+
+/* ---------------------------------------------------------------- درج التنقل (≤1080) */
+.adm-menu-btn{
+  display:none;align-items:center;gap:8px;
+  min-height:44px;padding-inline:14px;
+  font-size:14.5px;font-weight:700;color:var(--text-on-dark);
+  background:var(--navy-800);border:1px solid var(--navy-800);border-radius:var(--adm-tool);
+  transition:background var(--t-micro) var(--ease-std);
+}
+.adm-menu-btn:hover{background:var(--navy-700)}
+.adm-menu-btn svg{width:20px;height:20px;flex:none}
+.adm-menu-btn[aria-expanded="true"]{background:var(--navy-900)}
+
+.adm-drawer{position:fixed;inset:0;z-index:95}
+.adm-drawer-veil{position:absolute;inset:0;background:rgba(0,18,48,.45)}
+.adm-drawer-panel{
+  position:absolute;inset-block:0;inset-inline-start:0;
+  width:min(340px,86vw);
+  display:flex;flex-direction:column;
+  background:var(--navy-800);color:var(--text-on-dark);
+  box-shadow:-8px 0 32px rgba(0,31,71,.18);
+  animation:adm-slide-rtl var(--t-comp) var(--ease-std);
+  outline:none;
+}
+[dir="ltr"] .adm-drawer-panel{animation-name:adm-slide}
+.adm-drawer-head{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;background:var(--navy-900);
+  border-block-end:1px solid rgba(255,255,255,.12);
+}
+.adm-drawer-head img{width:36px;height:36px;flex:none}
+.adm-drawer-id{flex:1;min-width:0;display:grid;line-height:1.5}
+.adm-drawer-id strong{font-size:16px;color:var(--text-on-dark)}
+.adm-drawer-id span{font-size:12.5px;color:var(--text-on-dark-2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adm-drawer-id span:empty{display:none}
+.adm-drawer .adm-x{color:var(--text-on-dark-2);width:44px;height:44px}
+.adm-drawer .adm-x:hover{background:rgba(255,255,255,.1);color:var(--text-on-dark)}
+.adm-drawer-nav{flex:1;overflow-y:auto;overscroll-behavior:contain;padding-block:6px}
+.adm-drawer-item{
+  position:relative;display:flex;align-items:center;
+  min-height:48px;padding-inline:20px;
+  font-size:15px;font-weight:500;color:var(--text-on-dark);
+  transition:background var(--t-micro) var(--ease-std);
+}
+.adm-drawer-item:hover{background:var(--navy-700)}
+.adm-drawer-item.active{font-weight:700;background:var(--navy-900)}
+.adm-drawer-item.active::after{
+  content:'';position:absolute;inset-block:8px;inset-inline-start:0;width:4px;
+  background:var(--gold-400);
+}
+.adm-drawer-foot{
+  display:flex;flex-wrap:wrap;gap:10px;
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-block-start:1px solid rgba(255,255,255,.12);
+}
+.adm-drawer-foot .btn{flex:1 1 auto;min-height:44px}
+.adm-drawer :is(a,button):focus-visible{box-shadow:0 0 0 3px rgba(211,165,24,.55)}
+
+/* قفل تمرير الصفحة خلف الدرج واللوحة الجانبية */
+html.adm-locked,html.adm-locked body{overflow:hidden}
+html.adm-locked.adm-locked-bar{scrollbar-gutter:stable}
+
+@media (max-width:1080px){
+  .adm-menu-btn{display:inline-flex}
 }
 
 /* ---------------------------------------------------------------- شريط الأدوات */
@@ -150,6 +208,32 @@
   animation:adm-pulse 1.2s ease-in-out infinite}
 @keyframes adm-pulse{0%,100%{opacity:1}50%{opacity:.45}}
 
+/* عمود الإجراءات (acts) ملتصق بحافة الجدول: الجدول العريض يتمرّر أفقياً
+   وأزرار الصف لا تغيب خلف التمرير. الخلفية معتمة كي لا تظهر الخلايا تحتها،
+   والفاصل يظهر فقط حين يتمرّر الجدول فعلاً (data-overflow من admin.js) */
+.adm-table th.acts,.adm-table td.acts{
+  position:sticky;inset-inline-end:0;z-index:2;background:var(--surface)}
+.adm-table th.acts{z-index:3}
+.adm-table tbody tr:hover td.acts{background:var(--navy-25)}
+.adm-table tbody tr[data-sel="1"] td.acts{background:var(--cream-50)}
+.adm-table tbody tr[data-sel="1"]:hover td.acts{background:var(--cream-100)}
+.adm-scroll[data-overflow] .adm-table .acts{box-shadow:inset -1px 0 0 var(--border),8px 0 12px -10px rgba(0,31,71,.18)}
+[dir="ltr"] .adm-scroll[data-overflow] .adm-table .acts{box-shadow:inset 1px 0 0 var(--border),-8px 0 12px -10px rgba(0,31,71,.18)}
+.adm-table tr.adm-row-full td{position:static;box-shadow:none}
+/* أزرار متجاورة مباشرةً في الخلية بلا غلاف مرن: فاصلٌ بينها */
+.adm-table td.acts > .btn + .btn{margin-inline-start:6px}
+/* فوق 720 أزرار الصف سطرٌ واحد: غلافٌ مرن يلتفّ يجعل الجدول يضغط العمود إلى زرٍّ
+   واحد فتتراكم الأزرار عمودياً ويطول الصف. important لغلافٍ يحمل الالتفاف في style.
+   adm-acts-wrap (fitActs في admin.js): التفافٌ في العرض المتبقّي حين يكفي لاحتواء الجدول */
+@media (min-width:721px){
+  .adm-table td.acts{white-space:nowrap}
+  .adm-table td.acts > :is(span,div){flex-wrap:nowrap !important}
+  .adm-table.adm-acts-wrap td.acts{white-space:normal}
+  .adm-table.adm-acts-wrap td.acts > :is(span,div){flex-wrap:wrap !important;min-width:var(--adm-acts-min,0)}
+  .adm-table.adm-acts-wrap td.acts:not(:has(> :is(span,div))){
+    min-width:calc(var(--adm-acts-min,0px) + 28px)}
+}
+
 /* ---------------------------------------------------------------- الترقيم */
 .adm-pager{
   display:flex;flex-wrap:wrap;align-items:center;gap:12px;
@@ -219,6 +303,7 @@
 @keyframes adm-slide{from{transform:translateX(-24px);opacity:.4}to{transform:none;opacity:1}}
 [dir="rtl"] .adm-sheet-panel{animation-name:adm-slide-rtl}
 @keyframes adm-slide-rtl{from{transform:translateX(24px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes adm-rise{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
 .adm-sheet-head{
   display:flex;align-items:center;gap:12px;
   padding:18px 20px;border-block-end:var(--adm-hair);background:var(--navy-25);
@@ -267,6 +352,9 @@
 .btn-danger{background:var(--error-600);color:#fff;border-color:var(--error-600)}
 .btn-danger:hover{background:#8f1c13;border-color:#8f1c13}
 
+/* تسمية الحقل نصاً (label.field > span) بهيئة .field label نفسها */
+.field > span:first-child{font-weight:600;font-size:14px;color:var(--text-display)}
+
 /* شارة الوضع في ترويسة الصفحة */
 .adm-mode[data-live="1"]{background:var(--success-50);color:var(--success-600);
   border-color:#c6e9d2}
@@ -279,7 +367,188 @@ html[data-role="viewer"] [data-write]{display:none !important}
   .adm-grid-2,.adm-grid-3{grid-template-columns:1fr}
 }
 @media (max-width:640px){
-  .adm-kpis{grid-template-columns:1fr}
   .adm-kv{grid-template-columns:1fr;gap:2px 0}
   .adm-kv dd{margin-block-end:10px}
+}
+
+/* ---------------------------------------------------------------- اللمس
+   أهداف لمس 44 بكسل على الهاتف وعلى كل شاشة لمس بلا فأرة */
+@media (max-width:720px),(pointer:coarse){
+  .btn-sm,.adm-pager .btn{min-height:44px}
+  .adm-chip,.adm-filters > button{min-height:44px}
+  .adm-x{width:44px;height:44px}
+  .adm-check{width:22px;height:22px}
+}
+
+/* ---------------------------------------------------------------- الهاتف (≤720) */
+@media (max-width:720px){
+  /* الترويسة: الشعار وزر القائمة وحدهما — الخروج والعودة في الدرج */
+  .masthead .adm-mast-wide{display:none}
+  .page-head .container{padding-block:26px 30px}
+  .page-head h1{font-size:24px}
+  .page-head p{font-size:14.5px;line-height:1.8}
+  .page-head .tag{margin-block-end:10px}
+  .section--tight{padding-block:24px 40px}
+
+  /* حقول بخط 16 على الأقل: أصغر منه يجعل Safari يكبّر الصفحة عند التركيز.
+     important لأن صفحاتٍ تصغّر خط قوائمها في شرائط التصفية */
+  .input,select,textarea,input:not([type="checkbox"]):not([type="radio"]){font-size:16px !important}
+
+  /* شريط الأدوات: البحث والقوائم بعرض السطر، والأزرار تتقاسم ما بقي.
+     القوائم تحمل أحياناً عرضاً مضمَّناً (style) فيلزمها important */
+  .adm-bar{padding:12px;gap:10px}
+  .adm-bar > *{min-width:0}
+  .adm-bar > .spacer,.adm-bar > [aria-hidden="true"]{display:none}
+  .adm-bar .adm-search,.adm-bar .grow,.adm-bar > div:not(.adm-filters){flex:1 1 100%}
+  .adm-bar > .input,.adm-bar > select{flex:1 1 100% !important}
+  .adm-bar > .btn{flex:1 1 auto}
+  .adm-search{min-width:0}
+
+  /* رقائق التصفية صفٌّ واحد يتمرّر أفقياً داخل الشريط بدل أسطر متراكمة */
+  .adm-filters{flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+  /* داخل الشريط يمتدّ الصف إلى حافتيه، فيظهر أن الرقائق تتمرّر */
+  .adm-bar > .adm-filters{margin-inline:-12px;padding-inline:12px}
+  .adm-filters::-webkit-scrollbar{display:none}
+  .adm-filters > *{flex:none}
+
+  .adm-table-head{padding:12px 14px}
+  /* الترقيم: سطر العدّ أولاً ثم السابق والصفحة والتالي على سطرٍ واحد */
+  .adm-pager{padding:12px 14px;gap:10px;justify-content:space-between}
+  .adm-pager > .spacer{display:none}
+  .adm-pager > span:first-child{flex:1 1 100%}
+
+  /* مؤشران في الصف: المؤشر الواحد بعرض الهاتف يدفع الجدول إلى ما بعد الطيّة */
+  .container .adm-kpis{grid-template-columns:1fr 1fr;gap:10px}
+  .adm-kpi{padding:14px 12px;min-width:0}
+  .adm-kpi-label{font-size:12.5px}
+  .adm-kpi-num{font-size:26px;overflow-wrap:anywhere}
+  .adm-kpi-hint{font-size:12px}
+  /* عددٌ فردي من المؤشرات: الأخير بعرض الصف بدل نصف صفٍّ فارغ */
+  .container .adm-kpis > .adm-kpi:last-child:nth-child(odd){grid-column:1 / -1}
+
+  /* اللوحة الجانبية بملء الشاشة: الجسم يتمرّر والأزرار ثابتة في أسفلها */
+  .adm-sheet-panel{width:100%;box-shadow:none}
+  .adm-sheet-head{padding:10px 12px 10px 16px}
+  .adm-sheet-head h2{font-size:16px}
+  .adm-sheet-body{padding:16px;overscroll-behavior:contain}
+  .adm-sheet-foot{flex-wrap:wrap;padding:12px 16px calc(12px + env(safe-area-inset-bottom, 0px))}
+  .adm-sheet-foot .btn{min-height:48px}
+  .adm-sheet .sheet-pair{grid-template-columns:1fr}
+  /* التأكيد القصير: لوحة سفلية بارتفاع محتواها */
+  .adm-sheet--ask .adm-sheet-panel{inset-block-start:auto;max-height:88vh;
+    border-radius:var(--adm-radius) var(--adm-radius) 0 0;overflow:hidden;animation-name:adm-rise}
+  .adm-sheet--ask .adm-sheet-body{flex:0 1 auto}
+
+  .adm-toasts{padding-inline:12px}
+  .adm-toast{width:100%}
+
+  /* القيم الطويلة (رموز، روابط، مسارات) تلتفّ بدل أن تمدّ الصفحة */
+  .adm-mono,.adm-sub,.adm-kv dd,.adm-state p{overflow-wrap:anywhere}
+  .adm-kv dd{min-width:0}
+
+  /* ---------- الجدول بطاقاتٍ: صفٌّ لكل سجل، «تسمية: قيمة» لكل خلية ----------
+     التسمية من data-label (admin.js)، وعنوان البطاقة أول عمود ذي معنى
+     (adm-cell-title)، والإجراءات في أسفلها. adm-table--grid يُبقي الشبكة */
+  .adm-table:not(.adm-table--grid){display:block;font-size:14px}
+  .adm-table:not(.adm-table--grid) > thead{display:none}
+  /* «تحديد الكل» يبقى من الرأس وحده شريطاً فوق البطاقات (adm-head-pick من admin.js) */
+  .adm-table.adm-has-pick:not(.adm-table--grid) > thead{display:block;padding:12px 14px 0}
+  .adm-table.adm-has-pick:not(.adm-table--grid) > thead > tr{display:flex}
+  .adm-table.adm-has-pick:not(.adm-table--grid) > thead > tr > th{display:none}
+  .adm-table.adm-has-pick:not(.adm-table--grid) > thead > tr > th.adm-head-pick{
+    display:flex;align-items:center;gap:10px;position:static;min-width:max-content;
+    min-height:44px;padding:0;border:0;background:none;cursor:pointer}
+  .adm-table.adm-has-pick:not(.adm-table--grid) > thead > tr > th.adm-head-pick::after{
+    content:attr(data-pick);font-size:13.5px;font-weight:600;color:var(--text-secondary)}
+  html[data-role="viewer"] .adm-table.adm-has-pick > thead{display:none}
+  .adm-table:not(.adm-table--grid) > tbody{display:grid;gap:10px;padding:12px}
+  .adm-table:not(.adm-table--grid) > tbody > tr{
+    display:flex;flex-direction:column;
+    padding:4px 14px;border:var(--adm-hair);border-radius:var(--adm-tool);
+    background:var(--surface);box-shadow:var(--shadow-rest)}
+  .adm-table:not(.adm-table--grid) > tbody > tr:hover{background:var(--surface)}
+  .adm-table:not(.adm-table--grid) > tbody > tr[data-sel="1"]{background:var(--cream-50);border-color:var(--gold-400)}
+  /* التسمية عائمة داخل حشوة الخلية اليمنى بهامش سالب، فيجري المحتوى سطراً
+     طبيعياً بجوارها مهما تعدّدت عناصره، وتحتسب الخلية ارتفاع التسمية (flow-root).
+     جهات فيزيائية لا منطقية عمداً: خلايا الأرقام والبريد تحمل dir="ltr"، واللوحة
+     عربية الاتجاه كلها، فالتسمية تبقى يميناً في كل الصفوف */
+  .adm-table:not(.adm-table--grid){--adm-lbl:clamp(88px,28vw,150px)}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td{
+    display:flow-root;
+    position:static;min-width:0;max-width:none;width:auto;
+    padding:9px calc(var(--adm-lbl) + 12px) 9px 0;
+    text-align:right;white-space:normal;overflow-wrap:anywhere;
+    /* لا كلمة يتيمة في آخر القيمة (مثل «ص/م» بعد الوقت) */
+    text-wrap:pretty;
+    border:0;border-block-end:1px solid var(--navy-50);box-shadow:none;background:none}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td[dir="ltr"]{text-align:right !important}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td::before{
+    content:attr(data-label);float:right;width:var(--adm-lbl);
+    margin-right:calc(-1 * (var(--adm-lbl) + 12px));
+    direction:rtl;text-align:right;white-space:normal;
+    font-size:12.5px;font-weight:700;line-height:1.8;color:var(--text-secondary)}
+  /* خلية بأدوات عريضة (مبدّل حالة، أزرار متجاورة): التسمية فوقها والقيمة بعرض البطاقة */
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.adm-cell-stack{padding-right:0}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.adm-cell-stack::before{
+    float:none;display:block;width:auto;margin:0 0 6px}
+  /* الوسوم بعرضها الطبيعي أياً كان غلافها في الخلية (شبكة أو عمود مرن يمدّ أبناءه) */
+  .adm-table:not(.adm-table--grid) > tbody > tr > td :is(.tag,.adm-chip){
+    width:fit-content;max-width:100%;justify-self:start;flex:none}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td:not([data-label]){display:block;padding-right:0}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td:not([data-label])::before{content:none}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td:last-child{border-block-end:0}
+  /* خلية فارغة المحتوى لا تستحق سطراً، ومقبض السحب لا يعمل باللمس */
+  .adm-table:not(.adm-table--grid) > tbody > tr > td:empty,
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.adm-cell-drag{display:none}
+  /* مربع التحديد في زاوية البطاقة بجوار عنوانها */
+  .adm-table:not(.adm-table--grid) > tbody > tr{position:relative}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.adm-cell-pick{
+    position:absolute;inset-block-start:12px;inset-inline-end:12px;
+    padding:0;border:0;width:auto}
+  .adm-table:not(.adm-table--grid) > tbody > tr:has(> td.adm-cell-pick) > td.adm-cell-title{
+    padding-inline-end:36px}
+
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.adm-cell-title{
+    order:-1;display:block;padding:12px 0 10px;
+    font-size:15px;font-weight:700;color:var(--navy-800);
+    border-block-end:1px solid var(--border)}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.adm-cell-title::before{content:none}
+
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.acts{
+    order:99;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    padding:12px 0;border-block-end:0;border-block-start:1px solid var(--border);
+    margin-block-start:-1px}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.acts::before{content:none}
+  /* بلا خلفية العمود الملتصق وفاصله: شريط الأزرار جزء من البطاقة */
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.acts,
+  .adm-table:not(.adm-table--grid) > tbody > tr[data-sel="1"]:hover > td.acts{background:none}
+  .adm-scroll[data-overflow] .adm-table:not(.adm-table--grid) .acts{box-shadow:none}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.acts > :is(span,div):not(.tag){
+    display:flex;flex-wrap:wrap;gap:8px;width:100%}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.acts .btn{flex:0 0 auto;margin:0}
+
+  /* صف الحالة (تحميل/فراغ/خطأ): بلا إطار بطاقة */
+  .adm-table:not(.adm-table--grid) > tbody > tr.adm-row-full{
+    padding:0;border:0;box-shadow:none;background:none}
+  .adm-table:not(.adm-table--grid) > tbody > tr.adm-row-full > td{
+    display:block;padding:0;border:0}
+  .adm-table:not(.adm-table--grid) > tbody > tr.adm-row-full > td::before{content:none}
+}
+
+/* الهاتف الأضيق: شعار أصغر كي لا يلتفّ السطر الإنكليزي، ثم زر القائمة بأيقونته
+   وحدها تحت 400 والاسم باقٍ لقارئ الشاشة */
+@media (max-width:430px){
+  .masthead-brand{gap:10px}
+  .masthead-brand img{width:38px;height:38px}
+  .masthead-brand .ar{font-size:14px}
+}
+@media (max-width:400px){
+  .adm-menu-btn{padding-inline:11px}
+  .adm-menu-txt{position:absolute;width:1px;height:1px;overflow:hidden;
+    clip-path:inset(50%);white-space:nowrap}
+}
+
+@media print{
+  .adm-menu-btn,.adm-drawer{display:none !important}
 }

@@ -16,7 +16,15 @@
 .rp-range .field{margin:0}
 .rp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-block-start:18px}
 @media (max-width:1100px){.rp-grid{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:560px){.rp-grid{grid-template-columns:1fr}}
+/* الهاتف: المؤشرات اثنان في الصف كبقية اللوحة، والتاريخان والأزرار بعرض البطاقة */
+@media (max-width:720px){
+  .rp-grid{gap:10px}
+  .rp-range{gap:12px}
+  .rp-range .field,.rp-range #runBtn,.rp-range .rp-actions{flex:1 1 100%}
+  .rp-range .spacer{display:none}
+  .rp-range .rp-actions .btn{flex:1 1 0}
+  .rp-table th,.rp-table td{padding:9px 8px}
+}
 .rp-sec{margin-block-start:26px}
 .rp-sec h2{font-size:16.5px;display:flex;align-items:center;gap:10px}
 .rp-sec h2::after{content:'';flex:1;height:1px;background:var(--border)}
@@ -94,9 +102,14 @@
   var last = null;   /* آخر تقرير — للطباعة والتصدير */
   var seq = 0;       /* يهمل الردود المتقاطعة عند تغيير المدة السريع */
 
+  /* أسماء الخدمات كما في صفحة المدفوعات */
   var SVC = {
     'exam': 'امتحان — محاولة أولى', 'exam-re': 'إعادة امتحان',
-    'book-m': 'اشتراك شهري بكتاب', 'book-y': 'اشتراك سنوي بكتاب'
+    'book-m': 'اشتراك شهري بكتاب', 'book-y': 'اشتراك سنوي بكتاب',
+    'folder-m': 'اشتراك شهري بمجلد', 'folder-y': 'اشتراك سنوي بمجلد', 'folder-o': 'اشتراك دائم بمجلد',
+    'item-m': 'اشتراك شهري ببند', 'item-y': 'اشتراك سنوي ببند', 'item-o': 'اشتراك دائم ببند',
+    'renewal': 'تجديد الاشتراك السنوي', 'grade-upgrade': 'رسوم الارتقاء بالمرتبة',
+    'grade-course': 'دورة الارتقاء بالمرتبة'
   };
   function amt(n) {
     return A.toAr(String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
@@ -106,7 +119,7 @@
     page: 'reports',
     title: 'التقارير',
     lead: 'أرقام المدة جاهزة للوزارة والمجلس: التسجيلات والامتحانات والشهادات '
-        + 'والإيراد والأكواد — بضغطة، وبنسخة مطبوعة بترويسة النقابة.',
+        + 'والإيراد والكوبونات — بضغطة، وبنسخة مطبوعة بترويسة النقابة.',
     crumb: 'التقارير'
   }).then(function (st) {
     if (!st) { return; }
@@ -211,9 +224,9 @@
           'قيد التدقيق: ' + A.toAr(r.pending_count | 0) +
           ' · مرفوضة: ' + A.toAr(r.rejected_count | 0) + '</p></div>' +
 
-      '<div class="rp-sec"><h2>الأكواد والمحتوى</h2>' +
+      '<div class="rp-sec"><h2>الكوبونات والمحتوى</h2>' +
         '<table class="rp-table"><tr>' +
-          '<th>أكواد صادرة</th><th>أكواد مستردَّة</th>' +
+          '<th>كوبونات صادرة</th><th>كوبونات مستردَّة</th>' +
           '<th>أخبار منشورة</th><th>دروس أُتمّت</th></tr>' +
         '<tr><td class="num">' + A.toAr(k.issued | 0) + '</td>' +
         '<td class="num">' + A.toAr(k.redeemed | 0) + '</td>' +
@@ -234,7 +247,7 @@
       ['شهادات صادرة', c.issued], ['شهادات تميز', c.distinction],
       ['دفعات مدققة', r.verified_count], ['الإيراد المدقق ل.س', r.verified_amount],
       ['دفعات قيد التدقيق', r.pending_count], ['دفعات مرفوضة', r.rejected_count],
-      ['أكواد صادرة', k.issued], ['أكواد مستردة', k.redeemed],
+      ['كوبونات صادرة', k.issued], ['كوبونات مستردة', k.redeemed],
       ['أخبار منشورة', last.news_published], ['دروس أتمت', last.lessons_completed]
     ];
     (last.revenue.by_service || []).forEach(function (s) {

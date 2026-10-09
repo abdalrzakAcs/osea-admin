@@ -50,20 +50,16 @@
 .adm-table td.path{max-width:170px;overflow:hidden;text-overflow:ellipsis}
 /* المجال أضيق من .wrap: أسماء المجالات قصيرة ولا تستحق مئتي بكسل من عرض الجدول */
 .adm-table td.dom{min-width:130px;max-width:180px}
-/* أزرار الصف في سطر واحد: تكديسها يضاعف ارتفاع كل صف — الجدول يتمرّر أفقياً بدلها */
+/* أزرار الصف في سطر واحد: تكديسها يضاعف ارتفاع كل صف — الجدول يتمرّر أفقياً بدلها.
+   عمود الإجراءات الملتصق من admin.css (th.acts/td.acts) */
 .row-acts{display:flex;gap:6px;flex-wrap:nowrap}
-
-/* عمود الإجراءات ملتصق بحافة الجدول: أربعة عشر عموداً تتمرّر أفقياً على الشاشات
-   الأضيق، وأزرار التعديل والحذف لا يجوز أن تغيب خلف التمرير */
-.tbl-index th:last-child,.tbl-index td:last-child{
-  position:sticky;inset-inline-end:0;background:var(--surface);
-  border-inline-start:1px solid var(--border);
+/* اللوحي (721–1080): عمودان من الأزرار، والمجال والنوع يلتفّان، كي لا يغطّي
+   العمودُ الملتصق عنوانَ البند */
+@media (min-width:721px) and (max-width:1080px){
+  .tbl-index .row-acts{display:grid;grid-template-columns:repeat(2,auto);justify-content:start}
+  .adm-table.tbl-index td.dom{min-width:110px;white-space:normal}
+  .adm-table.tbl-index td.kind{min-width:96px;white-space:normal}
 }
-.tbl-index td:last-child{z-index:2}
-.tbl-index th:last-child{z-index:3}
-.tbl-index tbody tr:hover td:last-child{background:var(--navy-25)}
-/* صفوف الحالة (فراغ/خطأ) خلية واحدة ممتدة — لا تُلصق ولا تُحدّ */
-.tbl-index td[colspan]{position:static;background:none;border-inline-start:0}
 
 /* شبكة حقلين داخل اللوحة الجانبية — الأرقام القصيرة لا تستحق سطراً كاملاً */
 .sheet-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -115,8 +111,8 @@
 .up-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .up-row .spacer{flex:1}
 
-/* ---------- معالج الإضافة: ثلاث خطوات داخل اللوحة نفسها ---------- */
-/* مؤشّر الخطوة لاصق أعلى جسم اللوحة: الخطوة الثالثة تطول بقائمة المجلدات
+/* ---------- معالج الإضافة: خطوتان داخل اللوحة نفسها ---------- */
+/* مؤشّر الخطوة لاصق أعلى جسم اللوحة: خطوة مكان الحفظ تطول بقائمة المجلدات
    و«خيارات متقدمة»، فيغيب المؤشّر تحت التمرير ويضيع معه معنى زر «رجوع».
    الإزاحة السالبة بمقدار حشوة الجسم كي لا يظهر المحتوى فوقه في الفجوة */
 .wz-ind{position:sticky;inset-block-start:-20px;z-index:3;margin:0;
@@ -125,25 +121,21 @@
 .wz-ind b{color:var(--navy-800)}
 .wz-step{display:grid;gap:16px}
 .wz-q{margin:0;font-family:var(--font-display);font-size:19px;color:var(--navy-800)}
+/* تلميح العنوان خارج .field: بهيئة تلميح الحقل نفسها */
+.wz-step > .hint{font-size:12.5px;color:var(--text-secondary)}
+/* الهاتف: حشوة جسم اللوحة 16، وأزرار التذييل الثلاثة في سطر واحد بلا كسر نصّها */
+@media (max-width:720px){
+  .wz-ind{inset-block-start:-16px}
+  .adm-sheet-foot .btn{white-space:nowrap;padding-inline:14px}
+  /* بطاقة البند على الهاتف: الأعمدة الثانوية (المسار، الصفحات، الترتيب، مرات الوصول)
+     في لوحة التعديل، والسهمان و«سجل النسخ» بأهداف لمس كاملة */
+  .adm-table.tbl-index > tbody > tr > td.ph-sec{display:none}
+  .tbl-index .ord-btn{min-width:44px}
+  .tbl-index .lnk{display:inline-flex;align-items:center;min-height:44px;margin:0}
+}
 
-/* بطاقات النوع: ثلاث بطاقات كبيرة تُنقر — لا قائمة منسدلة */
-.pick-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-@media (max-width:560px){.pick-grid{grid-template-columns:1fr}}
-.pick{display:grid;gap:6px;justify-items:center;text-align:center;font:inherit;
-  padding:20px 12px;cursor:pointer;color:var(--text-primary);
-  border:1.5px solid var(--border);border-radius:var(--radius-tool);
-  background:var(--surface);transition:border-color 140ms var(--ease-std),
-  background-color 140ms var(--ease-std),box-shadow 140ms var(--ease-std)}
-.pick:hover{border-color:var(--gold-400);box-shadow:var(--shadow-hover)}
-.pick:focus-visible{outline:none;border-color:var(--navy-600);
-  box-shadow:0 0 0 3px rgba(0,52,113,.18)}
-.pick[aria-pressed="true"]{border-color:var(--gold-500);background:var(--cream-50)}
-.pick .ico{font-size:30px;line-height:1}
-.pick .ttl{font-weight:700;font-size:15px;color:var(--navy-800)}
-.pick .sub{font-size:12.5px;line-height:1.7;color:var(--text-secondary)}
-
-/* منطقة الإفلات في الخطوة الثانية أكبر: هي عمل الخطوة كلّه */
-#wz2 .drop{padding:30px 18px}
+/* منطقة الإفلات في خطوة الملف أكبر: هي عمل الخطوة كلّه */
+#wz1 .drop{padding:30px 18px}
 /* سطر تأكيد ما استُخرج من الملف — تحت اسم الملف وحجمه.
    الذهبي على الكريمي للمستخرَج فعلاً، والرمادي على النيلي الفاتح للانتظار
    أو للتعذّر: الفرق يُرى بلمحة بلا قراءة السطر */
@@ -283,7 +275,7 @@
                 <th class="grip" aria-label="مقبض إعادة الترتيب"></th>
                 <th>المجال</th>
                 <th>النوع</th>
-                <th>العنوان</th>
+                <th class="adm-card-title">العنوان</th>
                 <th>الرمز</th>
                 <th>مسار التخزين</th>
                 <th>الصفحات / المدة</th>
@@ -293,7 +285,7 @@
                 <th>الحالة</th>
                 <th>مرات الوصول</th>
                 <th>تاريخ الرفع</th>
-                <th>إجراءات</th>
+                <th class="acts">إجراءات</th>
               </tr>
             </thead>
             <tbody id="rows">
@@ -361,12 +353,20 @@
   var A = window.ADMIN, API = window.OSEA_API;
 
   /* dir/ext: اقتراح مسار التخزين للملف المرفوع — books/<id>.pdf وأخواتها.
-     امتداد الملف المختار فعلاً يتقدّم على الافتراضي دائماً. */
+     امتداد الملف المختار فعلاً يتقدّم على الافتراضي دائماً.
+     name: الاسم في قائمة «نوع الملف» · accept: مرشّح منتقي الملفات · files: الصيغ كما تُقال.
+     الكتاب والاستمارة PDF حصراً: القارئ وتنزيله مبنيّان على pdf.js */
   var KIND = {
-    book:   { label: 'كتاب',    plural: 'كتب',       cls: 'tag--navy', dir: 'books',   ext: 'pdf' },
-    form:   { label: 'استمارة', plural: 'استمارات',  cls: 'tag--gold', dir: 'forms',   ext: 'pdf' },
-    lesson: { label: 'درس',     plural: 'دروس',      cls: '',          dir: 'lessons', ext: 'mp4' }
+    book:   { label: 'كتاب',    plural: 'كتب',       cls: 'tag--navy', dir: 'books',   ext: 'pdf',
+              name: 'كتاب معتمد',    accept: '.pdf,application/pdf', files: 'ملف PDF' },
+    form:   { label: 'استمارة', plural: 'استمارات',  cls: 'tag--gold', dir: 'forms',   ext: 'pdf',
+              name: 'استمارة رسمية', accept: '.pdf,application/pdf', files: 'ملف PDF' },
+    lesson: { label: 'درس',     plural: 'دروس',      cls: '',          dir: 'lessons', ext: 'mp4',
+              name: 'درس مصوّر',     accept: '.mp4,.m4v,.webm,video/mp4,video/webm', files: 'فيديو MP4 أو WebM' }
   };
+  /* ترتيب القائمة، والنوع الافتراضي للبند الجديد */
+  var KIND_ORDER = ['book', 'form', 'lesson'];
+  var KIND_DEFAULT = 'book';
 
   /* وصول البند نفسه (ترحيل ٠٢٢): «موروث» يتبع المجلد، والصريح يتقدّم عليه */
   var ACCESS = {
@@ -938,30 +938,30 @@
         '<td class="dom">' + (dom
           ? '<span class="strong">' + A.esc(dom) + '</span>'
           : '<span class="adm-sub" style="margin:0">—</span>') + '</td>' +
-        '<td><span class="tag ' + k.cls + '">' + A.esc(k.label) + '</span> ' + extTag(it) + dlMark(it) + '</td>' +
+        '<td class="kind"><span class="tag ' + k.cls + '">' + A.esc(k.label) + '</span> ' + extTag(it) + dlMark(it) + '</td>' +
         '<td class="wrap"><span class="strong">' + A.esc(it.title) + '</span>' +
           (it.subtitle ? '<span class="adm-sub">' + A.esc(it.subtitle) + '</span>' : '') +
           '<span class="adm-sub adm-mono" dir="ltr">' + A.esc(it.id) + '</span>' +
           (it.folder ? '<span class="adm-sub">المجلد: ' + A.esc(it.folder) + '</span>' : '') +
           (it.category ? '<span class="adm-sub">التصنيف: ' + A.esc(it.category) + '</span>' : '') + '</td>' +
         '<td class="adm-mono" dir="ltr" style="text-align:start">' + A.esc(it.code || '—') + '</td>' +
-        '<td class="adm-mono path" dir="ltr" style="text-align:start" title="' +
+        '<td class="adm-mono path ph-sec" dir="ltr" style="text-align:start" title="' +
           A.esc(it.storage_path) + '">' + A.esc(it.storage_path) + '</td>' +
-        '<td class="num">' + span + '</td>' +
+        '<td class="num ph-sec">' + span + '</td>' +
         '<td class="num">' + A.bytes(it.size_bytes) + '</td>' +
-        '<td class="num">' + A.toAr(it.sort) + '</td>' +
+        '<td class="num ph-sec">' + A.toAr(it.sort) + '</td>' +
         '<td>' + accessCell(it) + '</td>' +
         '<td>' + (it.active
           ? '<span class="tag tag--success">نشط</span>'
           : '<span class="tag tag--error">معطّل</span>') + '</td>' +
-        '<td class="num">' + A.toAr(it.accesses | 0) + '</td>' +
+        '<td class="num ph-sec">' + A.toAr(it.accesses | 0) + '</td>' +
         /* لحظة رفع الملف بالساعة (٠٣١) — وقبلها آخر تحديث الصف، وهو أقرب ما
            يُعرف. رقم النسخة تحته وزر سجل النسخ كلها */
         '<td>' + A.arDateTime(it.file_uploaded_at || it.updated_at) +
           '<span class="adm-sub">النسخة ' + A.toAr(it.rev == null ? 1 : it.rev) +
             (it.file_uploaded_at ? '' : ' · آخر تحديث للصف') + '</span>' +
           '<button type="button" class="lnk" data-act="versions">سجل النسخ</button></td>' +
-        '<td><span class="row-acts">' +
+        '<td class="acts"><span class="row-acts">' +
           (canWrite
             ? '<button class="btn btn-outline btn-sm ord-btn" data-act="up" data-write' +
                 (upOk ? '' : ' disabled') + ' aria-label="نقل لأعلى" ' +
@@ -1464,15 +1464,36 @@
   /* منطقة الإفلات وحدها، منفصلةً عن تنبيه الامتداد: في معالج الإضافة يقع
      اختيار الملف في خطوة، ويقع تحرير المسار في «خيارات متقدمة» بخطوة أخرى —
      فلو بقي التنبيه ملتصقاً بالمنطقة لظهر في خطوة لا يراها أحد وقتها */
-  function dropHTML(hint, label) {
+  /* kind: يضبط مرشّح منتقي الملفات على صيغ النوع — والإفلات بالسحب لا يتقيّد به */
+  function dropHTML(hint, label, kind) {
+    var k = KIND[kind];
     return '' +
       '<div class="field"><label for="fFile">' + (label || 'ملف البند') + '</label>' +
         '<div class="drop" id="fDrop">' + ICON_UP +
           '<span class="nm" id="fFileNm">اسحب الملف إلى هنا أو اخترْه من جهازك</span>' +
           '<button type="button" class="btn btn-outline btn-sm" id="fPick" data-write>اختر ملفاً</button>' +
-          '<input type="file" id="fFile" hidden>' +
+          '<input type="file" id="fFile" hidden' +
+            (k ? ' accept="' + A.esc(k.accept) + '"' : '') + '>' +
         '</div>' +
-        '<span class="hint">' + hint + '</span></div>';
+        '<span class="hint" id="fFileHint">' + hint + '</span></div>';
+  }
+
+  /* سطر الصيغ تحت منطقة الإفلات — نصّ خالص يصلح لـtextContent */
+  function kindHint(kind) {
+    var k = KIND[kind] || KIND[KIND_DEFAULT];
+    return k.files + ' — ' + (kind === 'lesson'
+      ? 'تُستخرج مدته تلقائياً.'
+      : 'يُستخرج عدد صفحاته تلقائياً.');
+  }
+
+  /* هل يطابق الملف صيغ النوع؟ بالامتداد أو بنوع MIME — الإفلات بالسحب يتجاوز المرشّح */
+  function kindAccepts(kind, file) {
+    var k = KIND[kind];
+    if (!k || !file) return true;
+    var ex = '.' + fileExt(file.name, ''), type = String(file.type || '').toLowerCase();
+    return k.accept.split(',').some(function (a) {
+      return a === ex || (a.indexOf('/') > 0 && a === type);
+    });
   }
 
   function extHTML() {
@@ -1484,7 +1505,7 @@
           '(من «تعديل» إن كنت تستبدل ملفاً) أو اختر ملفاً من النوع نفسه.</span></div>';
   }
 
-  function fileHTML(hint) { return dropHTML(hint) + extHTML(); }
+  function fileHTML(hint, kind) { return dropHTML(hint, null, kind) + extHTML(); }
 
   function upHTML() {
     return '' +
@@ -1562,6 +1583,11 @@
       suggest();
       warnExt();
       if (o.onPick) { o.onPick(st.file); }
+      /* يُفحص النوع بعد onPick: المعالج قد يبدّله من الملف نفسه */
+      var k = KIND[o.kind()];
+      if (f && !se && k && !kindAccepts(o.kind(), f)) {
+        A.toast('صيغة الملف لا تناسب «' + k.name + '» — المقبول: ' + k.files + '.', 'bad', 6000);
+      }
     }
     host.querySelector('#fPick').addEventListener('click', function () { inp.click(); });
     inp.addEventListener('change', function () {
@@ -1587,8 +1613,8 @@
     var kindEl = host.querySelector('#fKind');
     if (kindEl) { kindEl.addEventListener('change', suggest); }
     if (pathEl) { pathEl.addEventListener('input', warnExt); }
-    /* المعالج يغيّر النوع ببطاقة لا بقائمة، والمعرّف يُولَّد برمجياً: لا حدث
-       input ولا change يقع، فيُتاح الاقتراح نداءً مباشراً */
+    /* النوع يتبدّل برمجياً أحياناً (من الملف نفسه) والمعرّف يُولَّد برمجياً:
+       لا حدث يقع، فيُتاح الاقتراح نداءً مباشراً */
     st.suggest = function () { suggest(); warnExt(); };
     return st;
   }
@@ -1798,8 +1824,8 @@
           'فيحلّ محلّ الملف القديم. صف الفهرس لا يتغيّر — يُضبَط الحجم ' +
           'ويرتفع رقم النسخة وحدهما. ' + verLine(it) +
         '</span></div>' +
-        fileHTML('الملف يحلّ محلّ ملف البند الحالي في سلة ' +
-          '<span class="adm-mono" dir="ltr">osea-content</span> بالمسار نفسه.') +
+        fileHTML(A.esc((KIND[it.kind] || KIND[KIND_DEFAULT]).files) +
+          ' — يحلّ محلّ الملف الحالي على المسار نفسه.', it.kind) +
         upHTML(),
       onOk: function (host) {
         if (!st || !st.file) return Promise.reject(new Error('اختر ملفاً أولاً'));
@@ -2175,6 +2201,17 @@
   /* كل حقل جذاذة مفردة: نموذج التعديل يجمعها كاملةً، ومعالج الإضافة يوزّعها
      على خطواته و«خيارات متقدمة» — فلا يُكتب حقل واحد في موضعين ولا تفترق
      صياغته بينهما. القارئ (readFields) واحد لا يتغيّر: كل مُعرّف يظهر مرة. */
+  /* نوع البند قائمةٌ منسدلة في الإضافة والتعديل معاً. locked: البند المحفوظ
+     يبقى على نوعه — المسار وحماية البند وفتحه في التطبيق مبنيّة عليه */
+  function fldKind(kind, locked) {
+    var opts = KIND_ORDER.map(function (v) {
+      return '<option value="' + A.esc(v) + '"' + (v === kind ? ' selected' : '') + '>' +
+        A.esc(KIND[v].name) + '</option>';
+    }).join('');
+    return '<div class="field"><label for="fKind">نوع الملف</label>' +
+      '<select class="input" id="fKind"' + (locked ? ' disabled' : '') + '>' + opts + '</select>' +
+      (locked ? '<span class="hint">نوع البند لا يتغيّر بعد إضافته.</span>' : '') + '</div>';
+  }
   function fldTitle(it) {
     return '<div class="field"><label for="fTitle">العنوان</label>' +
       '<input class="input" id="fTitle" maxlength="200" value="' + A.esc(it.title || '') + '"></div>';
@@ -2328,6 +2365,7 @@
   /* حقول التحرير المشتركة بين «تعديل» و«إضافة» — النادر منها مطويّ */
   function fieldsHTML(it) {
     return '' +
+      fldKind(it.kind, true) +
       fldTitle(it) +
       /* المجال قبل المجلد: كلاهما موضع، والمجال هو الأعلى — واختيار المجلد
          يصفّي قائمته على المجال المختار (wireFolderSel) */
@@ -2335,9 +2373,8 @@
       fldFolder(it) +
       accessHTML(it) +
       dlHTML(it) +
-      fileHTML('يُرفع الملف بعد حفظ صف البند مباشرةً إلى سلة ' +
-        '<span class="adm-mono" dir="ltr">osea-content</span> الخاصة، ثم يُضبَط الحجم ' +
-        'ويرتفع رقم النسخة. اتركه فارغاً إن أردت تحرير الصف وحده بلا رفع.') +
+      fileHTML('اختياري: ' + A.esc((KIND[it.kind] || KIND[KIND_DEFAULT]).files) +
+        ' — يُرفع بعد حفظ الصف ويرتفع به رقم النسخة.', it.kind) +
       upHTML() +
       retryHTML() +
       advHTML(
@@ -2467,29 +2504,14 @@
     guardSheet(s);
   }
 
-  /* ------------------------------------- معالج الإضافة: ثلاث خطوات لا لوحة */
-  /* شكوى الإدارة كانت أن الإضافة تسأل عن ثمانية عشر حقلاً دفعةً واحدة. الأسئلة
-     هنا ثلاثة لا غير: النوع، ثم الملف والعنوان، ثم مكان الحفظ — وكل ما عداها
-     يُشتقّ (المعرّف، المسار، المجال، الترتيب، الحالة) أو يُستخرج من الملف
-     (الصفحات، المدة، الحجم). النادر يبقى متاحاً مطويّاً تحت «خيارات متقدمة». */
-  var WZ_Q = ['ما الذي تريد إضافته؟', 'الملف والعنوان', 'أين يُحفَظ؟'];
-  var WZ_PICK = [
-    ['book',   '📕', 'كتاب معتمد',    'ملف PDF يُقرأ داخل التطبيق'],
-    ['form',   '📄', 'استمارة رسمية', 'استمارة تقييم تُملأ ميدانياً'],
-    ['lesson', '🎬', 'درس مصوّر',     'فيديو يُشاهَد في المكتبة']
-  ];
+  /* --------------------------------------- معالج الإضافة: خطوتان لا لوحة */
+  /* خطوتان: الملف ونوعه وعنوانه، ثم مكان الحفظ. ما عداها يُشتقّ (المعرّف،
+     المسار، المجال، الترتيب، الحالة) أو يُستخرج من الملف (الصفحات، المدة،
+     الحجم)، والنادر مطويّ تحت «خيارات متقدمة». */
+  var WZ_Q = ['الملف والعنوان', 'أين يُحفَظ؟'];
   var FOLD_ACC = {
     free: 'مجاني للجميع', account: 'يتطلب حساباً', paid: 'مدفوع بالاشتراك'
   };
-
-  function pickCardsHTML() {
-    return '<div class="pick-grid">' + WZ_PICK.map(function (k) {
-      return '<button type="button" class="pick" data-kind="' + k[0] + '" aria-pressed="false">' +
-        '<span class="ico" aria-hidden="true">' + k[1] + '</span>' +
-        '<span class="ttl">' + A.esc(k[2]) + '</span>' +
-        '<span class="sub">' + A.esc(k[3]) + '</span></button>';
-    }).join('') + '</div>';
-  }
 
   /* نموذج المجلد الجديد داخل اللوحة نفسها: «إمكانية لإضافة مجلدات وأقسام» —
      المجلد هو المجلد الفرعي، والقسم هو المجال. معرّفاته تبدأ بـnf كي لا
@@ -2498,7 +2520,7 @@
     var opts = domainList().map(function (d) {
       return '<option value="' + A.esc(d) + '">' + A.esc(d) + '</option>';
     }).join('');
-    opts += '<option value="' + A.esc(DOMAIN_NEW) + '">＋ قسم (مجال) جديد…</option>';
+    opts += '<option value="' + A.esc(DOMAIN_NEW) + '">قسم (مجال) جديد…</option>';
     var pr = function (id, label) {
       return '<div class="field" style="margin:0"><label for="' + id + '">' + A.esc(label) + '</label>' +
         '<input class="input" id="' + id + '" inputmode="numeric" placeholder="—"></div>';
@@ -2550,7 +2572,7 @@
     var W = { step: 1, kind: null, autoId: '', autoTitle: '', autoSort: '',
               autoPages: '', autoDur: '', probe: 0,
               /* النوع ما زال المقترَح (كتاب افتراضاً) لا اختياراً صريحاً: ملفُ
-                 فيديو يبدّله إلى درس تلقائياً — ونقرةُ بطاقةٍ تجمّده */
+                 فيديو يبدّله إلى درس تلقائياً — والاختيار من القائمة يجمّده */
               kindAuto: true,
               /* المعرّف الذي نجح حفظ صفّه في هذه الجلسة: إعادة الضغط بعد فشل
                  الرفع تُعيد نفس الصف لا تطالب بمعرّف جديد فتُنشئ مكرّراً */
@@ -2570,8 +2592,7 @@
 
     /* ------------------------------------------------------ حركة الخطوات */
     function focusStep(n) {
-      var t = n === 1 ? s.el.querySelector('.pick[aria-pressed="true"]') || s.el.querySelector('.pick')
-            : n === 2 ? ((st && st.file) ? el('fTitle') : el('fPick'))
+      var t = n === 1 ? ((st && st.file) ? el('fTitle') : el('fKind'))
             : s.el.querySelector('#wzFolds input:checked') || s.el.querySelector('#wzFolds input');
       if (t && t.focus) { try { t.focus(); } catch (e) {} }
       var body = s.el.querySelector('.adm-sheet-body');
@@ -2579,17 +2600,14 @@
     }
 
     function goStep(n) {
-      n = n < 1 ? 1 : (n > 3 ? 3 : n);
+      n = n < 1 ? 1 : (n > WZ_Q.length ? WZ_Q.length : n);
       W.step = n;
       el('wz1').hidden = n !== 1;
       el('wz2').hidden = n !== 2;
-      el('wz3').hidden = n !== 3;
-      indEl.innerHTML = 'الخطوة <b>' + A.toAr(n) + '</b> من ' + A.toAr(3) +
+      indEl.innerHTML = 'الخطوة <b>' + A.toAr(n) + '</b> من ' + A.toAr(WZ_Q.length) +
         ' — ' + A.esc(WZ_Q[n - 1]);
-      /* «التالي» ظاهر في الخطوة الأولى أيضاً: الكتاب مختار افتراضاً فالإدارة
-         تتقدّم بنقرة واحدة — ونقر بطاقةٍ أخرى يتقدّم بها كذلك */
       okBtn.hidden = false;
-      okBtn.textContent = n === 3 ? 'إضافة العنصر' : 'التالي';
+      okBtn.textContent = n === WZ_Q.length ? 'إضافة العنصر' : 'التالي';
       backBtn.hidden = n === 1;
       focusStep(n);
     }
@@ -2752,11 +2770,16 @@
     }
 
     function setKind(k) {
+      if (!KIND[k]) { k = KIND_DEFAULT; }
       var was = W.kind;
       W.kind = k;
-      s.el.querySelectorAll('.pick').forEach(function (b) {
-        b.setAttribute('aria-pressed', b.getAttribute('data-kind') === k ? 'true' : 'false');
-      });
+      /* القائمة تتبع النوع حين يبدّله الملف نفسه، ومعها مرشّح المنتقي وسطر الصيغ */
+      var ks = el('fKind');
+      if (ks && ks.value !== k) { ks.value = k; }
+      var inp = el('fFile');
+      if (inp) { inp.setAttribute('accept', KIND[k].accept); }
+      var fh = el('fFileHint');
+      if (fh) { fh.textContent = kindHint(k); }
       var idEl = el('fId');
       if (idEl && (!idEl.value.trim() || idEl.value.trim() === W.autoId)) {
         W.autoId = freshId(k);
@@ -2815,12 +2838,12 @@
       if (W.kindAuto) {
         if (pk === 'dur' && W.kind !== 'lesson') {
           setKind('lesson');
-          A.toast('الملف فيديو فاختير «درس مصوّر» تلقائياً — بدّل النوع من الخطوة الأولى إن لزم.', 'ok', 5200);
+          A.toast('الملف فيديو فاختير «' + KIND.lesson.name + '» تلقائياً — ويمكن تغييره من «نوع الملف».', 'ok', 5200);
           return;
         }
         if (pk === 'pages' && W.kind === 'lesson') {
           setKind('book');
-          A.toast('الملف PDF فاختير «كتاب» تلقائياً — بدّل النوع من الخطوة الأولى إن لزم.', 'ok', 5200);
+          A.toast('الملف PDF فاختير «' + KIND.book.name + '» تلقائياً — ويمكن تغييره من «نوع الملف».', 'ok', 5200);
           return;
         }
       }
@@ -2965,34 +2988,23 @@
         '<p class="wz-ind" id="wzInd" role="status" aria-live="polite"></p>' +
 
         '<div class="wz-step" id="wz1">' +
-          '<p class="wz-q">ما الذي تريد إضافته؟</p>' +
-          pickCardsHTML() +
-          '<span class="hint" style="margin:0">الكتاب هو الخيار الافتراضي — اضغط «التالي» ' +
-            'مباشرة، أو اختر نوعاً آخر. النوع يحدّد امتداد الملف المتوقّع وطريقة عرضه ' +
-            '(قارئ أو مشغّل)، ولا يُغيَّر بعد الحفظ من هذه الشاشة. أما مكان البند في ' +
-            'المكتبة فيُختار في الخطوة الثالثة: المجال ← المجلد ← البند.</span>' +
-        '</div>' +
-
-        '<div class="wz-step" id="wz2" hidden>' +
           '<p class="wz-q">الملف والعنوان</p>' +
-          dropHTML('يُرفع بعد حفظ صف البند إلى سلة ' +
-            '<span class="adm-mono" dir="ltr">osea-content</span> الخاصة، والحجم يُضبَط منه. ' +
-            'عدد صفحات الـPDF ومدة الفيديو يُستخرجان من الملف نفسه بلا إدخال يدوي.') +
+          fldKind(KIND_DEFAULT, false) +
+          dropHTML(A.esc(kindHint(KIND_DEFAULT)), null, KIND_DEFAULT) +
           '<div class="fx-meta" id="wzMeta" hidden><span id="wzExtract"></span></div>' +
           fldTitle({}) +
           '<span class="hint" style="margin-block-start:-8px">يُقترَح من اسم الملف — ' +
             'عدّله كما يجب أن يظهر للمستخدم في المكتبة.</span>' +
           '<div class="notice">' + A.ICONS.info + '<span>' +
-            '<strong>بلا ملف؟</strong> تبقى الإضافة ممكنة: اكتب «مسار التخزين» يدوياً في ' +
-            '«خيارات متقدمة» بالخطوة التالية — لملفٍ رُفع إلى السلة من قبل. ' +
-            'وبغير ذلك اختيارُ الملف مطلوب.</span></div>' +
+            '<strong>بلا ملف؟</strong> اكتب «مسار التخزين» في «خيارات متقدمة» ' +
+            'بالخطوة التالية لملفٍ مرفوع إلى السلة من قبل.</span></div>' +
         '</div>' +
 
-        '<div class="wz-step" id="wz3" hidden>' +
+        '<div class="wz-step" id="wz2" hidden>' +
           '<p class="wz-q">أين يُحفَظ؟</p>' +
           '<div class="fold-list" id="wzFolds"></div>' +
           '<div class="up-row">' +
-            '<button type="button" class="btn btn-outline btn-sm" id="wzNewBtn" data-write>＋ مجلد جديد</button>' +
+            '<button type="button" class="btn btn-outline btn-sm" id="wzNewBtn" data-write>مجلد جديد</button>' +
             '<span class="spacer"></span></div>' +
           nfHTML() +
           /* قائمة المجلد المخفيّة: البطاقات تقودها، وreadFields يقرأها وحدها */
@@ -3011,25 +3023,20 @@
             accessHTML({}) + fldReq({}) + fldActive({})) +
         '</div>',
       onOk: function (host, close) {
-        /* الخطوتان الأوليان تتقدّمان ولا تحفظان: لا وعد يُعاد فلا تُغلق اللوحة */
-        if (W.step === 1) {
-          if (!W.kind) { A.toast('اختر نوع البند أولاً', 'bad'); return; }
-          goStep(2);
-          return;
-        }
         /* قراءة الملف جارية: التقدّم الآن يحفظ صفحاتٍ أو مدةً فارغة، ونتيجة
            القراءة تُكتب بعدها في عنصرٍ غادر الصفحة — ننتظرها، وهي ثوانٍ */
         if (W.reading) {
           A.toast('جارٍ قراءة الملف — لحظة واحدة.', 'bad');
           return;
         }
-        if (W.step === 2) {
+        /* خطوة الملف تتقدّم ولا تحفظ: لا وعد يُعاد فلا تُغلق اللوحة */
+        if (W.step === 1) {
           if (!txt(host, 'fTitle')) {
             A.toast('العنوان مطلوب', 'bad');
             if (el('fTitle')) { el('fTitle').focus(); }
             return;
           }
-          goStep(3);
+          goStep(2);
           return;
         }
         var id = txt(host, 'fId');
@@ -3048,7 +3055,7 @@
           return Promise.reject(new Error('المعرّف مستعمل في الفهرس — اختر معرّفاً آخر'));
         }
         if (!f.title) {
-          goStep(2);
+          goStep(1);
           return Promise.reject(new Error('العنوان مطلوب'));
         }
         /* الملف مطلوب في الإضافة — والمخرج الوحيد منه مسارٌ يُكتب يدوياً
@@ -3107,13 +3114,15 @@
       goStep(W.step - 1);
     });
 
-    s.el.querySelectorAll('.pick').forEach(function (b) {
-      b.addEventListener('click', function () {
-        /* نقرة صريحة تجمّد النوع: الملف لا يبدّله بعدها */
-        W.kindAuto = false;
-        setKind(b.getAttribute('data-kind'));
-        goStep(2);
-      });
+    el('fKind').addEventListener('change', function () {
+      /* اختيار صريح يجمّد النوع: الملف لا يبدّله بعدها */
+      W.kindAuto = false;
+      setKind(el('fKind').value);
+      /* ملفٌ اختير قبل تبديل النوع قد لا يناسب النوع الجديد */
+      var k = KIND[W.kind], f = st && st.file;
+      if (f && k && !kindAccepts(W.kind, f)) {
+        A.toast('صيغة الملف المختار لا تناسب «' + k.name + '» — المقبول: ' + k.files + '.', 'bad', 6000);
+      }
     });
 
     el('wzFolds').addEventListener('change', function (e) {
@@ -3193,12 +3202,11 @@
       onPick: onPick
     });
     guardSheet(s);
-    /* الكتاب مختار افتراضاً (طلب النقابة): المعرّف والمسار وحماية البند
-       تُشتقّ منه فوراً، وبطاقات مكان الحفظ تُرسم على جذر المجال الافتراضي —
-       فالإدارة تصل إلى الخطوة الثالثة بنقرتَي «التالي» لا أكثر */
+    /* «كتاب معتمد» مختار افتراضاً: المعرّف والمسار وحماية البند تُشتقّ منه
+       فوراً، وبطاقات مكان الحفظ تُرسم على جذر المجال الافتراضي */
     paintFolds();
     applyFolder(DOM_PREFIX + defaultDomain());
-    setKind('book');
+    setKind(KIND_DEFAULT);
     W.kindAuto = true;
     goStep(1);
   }

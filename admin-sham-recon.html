@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مطابقة شام كاش — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* أنماط الصفحة — بتوكنات الهوية حصراً */
+.rc-range{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;margin-block-end:20px}
+.rc-range .field{margin:0}
+.rc-range .spacer{flex:1}
+.rc-range .hint{flex:1 1 100%;margin:0;font-size:12.5px;line-height:1.8;color:var(--text-secondary)}
+.rc-acts{display:flex;flex-wrap:wrap;gap:10px}
+
+/* ثلاث بطاقات لا أربع: صافي الكشف، صافي المنصة، الفرق */
+.rc-kpis{grid-template-columns:repeat(3,1fr)}
+.rc-unit{font-family:var(--font-text);font-size:15px;font-weight:600;color:var(--text-secondary)}
+.adm-kpi--bad{border-block-start-color:var(--error-600)}
+.adm-kpi--bad .adm-kpi-num{color:var(--error-600)}
+.adm-kpi--ok .adm-kpi-num{color:var(--success-600)}
+
+.rc-side .adm-kv{grid-template-columns:190px 1fr}
+@media (max-width:640px){.rc-side .adm-kv{grid-template-columns:1fr}}
+
+/* رقم الفاتورة ltr داخل خلية rtl */
+.rc-ref{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+.rc-detail{display:block;max-width:360px;white-space:normal;overflow-wrap:anywhere;font-size:12.5px;
+  color:var(--text-secondary)}
+#fetchInfo[hidden],#rcWrap[hidden]{display:none}
+
+/* الهاتف: التاريخان والأزرار بعرض البطاقة، والمجاميع الثلاثة «تسمية | قيمة» في سطر،
+   ورقم الفاتورة بعرض البطاقة تحت تسميته، والقيمة الغائبة («—») لا تأخذ سطراً
+   في بطاقة الفرق — النوع في رأسها يقول أيّ الطرفين غائب */
+@media (max-width:720px){
+  .rc-range{gap:12px}
+  .rc-range .field,.rc-acts,#xlsxBtn{flex:1 1 100%}
+  .rc-range .field .input{width:100%}
+  .rc-range .spacer{display:none}
+  .rc-acts .btn{flex:1 1 auto}
+  .rc-side .adm-kv{grid-template-columns:minmax(0,1fr) auto;gap:10px 12px;align-items:baseline}
+  .rc-side .adm-kv dd{margin:0}
+  .adm-table td.adm-cell-title .adm-sub{font-weight:400}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.rc-nil{display:none}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td:not(.rc-nil):not(:has(~ td:not(.rc-nil))){border-block-end:0}
+}
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <div class="card rc-range">
+        <div class="field">
+          <label for="rFrom">من تاريخ</label>
+          <input class="input" id="rFrom" type="date">
+        </div>
+        <div class="field">
+          <label for="rTo">إلى تاريخ</label>
+          <input class="input" id="rTo" type="date">
+        </div>
+        <div class="rc-acts">
+          <button class="btn btn-primary" id="fetchBtn" data-write>جلب الكشف ثم المقارنة</button>
+          <button class="btn btn-outline" id="diffBtn">مقارنة فقط</button>
+        </div>
+        <span class="spacer"></span>
+        <button class="btn btn-outline" id="xlsxBtn" disabled>تصدير Excel</button>
+        <p class="hint">التواريخ بتوقيت دمشق. «جلب الكشف» يقرأ حركات شام كاش (getTransactions) للمدى —
+          حتى 31 يوماً — ويحفظها في المنصة، ثم يقارنها بفواتيرنا واستردادنا. «مقارنة فقط» تعيد المقارنة
+          على كشفٍ جُلب سابقاً (حتى 93 يوماً) بلا اتصال بشام كاش. ويُجلب كشف الأمس آلياً كل ليلة.</p>
+      </div>
+
+      <div class="notice" id="fetchInfo" hidden style="margin-block-end:20px"></div>
+
+      <div id="rcBody">
+        <div class="adm-state" style="margin-block-start:10px">
+          <p>اختر المدة ثم «جلب الكشف ثم المقارنة» — افتراضياً الأمس واليوم.</p>
+        </div>
+      </div>
+
+      <div class="adm-stack" id="rcWrap" hidden>
+        <div class="adm-kpis rc-kpis" id="kpis"></div>
+
+        <div class="adm-grid-2">
+          <div class="adm-table-card rc-side">
+            <div class="adm-table-head"><h2>كشف شام كاش</h2><span class="spacer"></span>
+              <span class="tag" id="ledgerTag">—</span></div>
+            <div class="adm-card-body"><dl class="adm-kv" id="ledgerKv"></dl></div>
+          </div>
+          <div class="adm-table-card rc-side">
+            <div class="adm-table-head"><h2>دفتر المنصة</h2><span class="spacer"></span>
+              <span class="tag">شام كاش — آلي</span></div>
+            <div class="adm-card-body"><dl class="adm-kv" id="oursKv"></dl></div>
+          </div>
+        </div>
+
+        <div class="adm-table-card">
+          <div class="adm-table-head">
+            <h2>الفروقات</h2>
+            <span class="spacer"></span>
+            <span class="tag" id="diffTag">—</span>
+          </div>
+          <div class="adm-bar" style="margin:0;border:0;border-radius:0;box-shadow:none;border-block-end:var(--adm-hair)">
+            <div class="adm-filters" id="kindBar" role="group" aria-label="تصفية الفروقات بالنوع"></div>
+          </div>
+          <div class="adm-scroll">
+            <table class="adm-table">
+              <thead>
+                <tr>
+                  <th>النوع</th>
+                  <th>الفاتورة</th>
+                  <th>عملية شام كاش</th>
+                  <th>الحركة</th>
+                  <th>مبلغ الكشف</th>
+                  <th>مبلغنا</th>
+                  <th>تاريخ الكشف</th>
+                  <th>تاريخنا</th>
+                  <th>التفصيل</th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/osea-sham-admin.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* حدود المدى كما في الخادم: الجلب ≤ ٣١ يوماً (sham-recon)، والمقارنة ≤ ٩٣ (٠٣٨) */
+  var MAX_FETCH = 31, MAX_DIFF = 93;
+  var DAY = 86400000;
+
+  /* أنواع الفروقات السبعة (admin_sham_ledger_diff): [التسمية، الشرح، صنف الوسم] */
+  var KIND = {
+    provider_paid_not_ours: ['مدفوعة لدى شام كاش وغير مسوّاة عندنا',
+      'حركة دفع في الكشف وفاتورتنا ليست مدفوعة — العضو دفع ولم يُمنح. «تحقق الآن» من تبويب الفواتير يسوّيها.',
+      'tag--error'],
+    unknown_bill:      ['رقم فاتورة لا نعرفه',
+      'حركة في الكشف برقم فاتورة غير موجود في دفتر المنصة.', 'tag--error'],
+    ours_paid_missing: ['مدفوعة عندنا وغائبة عن الكشف',
+      'فاتورة مسوّاة مدفوعةً في المدى ولا حركة دفع مقابلها في الكشف — راجع حدود اليوم أولاً.', 'tag--error'],
+    amount_mismatch:   ['اختلاف المبلغ', 'مبلغ الحركة في الكشف لا يطابق مبلغ فاتورتنا.', 'tag--error'],
+    currency_mismatch: ['اختلاف العملة', 'عملة الحركة في الكشف غير عملة فاتورتنا.', 'tag--error'],
+    refund_unrecorded: ['استرداد في الكشف غير مسجّل عندنا',
+      'حركة استرداد لدى شام كاش لا يقابلها استرداد ناجح في المنصة.', 'tag--gold'],
+    refund_missing:    ['استردادنا الناجح غائب عن الكشف',
+      'استرداد ناجح في المنصة لا حركة استرداد مقابله في الكشف.', 'tag--gold']
+  };
+  var TRAN = { 1: 'دفع', 2: 'استرداد' };
+  var CUR = { 1: 'دولار', 2: 'ل.س' };
+
+  var last = null;        /* آخر مقارنة — للتصدير */
+  var kindFilter = 'all';
+  var seq = 0;            /* يهمل الردود المتقاطعة عند تكرار الضغط */
+
+  A.boot({
+    page: 'shamrecon',
+    title: 'مطابقة شام كاش',
+    lead: 'مقارنة كشف حركات شام كاش (المدفوعات والاستردادات) بفواتير المنصة واستردادها لمدة تختارها: '
+        + 'المجاميع على الطرفين والصافي، وكل فرق بنوعه — ثم تصدير Excel للمطابقة المحاسبية.',
+    crumb: 'مطابقة شام كاش'
+  }).then(function (st) {
+    if (!st) return;
+    var today = damascusToday();
+    $('rFrom').value = shift(today, -1);
+    $('rTo').value = today;
+    $('fetchBtn').addEventListener('click', function () { run(true); });
+    $('diffBtn').addEventListener('click', function () { run(false); });
+    $('xlsxBtn').addEventListener('click', exportXlsx);
+  });
+
+  /* ---------------------------------------------------------------- التواريخ */
+  /* «اليوم» بتوقيت دمشق لا بتوقيت جهاز الموظف — الكشف والمقارنة كلاهما بتوقيت دمشق */
+  function damascusToday() {
+    try {
+      var s = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Damascus', year: 'numeric',
+        month: '2-digit', day: '2-digit' }).format(new Date());
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { return s; }
+    } catch (e) { /* متصفح بلا بيانات المناطق الزمنية */ }
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+  /* إزاحة تاريخ مجرد بالأيام — بحساب UTC كي لا يقفز يوماً عند تغيير التوقيت الصيفي */
+  function shift(iso, days) {
+    var p = iso.split('-');
+    var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]) + days * DAY);
+    return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getUTCDate()).padStart(2, '0');
+  }
+  function spanDays(from, to) {
+    var a = from.split('-'), b = to.split('-');
+    return Math.round((Date.UTC(+b[0], +b[1] - 1, +b[2]) - Date.UTC(+a[0], +a[1] - 1, +a[2])) / DAY) + 1;
+  }
+
+  /* ---------------------------------------------------------------- التنسيق */
+  function money(n) {
+    if (n == null || n === '') { return '—'; }
+    var v = Number(n) || 0, neg = v < 0;
+    var cents = Math.round(Math.abs(v) * 100), frac = cents % 100;
+    return (neg ? '-' : '') + A.num(Math.floor(cents / 100)) + (frac ? '.' + (frac < 10 ? '0' : '') + frac : '');
+  }
+  function missingFn(e) {
+    var m = (e && (e.message || '')) + '';
+    return !!e && (e.code === 'PGRST202' || e.code === '42883' ||
+      /Could not find the function|function .* does not exist/i.test(m));
+  }
+
+  /* ---------------------------------------------------------------- التشغيل */
+  function run(fetchFirst) {
+    var from = $('rFrom').value, to = $('rTo').value;
+    if (!from || !to) { A.toast('اختر تاريخَي البداية والنهاية.', 'bad'); return; }
+    if (from > to) { A.toast('تاريخ البداية بعد تاريخ النهاية.', 'bad'); return; }
+    var n = spanDays(from, to);
+    if (fetchFirst && n > MAX_FETCH) {
+      A.toast('جلب الكشف لمدى ' + A.toAr(MAX_FETCH) + ' يوماً على الأكثر — قسّم المدة.', 'bad'); return;
+    }
+    if (n > MAX_DIFF) { A.toast('المقارنة لمدى ' + A.toAr(MAX_DIFF) + ' يوماً على الأكثر.', 'bad'); return; }
+
+    var my = ++seq;
+    var fb = $('fetchBtn'), db = $('diffBtn');
+    fb.disabled = true; db.disabled = true;
+    $('xlsxBtn').disabled = true;
+    var info = $('fetchInfo');
+    info.hidden = true;
+    $('rcWrap').hidden = true;
+    $('rcBody').innerHTML = '<div class="adm-state"><p>' +
+      (fetchFirst ? 'جارٍ جلب الكشف من شام كاش ثم المقارنة… قد يستغرق دقيقة.' : 'جارٍ المقارنة…') + '</p></div>';
+
+    var step = fetchFirst
+      ? API.admin.shamLedgerFetch(from, to).then(function (r) {
+          if (my !== seq) return;
+          info.hidden = false;
+          info.className = 'notice' + (r && r.truncated ? ' notice--error' : ' notice--success');
+          info.innerHTML = A.ICONS.info + '<span>جُلب الكشف من ' + A.esc(A.arDate(r.from || from)) + ' إلى ' +
+            A.esc(A.arDate(r.to || to)) + ': ' + A.toAr((r && r.fetched) | 0) + ' حركة في ' +
+            A.toAr((r && r.pages) | 0) + ' صفحة، حُفظ منها ' + A.toAr((r && r.upserted) | 0) + '.' +
+            (r && r.truncated ? ' <strong>الكشف مقصوص عند حدّ الصفحات</strong> — قسّم المدة وأعد الجلب.' : '') +
+            '</span>';
+        })
+      : Promise.resolve();
+
+    step.then(function () {
+      if (my !== seq) return null;
+      return API.admin.shamLedgerDiff(from, to);
+    }).then(function (d) {
+      if (my !== seq || d === null) return;
+      last = d || {};
+      last.from = last.from || from;
+      last.to = last.to || to;
+      kindFilter = 'all';
+      paint();
+    }).catch(function (e) {
+      if (my !== seq) return;
+      last = null;
+      var msg = missingFn(e)
+        ? 'المطابقة بانتظار ترحيلة ٠٣٨ — تُطبَّق من المشغّل ثم تعمل هذه الصفحة.'
+        : A.errText(e);
+      $('rcBody').innerHTML = '<div class="adm-table-card">' + A.errorState(msg, 'rcRetry') + '</div>';
+      var b = $('rcRetry'); if (b) b.addEventListener('click', function () { run(fetchFirst); });
+    }).then(function () {
+      if (my !== seq) return;
+      fb.disabled = false; db.disabled = false;
+    });
+  }
+
+  /* ---------------------------------------------------------------- الرسم */
+  function kpi(label, numHtml, hint, mod) {
+    return '<div class="adm-kpi' + (mod ? ' ' + mod : '') + '">' +
+      '<span class="adm-kpi-label">' + A.esc(label) + '</span>' +
+      '<b class="adm-kpi-num">' + numHtml + '</b>' +
+      '<span class="adm-kpi-hint">' + A.esc(hint) + '</span></div>';
+  }
+  function kv(pairs) {
+    return pairs.map(function (p) { return '<dt>' + A.esc(p[0]) + '</dt><dd>' + p[1] + '</dd>'; }).join('');
+  }
+
+  function paint() {
+    var L = last.ledger || {}, O = last.ours || {}, rows = last.rows || [];
+    var ln = Number(L.net) || 0, on = Number(O.net) || 0, gap = Math.round((ln - on) * 100) / 100;
+    $('rcBody').innerHTML = '';
+    $('rcWrap').hidden = false;
+    $('xlsxBtn').disabled = false;
+
+    var unit = ' <span class="rc-unit">ل.س</span>';
+    $('kpis').innerHTML =
+      kpi('صافي كشف شام كاش', money(ln) + unit,
+        'مدفوعات ' + money(L.payments_total) + ' ناقص استردادات ' + money(L.refunds_total) + '.', 'adm-kpi--gold') +
+      kpi('صافي دفتر المنصة', money(on) + unit,
+        'مدفوع ' + money(O.paid_total) + ' ناقص مستردّ ' + money(O.refunds_total) + '.', '') +
+      kpi('الفرق', money(gap) + unit,
+        rows.length
+          ? A.count(rows.length, 'فرق واحد', 'فرقان', 'فروقات', 'فرقاً') + ' بأنواعه أدناه.'
+          : (gap ? 'لا صفوف فرق لكن المجموعان مختلفان — راجع حدود اليوم.' : 'الطرفان متطابقان لهذه المدة.'),
+        (gap || rows.length) ? 'adm-kpi--bad' : 'adm-kpi--ok');
+
+    $('ledgerTag').textContent = L.last_fetched_at ? 'آخر جلب: ' + A.arDateTime(L.last_fetched_at) : 'لم يُجلب بعد';
+    $('ledgerTag').className = 'tag' + (L.last_fetched_at ? '' : ' tag--gold');
+    $('ledgerKv').innerHTML = kv([
+      ['حركات الدفع', A.toAr(L.payments_count | 0) + ' — ' + money(L.payments_total) + ' ل.س'],
+      ['حركات الاسترداد', A.toAr(L.refunds_count | 0) + ' — ' + money(L.refunds_total) + ' ل.س'],
+      ['الصافي', '<b>' + money(L.net) + ' ل.س</b>']
+    ]);
+    $('oursKv').innerHTML = kv([
+      ['الفواتير المدفوعة', A.toAr(O.paid_count | 0) + ' — ' + money(O.paid_total) + ' ل.س'],
+      ['الاستردادات الناجحة', A.toAr(O.refunds_count | 0) + ' — ' + money(O.refunds_total) + ' ل.س'],
+      ['الصافي', '<b>' + money(O.net) + ' ل.س</b>']
+    ]);
+    $('diffTag').textContent = rows.length
+      ? A.count(rows.length, 'فرق واحد', 'فرقان', 'فروقات', 'فرقاً') : 'لا فروقات';
+    $('diffTag').className = 'tag' + (rows.length ? ' tag--error' : ' tag--success');
+    if (!L.last_fetched_at) {
+      var info = $('fetchInfo');
+      if (info.hidden) {
+        info.hidden = false;
+        info.className = 'notice notice--error';
+        info.innerHTML = A.ICONS.info + '<span>لم يُجلب كشف شام كاش لهذه المدة بعد — كل فاتورة مدفوعة ' +
+          'ستظهر «غائبة عن الكشف». ابدأ بـ«جلب الكشف ثم المقارنة».</span>';
+      }
+    }
+    paintKinds();
+    paintRows();
+  }
+
+  function paintKinds() {
+    var rows = last.rows || [], n = {};
+    rows.forEach(function (r) { n[r.kind] = (n[r.kind] || 0) + 1; });
+    var defs = [['all', 'الكل', rows.length]];
+    Object.keys(KIND).forEach(function (k) { if (n[k]) { defs.push([k, KIND[k][0], n[k]]); } });
+    Object.keys(n).forEach(function (k) { if (!KIND[k]) { defs.push([k, k, n[k]]); } });
+    var bar = $('kindBar');
+    bar.innerHTML = defs.map(function (d) {
+      return '<button class="adm-chip" data-k="' + A.esc(d[0]) + '" aria-pressed="' + (kindFilter === d[0]) + '">' +
+        A.esc(d[1]) + '<span class="n">' + A.toAr(d[2]) + '</span></button>';
+    }).join('');
+    bar.querySelectorAll('[data-k]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        kindFilter = b.getAttribute('data-k');
+        paintKinds(); paintRows();
+      });
+    });
+  }
+
+  function shown() {
+    var rows = (last && last.rows) || [];
+    return kindFilter === 'all' ? rows : rows.filter(function (r) { return r.kind === kindFilter; });
+  }
+
+  /* خلية بلا قيمة (rc-nil): «—» على الشاشة الواسعة، وتُطوى في بطاقة الهاتف */
+  function nil(v) { return v == null || v === '' ? ' rc-nil' : ''; }
+  function nilAttr(v) { return nil(v) ? ' class="rc-nil"' : ''; }
+
+  function paintRows() {
+    var list = shown(), host = $('rows');
+    if (!list.length) {
+      host.innerHTML = '<tr><td colspan="9">' + A.emptyState(
+        (last.rows || []).length ? 'لا فروقات من هذا النوع' : 'لا فروقات',
+        (last.rows || []).length ? 'اختر «الكل» لرؤية كل الفروقات.'
+          : 'كل حركة في الكشف تقابلها فاتورة أو استرداد عندنا بالمبلغ والعملة نفسيهما.') + '</td></tr>';
+      return;
+    }
+    host.innerHTML = list.map(function (r) {
+      var k = KIND[r.kind] || [r.kind, '', ''];
+      var bill = r.bill_no
+        ? '<a class="link rc-ref" href="admin-payments.html?tab=bills&amp;q=' + encodeURIComponent(r.bill_no) + '">' +
+            A.esc(r.bill_no) + '</a>'
+        : '—';
+      var curSub = r.currency_id != null && r.kind === 'currency_mismatch';
+      return '<tr>' +
+        '<td class="wrap"><span class="tag ' + k[2] + '">' + A.esc(k[0]) + '</span>' +
+          (k[1] ? '<span class="adm-sub">' + A.esc(k[1]) + '</span>' : '') + '</td>' +
+        '<td class="adm-cell-stack' + nil(r.bill_no) + '">' + bill + '</td>' +
+        '<td class="num adm-mono' + nil(r.tran_id) + '" dir="ltr" style="text-align:start">' + A.esc(r.tran_id || '—') + '</td>' +
+        '<td' + nilAttr(r.tran_type_id) + '>' + A.esc(TRAN[r.tran_type_id] || (r.tran_type_id != null ? r.tran_type_id : '—')) + '</td>' +
+        '<td class="num' + nil(r.ledger_amount) + '">' + money(r.ledger_amount) + '</td>' +
+        '<td class="num' + nil(r.our_amount) + '">' + money(r.our_amount) + '</td>' +
+        '<td' + nilAttr(r.ledger_date) + '>' + (r.ledger_date ? A.arDate(r.ledger_date) : '—') + '</td>' +
+        '<td' + nilAttr(r.our_date) + '>' + (r.our_date ? A.arDate(r.our_date) : '—') + '</td>' +
+        '<td' + nilAttr(r.detail || curSub || null) + '>' +
+          (r.detail ? '<span class="rc-detail" dir="auto">' + A.esc(r.detail) + '</span>' : '—') +
+          (curSub ? '<span class="adm-sub">عملة الكشف: ' + A.esc(CUR[r.currency_id] || r.currency_id) + '</span>' : '') + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  /* ---------------------------------------------------------------- التصدير
+     ورقة واحدة بنمط تصدير المدفوعات (ADMIN.exportCsv ⟵ xlsx حقيقي): صفوف
+     الفروقات كاملة (لا المصفّى منها فقط)، ثم سطر فارغ، ثم ملخّص الطرفين —
+     فالملف وحده يكفي للمطابقة المحاسبية بلا لقطة شاشة. */
+  function exportXlsx() {
+    if (!last) { A.toast('شغّل المقارنة أولاً.', 'bad'); return; }
+    var L = last.ledger || {}, O = last.ours || {}, rows = last.rows || [];
+    var out = rows.map(function (r) {
+      return [(KIND[r.kind] || [r.kind])[0], r.bill_no || '', r.tran_id || '',
+              TRAN[r.tran_type_id] || '', num(r.ledger_amount), num(r.our_amount),
+              r.currency_id != null ? (CUR[r.currency_id] || String(r.currency_id)) : '',
+              r.ledger_date || '', r.our_date || '', r.detail || ''];
+    });
+    out.push([]);
+    out.push(['الملخّص', 'من ' + last.from, 'إلى ' + last.to]);
+    out.push(['كشف شام كاش — حركات الدفع', L.payments_count | 0, num(L.payments_total)]);
+    out.push(['كشف شام كاش — حركات الاسترداد', L.refunds_count | 0, num(L.refunds_total)]);
+    out.push(['كشف شام كاش — الصافي', '', num(L.net)]);
+    out.push(['دفتر المنصة — الفواتير المدفوعة', O.paid_count | 0, num(O.paid_total)]);
+    out.push(['دفتر المنصة — الاستردادات الناجحة', O.refunds_count | 0, num(O.refunds_total)]);
+    out.push(['دفتر المنصة — الصافي', '', num(O.net)]);
+    out.push(['آخر جلب للكشف', L.last_fetched_at || 'لم يُجلب']);
+    A.exportCsv('osea-sham-recon-' + last.from + '_' + last.to + '.csv',
+      ['النوع', 'رقم الفاتورة', 'عملية شام كاش', 'الحركة', 'مبلغ الكشف', 'مبلغنا', 'العملة',
+       'تاريخ الكشف', 'تاريخنا', 'التفصيل'], out);
+    A.toast('صُدّر الملف — ' + (rows.length ? A.count(rows.length, 'فرق واحد', 'فرقان', 'فروقات', 'فرقاً')
+      : 'بلا فروقات') + ' مع الملخّص.', 'ok');
+  }
+  /* الخلية الرقمية رقمٌ حقيقي في إكسل (تُجمع وتُفرز)، والغائبة فارغة لا صفر */
+  function num(v) {
+    if (v == null || v === '') { return ''; }
+    var n = Number(v);
+    return isFinite(n) ? n : String(v);
+  }
+})();
+</script>
+</body>
+</html>

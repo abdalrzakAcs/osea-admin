@@ -17,6 +17,23 @@
   .login-head h2 { font-size: 19px; line-height: 30px; }
   .login-head p { font-size: 13px; color: var(--text-secondary); }
   .mode-note { margin-block-start: 20px; }
+  /* الهاتف: الشعار ورابط المنصة وحدهما في الترويسة، وخط الحقول 16 كي لا يكبّر Safari الصفحة */
+  @media (max-width: 720px) {
+    .masthead-tools .tag { display: none; }
+    .masthead-tools .btn, .masthead-brand .ar { white-space: nowrap; }
+    .page-head .container { padding-block-start: 30px; }
+    .page-head h1 { font-size: 24px; }
+    .login-card { padding: 20px; }
+    .login-head img { width: 44px; height: 44px; }
+    .input { font-size: 16px; }
+  }
+  @media (max-width: 430px) {
+    .back-long { display: none; }
+    .masthead-brand { gap: 10px; }
+    .masthead-brand img { width: 38px; height: 38px; }
+    .masthead-brand .ar { font-size: 14px; }
+    .masthead-brand .en { letter-spacing: 1px; }
+  }
 </style>
 </head>
 <body>
@@ -46,7 +63,7 @@
     </a>
     <div class="masthead-tools">
       <span class="tag tag--navy">لوحة الإدارة</span>
-      <a href="index.html" class="btn btn-outline btn-sm">العودة إلى المنصة</a>
+      <a href="index.html" class="btn btn-outline btn-sm"><span><span class="back-long">العودة إلى </span>المنصة</span></a>
     </div>
   </div>
 </header>

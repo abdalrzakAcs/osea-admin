@@ -10,6 +10,33 @@
 <link rel="stylesheet" href="assets/css/fonts.css">
 <link rel="stylesheet" href="assets/css/identity.css">
 <link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* نتيجة فحص الرقم النقابي: الصيغة ثم الحسابات التي تحمل الرقم */
+.sc-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.sc-head .adm-mono{font-size:15px;font-weight:700;color:var(--navy-800)}
+.sc-out{display:grid;gap:12px}
+.sc-list{display:grid;gap:8px}
+.sc-item{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:11px 13px;
+  background:var(--surface);border:var(--adm-hair);border-radius:var(--adm-tool)}
+.sc-main{flex:1 1 190px;min-width:0}
+.sc-main a{color:var(--navy-700);font-weight:700;text-decoration:underline;
+  text-underline-offset:3px;text-decoration-color:var(--navy-200)}
+.sc-main a:hover{text-decoration-color:var(--gold-600)}
+.sc-tags{display:flex;flex-wrap:wrap;gap:6px}
+/* شارة الحالة تحت الرقم أو الاسم لا تنكسر سطرين حين يضيق العمود */
+.adm-table .adm-sub .tag{white-space:nowrap}
+/* البريد يلتفّ بعد @ وحدها (wbr) فيتّسع عمود الإجراءات لأزرار الصف في سطر واحد */
+.adm-table td.us-contact{white-space:normal;min-width:120px}
+#rows td.wrap{min-width:180px}
+/* سبب الرفض سطران في الجدول والنص كاملاً في التلميح وملف العضو؛ وفي البطاقة كاملاً */
+@media (min-width:721px){
+  .us-reason{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+}
+/* على الهاتف: الهوية وتاريخ التسجيل في ملف العضو، والبطاقة للقرار وحده */
+@media (max-width:720px){
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.us-minor{display:none}
+}
+</style>
 </head>
 <body>
 
@@ -36,6 +63,7 @@
           <option value="status_asc">الحالة</option>
         </select>
         <span class="spacer"></span>
+        <button class="btn btn-outline btn-sm" id="syndCheckBtn" type="button">التحقق من رقم نقابي</button>
         <button class="btn btn-outline btn-sm" id="exportBtn">تصدير Excel</button>
       </div>
 
@@ -78,7 +106,7 @@
                 <th>وسيلة التواصل</th>
                 <th>تاريخ التسجيل</th>
                 <th>الحالة</th>
-                <th>إجراءات</th>
+                <th class="acts">إجراءات</th>
               </tr>
             </thead>
             <tbody id="rows">
@@ -151,6 +179,10 @@
     vfiltersEl = $('vfilters');
     bulkBar = $('bulkBar'); bulkCount = $('bulkCount');
     if (state.search) { $('q').value = state.search; }
+    /* الإرشاد الكامل لا يتّسع لحقل الهاتف فيُقصّ وسط الكلمة */
+    if (window.matchMedia && window.matchMedia('(max-width: 720px)').matches) {
+      $('q').placeholder = 'بحث بالاسم أو الأرقام أو البريد';
+    }
     wire();
     load();
   });
@@ -166,6 +198,7 @@
       state.sort = this.value; state.offset = 0; load();
     });
     $('exportBtn').addEventListener('click', exportAll);
+    $('syndCheckBtn').addEventListener('click', openSyndCheck);
     $('selAll').addEventListener('change', function () {
       var on = this.checked;
       rows.forEach(function (r) { if (on) picked[r.id] = r; else delete picked[r.id]; });
@@ -353,25 +386,32 @@
         '<td class="num strong">' + A.esc(a.synd_no) +
           (a.synd_no_status === 'pending'
             ? '<span class="adm-sub"><span class="tag tag--gold">قيد التحقق</span></span>' : '') + '</td>' +
-        '<td class="num">' + A.esc(a.national_id) + '</td>' +
+        '<td class="num us-minor">' + A.esc(a.national_id) + '</td>' +
         '<td>' + A.esc(a.branch) +
           (a.grade_req_status === 'pending'
             ? '<span class="adm-sub"><span class="tag tag--gold">المرتبة قيد التحقق</span></span>' : '') + '</td>' +
-        '<td class="num" dir="ltr" style="text-align:start">' + A.esc(contact) + '</td>' +
-        '<td>' + A.arDate(a.created_at) + '</td>' +
+        '<td class="num us-contact" dir="ltr" style="text-align:start">' +
+          A.esc(contact).replace('@', '@<wbr>') + '</td>' +
+        '<td class="us-minor">' + A.arDate(a.created_at) + '</td>' +
         '<td><span class="tag ' + s.cls + '">' + A.esc(s.label) + '</span>' +
           (a.status === 'rejected' && a.note
-            ? '<span class="adm-sub">السبب: ' + A.esc(a.note) + '</span>' : '') +
+            ? '<span class="adm-sub us-reason" title="' + A.esc(a.note) + '">السبب: ' + A.esc(a.note) + '</span>' : '') +
           (a.decided_at ? '<span class="adm-sub">' + A.arDate(a.decided_at) + '</span>' : '') + '</td>' +
-        '<td>' + actions(a) + '</td>' +
+        '<td class="acts">' + actions(a) + '</td>' +
       '</tr>';
     }).join('');
 
     $('selAll').checked = rows.length > 0 && rows.every(function (r) { return picked[r.id]; });
   }
 
+  /* «غير مسجّل» قيمة حارسة لحسابات التسجيل السريع، لا رقمٌ يُوثَّق */
+  function hasSyndNo(a) { return !!a.synd_no && a.synd_no !== 'غير مسجّل'; }
+
   function actions(a) {
     var b = [];
+    if (a.synd_no_status === 'pending' && hasSyndNo(a) && API.admin.verifySyndNo) {
+      b.push('<button class="btn btn-outline btn-sm" data-act="synd" data-write>مراجعة الرقم</button>');
+    }
     if (a.status !== 'approved') {
       b.push('<button class="btn btn-primary btn-sm" data-act="approve" data-write>موافقة</button>');
     }
@@ -407,6 +447,7 @@
     var act = btn.getAttribute('data-act');
 
     if (act === 'edit') return openEdit(a);
+    if (act === 'synd') return openSyndReview(a);
     if (act === 'approve')    return setStatus([id], 'approved', null, a.name);
     if (act === 'reconsider') return setStatus([id], 'pending', null, a.name);
     if (act === 'reject') {
@@ -451,6 +492,202 @@
     }).then(function (r) {
       if (r === null) return;
       setStatus(ids, status, typeof r === 'string' ? r : null);
+    });
+  }
+
+  /* ---------------------------------------------------------------- الرقم النقابي */
+  var VSTATUS = {
+    pending:  ['الرقم قيد التحقق', 'tag--gold'],
+    verified: ['الرقم موثَّق',     'tag--success'],
+    rejected: ['الرقم مرفوض',      'tag--error']
+  };
+
+  /* أرقام لاتينية بلا مسافات أو شرطات أو علامات اتجاه — القاعدة تطبّع ثانيةً */
+  function syndNorm(v) {
+    return A.toAr(String(v == null ? '' : v))
+      .replace(/[\s ‎‏⁦-⁩]+/g, '')
+      .replace(/[-–—ـ]+/g, '');
+  }
+
+  function errBox(msg) {
+    return '<div class="notice notice--error">' + A.ICONS.bad + '<span>' + A.esc(msg) + '</span></div>';
+  }
+
+  function matchHtml(m) {
+    var s = STATUS[m.status] || { label: m.status || '—', cls: '' };
+    var v = VSTATUS[m.synd_no_status || ''];
+    return '<li class="sc-item">' +
+      '<div class="sc-main">' +
+        '<a href="admin-user-detail.html?id=' + A.esc(m.account_id) + '">' + A.esc(m.name || '—') + '</a>' +
+        '<span class="adm-sub">رقم العضوية <span dir="ltr">' + A.esc(A.toAr(m.member_no || '—')) + '</span>' +
+          (m.branch ? ' · فرع ' + A.esc(m.branch) : '') + '</span>' +
+      '</div>' +
+      '<div class="sc-tags">' +
+        '<span class="tag ' + s.cls + '">' + A.esc(s.label) + '</span>' +
+        (v ? '<span class="tag ' + v[1] + '">' + A.esc(v[0]) + '</span>' : '') +
+      '</div>' +
+    '</li>';
+  }
+
+  /* الحسابات التي تحمل الرقم عدا الحساب قيد المراجعة (selfId) */
+  function others(r, selfId) {
+    return ((r && r.matches) || []).filter(function (m) { return !selfId || m.account_id !== selfId; });
+  }
+  function verifiedOn(r, selfId) {
+    return others(r, selfId).filter(function (m) { return m.synd_no_status === 'verified'; });
+  }
+
+  /* نتيجة admin_check_synd_no: الصيغة ثم الحسابات التي تحمل الرقم وتنبيه التكرار */
+  function checkHtml(r, selfId) {
+    var list = others(r, selfId);
+    var html = '<div class="sc-head">' +
+      (r.format_ok
+        ? '<span class="tag tag--success">الصيغة سليمة</span>'
+        : '<span class="tag tag--error">صيغة غير صحيحة</span>') +
+      '<span class="adm-mono" dir="ltr">' + A.esc(A.toAr(r.normalized || '—')) + '</span>' +
+    '</div>';
+    if (selfId && verifiedOn(r, selfId).length) {
+      html += errBox('الرقم موثَّق على حساب آخر. توثيقه هنا يحتاج تأكيداً صريحاً.');
+    } else if (selfId && list.length) {
+      html += '<div class="notice">' + A.ICONS.info + '<span>الرقم مستخدم أيضاً في ' +
+        A.esc(A.count(list.length, 'حساب آخر', 'حسابين آخرين', 'حسابات أخرى', 'حساباً آخر')) + '.</span></div>';
+    } else if (!selfId && list.length > 1) {
+      html += errBox('الرقم مسجّل على ' +
+        A.count(list.length, 'حساب واحد', 'حسابين', 'حسابات', 'حساباً') + '.');
+    }
+    html += list.length
+      ? '<ul class="sc-list">' + list.map(matchHtml).join('') + '</ul>'
+      : '<p class="adm-sub" style="margin:0">' +
+          (selfId ? 'لا حساب آخر يحمل هذا الرقم.' : 'لا حساب على المنصة بهذا الرقم.') + '</p>';
+    return html;
+  }
+
+  function checkFor(no, selfId) {
+    return Promise.resolve().then(function () {
+      if (!API.admin.checkSyndNo) {
+        throw new Error('أداة فحص الرقم غير متاحة في نسخة اللوحة المحمّلة — حدّث الصفحة.');
+      }
+      return API.admin.checkSyndNo(no, selfId || null);
+    });
+  }
+
+  /* أداة شريط الأدوات: رقمٌ يُكتب فتظهر الحسابات التي تحمله */
+  function openSyndCheck() {
+    var seq = 0, busy = false;
+    var s = A.sheet({
+      title: 'التحقق من رقم نقابي',
+      okLabel: 'تحقق',
+      closeLabel: 'إغلاق',
+      body:
+        '<form class="field" id="scForm" novalidate>' +
+          '<label for="scNo">الرقم النقابي</label>' +
+          '<input class="input" id="scNo" dir="ltr" inputmode="numeric" autocomplete="off" maxlength="24">' +
+        '</form>' +
+        '<div class="sc-out" id="scOut" aria-live="polite"></div>',
+      onOk: function () { run(); }
+    });
+    var okBtn = s.el.querySelector('[data-ok]');
+    var inp = s.el.querySelector('#scNo'), out = s.el.querySelector('#scOut');
+    s.el.querySelector('#scForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      run();
+    });
+
+    function run() {
+      if (busy) return;
+      var no = syndNorm(inp.value);
+      if (!no) { out.innerHTML = ''; inp.focus(); return; }
+      var my = ++seq;
+      busy = true;
+      okBtn.disabled = true;
+      out.innerHTML = '<p class="adm-sub" style="margin:0">جارٍ الفحص…</p>';
+      checkFor(no, null).then(function (r) {
+        if (my === seq) { out.innerHTML = checkHtml(r || {}, null); }
+      }).catch(function (e) {
+        if (my === seq) { out.innerHTML = errBox(A.errText(e)); }
+      }).then(function () {
+        busy = false;
+        okBtn.disabled = false;
+      });
+    }
+  }
+
+  /* مراجعة رقمٍ بانتظار التوثيق من الجدول مباشرة: الفحص يسبق القرار */
+  function openSyndReview(a) {
+    var res = null;
+    var s = A.sheet({
+      title: 'مراجعة الرقم النقابي',
+      okLabel: 'توثيق الرقم',
+      body:
+        '<dl class="adm-kv">' +
+          '<dt>العضو</dt><dd>' + A.esc(a.name) + '</dd>' +
+          '<dt>الرقم النقابي</dt><dd><span class="adm-mono" dir="ltr">' + A.esc(a.synd_no) + '</span></dd>' +
+          '<dt>الفرع النقابي</dt><dd>' + A.esc(a.branch || '—') + '</dd>' +
+        '</dl>' +
+        '<div class="sc-out" id="scOut" aria-live="polite">' +
+          '<p class="adm-sub" style="margin:0">جارٍ فحص الرقم…</p></div>' +
+        '<div><button class="btn btn-outline btn-sm" type="button" id="scReject" data-write>رفض الرقم بسبب</button></div>',
+      onOk: function (host, close) {
+        if (verifiedOn(res, a.id).length) {
+          close();
+          askForceVerify(a, res);
+          return;
+        }
+        return API.admin.verifySyndNo(a.id, true, null).then(function () {
+          A.toast('وُثّق الرقم النقابي لـ«' + a.name + '».', 'ok');
+          load();
+        });
+      }
+    });
+    var okBtn = s.el.querySelector('[data-ok]');
+    var out = s.el.querySelector('#scOut');
+    okBtn.disabled = true;
+    s.el.querySelector('#scReject').addEventListener('click', function () {
+      s.close();
+      askSyndReject(a);
+    });
+    /* تعذّر الفحص لا يحجب القرار: يُعرض السبب ويبقى التوثيق متاحاً */
+    checkFor(a.synd_no, a.id).then(function (r) {
+      res = r || {};
+      out.innerHTML = checkHtml(res, a.id);
+    }).catch(function (e) {
+      out.innerHTML = errBox('تعذّر فحص الرقم: ' + A.errText(e));
+    }).then(function () {
+      okBtn.disabled = false;
+    });
+  }
+
+  function askForceVerify(a, r) {
+    var v = verifiedOn(r, a.id);
+    var first = v[0] || {};
+    A.confirm({
+      title: 'الرقم موثَّق على حساب آخر', danger: true, okLabel: 'توثيق رغم ذلك',
+      text: 'الرقم ' + A.toAr(a.synd_no) + ' موثَّق على حساب «' + (first.name || '—') + '» (رقم العضوية ' +
+            A.toAr(first.member_no || '—') + ')' +
+            (v.length > 1 ? ' و' + A.count(v.length - 1, 'حساب آخر', 'حسابين آخرين', 'حسابات أخرى', 'حساباً آخر') : '') +
+            '. توثيقه لـ«' + a.name + '» يجعله موثَّقاً على أكثر من حساب، فتأكد من صاحب الرقم قبل المتابعة.',
+      reason: 'سبب التوثيق رغم التكرار (يُسجَّل في سجل التدقيق)',
+      reasonRequired: true
+    }).then(function (note) {
+      if (note === null) return;
+      API.admin.verifySyndNo(a.id, true, note).then(function () {
+        A.toast('وُثّق الرقم النقابي لـ«' + a.name + '».', 'ok');
+        load();
+      }).catch(function (e) { A.toast(A.errText(e), 'bad'); });
+    });
+  }
+
+  function askSyndReject(a) {
+    A.confirm({
+      title: 'رفض الرقم النقابي', danger: true, okLabel: 'رفض الرقم',
+      text: 'يعود الحقل قابلاً للتعديل عند العضو، ويُعرض له السبب داخل التطبيق.',
+      reason: 'سبب الرفض (يظهر للعضو)', reasonRequired: true
+    }).then(function (note) {
+      if (note === null) return;
+      API.admin.verifySyndNo(a.id, false, note).then(function () {
+        A.toast('رُفض الرقم النقابي لـ«' + a.name + '».', 'ok');
+        load();
+      }).catch(function (e) { A.toast(A.errText(e), 'bad'); });
     });
   }
 

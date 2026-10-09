@@ -119,7 +119,7 @@
                 <th>الدور</th>
                 <th>آخر دخول</th>
                 <th>تاريخ الإنشاء</th>
-                <th>إجراءات</th>
+                <th class="acts">إجراءات</th>
               </tr>
             </thead>
             <tbody id="rows">
@@ -203,13 +203,14 @@
       return '<tr data-id="' + A.esc(s.user_id) + '">' +
         '<td class="wrap"><span class="strong">' + A.esc(s.name) + '</span>' +
           (s.is_me ? ' <span class="tag tag--gold">أنت</span>' : '') + '</td>' +
-        '<td dir="ltr" style="text-align:start">' + A.esc(s.email || '—') +
-          (!s.email ? '<span class="adm-sub">لا مستخدم مطابق في Supabase Auth</span>' : '') + '</td>' +
+        /* البريد يلتفّ بعد @ وحدها (wbr) لا في وسط الاسم */
+        '<td dir="ltr" style="text-align:start">' + A.esc(s.email || '—').replace('@', '@<wbr>') +
+          (!s.email ? '<span class="adm-sub" dir="rtl">لا مستخدم مطابق في Supabase Auth</span>' : '') + '</td>' +
         '<td><span class="tag ' + r.cls + '">' + A.esc(r.label) + '</span></td>' +
         '<td>' + (s.last_sign_in ? A.arDateTime(s.last_sign_in)
                                  : '<span class="adm-sub">لم يسجّل دخوله بعد</span>') + '</td>' +
         '<td>' + A.arDate(s.created_at) + '</td>' +
-        '<td><span style="display:flex;gap:6px;flex-wrap:wrap">' +
+        '<td class="acts"><span style="display:flex;gap:6px;flex-wrap:wrap">' +
           '<button class="btn btn-outline btn-sm" data-act="role" data-write>تغيير الدور</button>' +
           '<button class="btn btn-outline btn-sm" data-act="remove" data-write>إزالة</button>' +
         '</span></td>' +

@@ -67,6 +67,24 @@
     return res.data;
   }
 
+  /* دالة غائبة (PGRST202/42883) أو عمود غائب (PGRST204/42703) = ترحيلة لم تُطبَّق */
+  function isMissing(e) {
+    var m = (e && (e.message || e.hint || e.details)) || '';
+    return !!e && (e.code === 'PGRST202' || e.code === '42883' || e.code === 'PGRST204' || e.code === '42703' ||
+      /Could not find the function|function .* does not exist|Could not find the .* column|column .* does not exist/i.test(m));
+  }
+  /* يستبدل خطأ الغياب برسالة تسمّي الترحيلة، ويُبقي الرمز الأصلي في code */
+  function migrationErr(e, text, no) {
+    if (!isMissing(e)) { return e; }
+    var out = new Error(text);
+    out.code = e.code || 'PGRST202';
+    out.migration = no;
+    return out;
+  }
+
+  /* حالات التحقق العلني من الرقم النقابي (ترحيلة 039) */
+  var SYND_STATUSES = ['verified', 'pending', 'not_found', 'invalid', 'limited'];
+
   var live = {
     /* التسجيل عبر دالة آمنة تُعيد الحقول العلنية فقط — جدول الحسابات يبقى
        غير مقروء للزائر (الإدراج المباشر مع select يفشل بسياسة الأمان). */
@@ -162,6 +180,39 @@
             if (r.revoked) { r.revoked_at_ar = arDate(r.revoked_at); }
           }
           return r;
+        });
+    },
+    /* سجل الشهادات العلني (ترحيلة 039): السارية وحدها بالحقول العامة، الأحدث
+       أولاً، بحثٌ بالرمز أو الاسم وفلترة بالفرع، والصفحة 100 صف على الأكثر */
+    certRegistry: function (o) {
+      o = o || {};
+      return sb.rpc('public_certificates_registry', {
+        p_q: o.q || null, p_branch: o.branch || null,
+        p_limit: o.limit || 50, p_offset: o.offset || 0
+      }).then(must).then(function (r) {
+        var rows = (r && Array.isArray(r.rows)) ? r.rows : [];
+        rows.forEach(function (c) { c.issued_at_ar = arDate(c.issued_at); });
+        return { total: (r && r.total) | 0, rows: rows };
+      }, function (e) {
+        throw migrationErr(e, 'سجل الشهادات غير متاح حالياً — أعد المحاولة لاحقاً.', '039');
+      });
+    },
+    /* التحقق العلني من الرقم النقابي (ترحيلة 039): الخادم يطبّع الأرقام ويحدّ
+       الطلبات لكل عنوان، والاسم والفرع والمرتبة للرقم الموثَّق وحده */
+    verifySyndNo: function (no) {
+      return sb.rpc('public_verify_synd_no', { p_no: String(no == null ? '' : no) }).then(must)
+        .then(function (r) {
+          r = r || {};
+          return {
+            status: SYND_STATUSES.indexOf(r.status) > -1 ? r.status : 'invalid',
+            synd_no: r.synd_no == null ? '' : String(r.synd_no),
+            name: r.name || null,
+            branch: r.branch || null,
+            grade: r.grade || null,
+            grade_ar: r.grade_ar || gradeLabel(r.grade) || null
+          };
+        }, function (e) {
+          throw migrationErr(e, 'التحقق من الرقم النقابي غير متاح حالياً — أعد المحاولة لاحقاً.', '039');
         });
     },
     issueCert: function (accountId, score) {
@@ -381,7 +432,101 @@
     return { ctl: ctl, timer: setTimeout(function () { if (ctl) { ctl.abort(); } }, ms) };
   }
 
+  /* الخدمات التي يقبلها sham_begin_bill للدفع الآلي (ترحيلة ٠٣٧) — مصدر
+     واحد للواجهة: زر الدفع الآلي لا يُعرض لخدمة سيرفضها الخادم لحظة الضغط.
+     التجديد والمراتب خارجها عمداً (لا قاعدة منح آلي لها بعد). */
+  var AUTO_SERVICES = ['exam', 'exam-re', 'folder-m', 'folder-y', 'folder-o',
+                       'item-m', 'item-y', 'item-o', 'book-m', 'book-y'];
+
+  /* ---------- وضع الدفع من الخادم (public_payment_mode — ترحيلة ٠٣٧) ----------
+     مفتاح النقابة لا يسكن الحزمة: الإدارة تقلبه من اللوحة (off / testers / on
+     والتجربة المجانية) فيتبعه كل تطبيق منشور بلا APK جديد. OSEA_FREE_TRIAL
+     في osea-config.js صار احتياطاً دون اتصال فقط: يعود إليه الجواب عند
+     تعذّر القراءة (لا شبكة، مهلة، دالة لم تُطبَّق بعد على القاعدة) — فيبقى
+     سلوك اليوم حرفياً حتى يصل جوابٌ صريح من الخادم.
+     لا ترفض أبداً، ونتيجة الخادم تُحفظ لعمر الصفحة (نداء واحد لكل حساب)؛
+     والاحتياط لا يُحفظ كي يعيد المستدعي التالي المحاولة. */
+  var MODE_MS = 4000;
+  var modeMemo = {};
+  function modeFallback() {
+    return { mode: 'off', free_trial: window.OSEA_FREE_TRIAL === true,
+             sham_auto_enabled_for_me: false, verify_base: null, source: 'fallback' };
+  }
+  function paymentMode(accountId) {
+    if (!LIVE) { return Promise.resolve(modeFallback()); }
+    var key = String(accountId || '');
+    if (modeMemo[key]) { return modeMemo[key]; }
+    var call;
+    try {
+      call = Promise.resolve(sb.rpc('public_payment_mode', { p_account: accountId || null })).then(must);
+    } catch (e) { call = Promise.reject(e); }
+    var timer = null;
+    var late = new Promise(function (res, rej) {
+      timer = setTimeout(function () { rej(new Error('timeout')); }, MODE_MS);
+    });
+    var p = Promise.race([call, late]).then(function (r) {
+      clearTimeout(timer);
+      if (Object.prototype.toString.call(r) === '[object Array]') { r = r[0]; }
+      /* جوابٌ بلا شكله المتفق عليه لا يُبنى عليه: الاحتياط أسلم من تخمين */
+      if (!r || typeof r !== 'object' || typeof r.free_trial !== 'boolean') { throw new Error('shape'); }
+      var mode = (r.mode === 'testers' || r.mode === 'on') ? r.mode : 'off';
+      var vb = (typeof r.verify_base === 'string' && /^https:\/\/[A-Za-z0-9.-]+/.test(r.verify_base))
+        ? r.verify_base : null;
+      return { mode: mode, free_trial: r.free_trial,
+               sham_auto_enabled_for_me: r.sham_auto_enabled_for_me === true && mode !== 'off',
+               verify_base: vb, source: 'server' };
+    }).catch(function () {
+      clearTimeout(timer);
+      delete modeMemo[key];
+      return modeFallback();
+    });
+    modeMemo[key] = p;
+    return p;
+  }
+
+  /* خطأ إنشاء الفاتورة من ردّ sham-pay { ok:false, error, message, code?, bill_no? }.
+     رموز دالة الحافّة إنجليزية والشاشة تطبع الرسالة كما هي — الترجمة هنا
+     كنمط content.url كي تنتفع بها كل مستدعية. */
+  var START_AR = {
+    'account required': 'الدفع يتطلب حساباً في المنصة — سجّل دخولك ثم أعد المحاولة.',
+    'not approved': 'حسابك قيد مراجعة إدارة النقابة — يُفتح الدفع فور الموافقة.',
+    'service required': 'اختر الخدمة أولاً ثم أعد المحاولة.',
+    'item required': 'حدّد الكتاب أو المجلد المطلوب الاشتراك به.',
+    'not found': 'هذه الخدمة غير معروضة حالياً — أعد تحميل الشاشة.',
+    'price unavailable': 'تعذّر تحديد رسم هذه الخدمة على الخادم — استعمل التحويل اليدوي أدناه.',
+    'not configured': 'الدفع الآلي عبر شام كاش غير مفعّل بعد على المنصة — استعمل التحويل اليدوي أدناه.',
+    'payments off': 'الدفع الإلكتروني غير متاح لحسابك حالياً — استعمل التحويل اليدوي.',
+    'agent invalid': 'حساب المنصة لدى شام كاش غير فعّال حالياً — استعمل التحويل اليدوي وأبلغ النقابة.',
+    'bill exists': 'أُنشئت فاتورتك سابقاً ولم تُلغَ — اضغط «تحديث الحالة» بدل إنشاء فاتورة ثانية.',
+    'gateway error': 'تعذّر الاتصال ببوابة شام كاش الآن — أعد المحاولة بعد قليل أو حوّل يدوياً أدناه.'
+  };
+  function startError(e, status) {
+    var reason = String((e && e.error) || '');
+    var srv = String((e && e.message) || '');
+    var code = (e && e.code != null && !isNaN(Number(e.code))) ? Number(e.code) : null;
+    var arSrv = /[؀-ۿ]/.test(srv) ? srv : '';
+    /* ترتيب مقصود: خطأٌ يحمل رمز شام كاش تُقدَّم فيه رسالة الخادم العربية —
+       هي المفصَّلة على الرمز (١٧٠٦ «حساب النقابة موقوف» غير ١٧٠١ «مفتاح غير
+       صالح») — وما سواه نصوصنا المضبوطة على شاشة الدفع وتحيل إلى التحويل
+       اليدوي، ثم رسالة الخادم العربية لما لم نغطّه، ثم الرمز خاماً (قد يكون
+       عربياً أصلاً: الخادم يضع رسالة القاعدة العربية في error) */
+    var text = (code !== null && arSrv) || START_AR[reason] || arSrv ||
+               (/[؀-ۿ]/.test(reason) ? reason : '') ||
+               ('تعذّر إنشاء فاتورة الدفع (' + status + ')');
+    var err = new Error(text);
+    /* 🔴 رقم الفاتورة يرافق أخطاء البوابة (١٧٠٤ «الرقم مستعمل» خاصةً،
+       وانقطاع الاتصال بعد الإنشاء): معناه أن الفاتورة أُنشئت فعلاً. القاعدة
+       الملزمة من المزوّد أن تُصالَح على رقمها لا أن تُولَّد من جديد —
+       فيُمرَّر الرقم إلى الشاشة لتحفظه وتسأل عن حالته بدل ضغطةٍ ثانية تُنشئ
+       فاتورتين. */
+    if (e && e.bill_no) { err.bill_no = String(e.bill_no); }
+    if (code !== null) { err.code = code; }
+    err.reason = reason;
+    return err;
+  }
+
   var shamPay = {
+    paymentMode: paymentMode,
     /* هل المسار الآلي متاح؟ — سؤالٌ **لا يُنشئ فاتورة**.
        الطلب GET عمداً: دالة الحافّة كأخواتها لا تقبل إلا POST، فأسوأ ما
        يمكن أن يردّه هو 405 ولا يُنشأ رقم فاتورة بالخطأ مهما كان جسدها —
@@ -418,10 +563,12 @@
     },
 
     /* إنشاء الفاتورة وطلب رابط الدفع — يُستدعى لحظة الضغط النهائي فقط.
-       تُعيد { bill_no, payment_url, amount, raw } — والشاشة تنقل العضو
-       إلى payment_url. الرابط يُفحص https هنا لا في الشاشة: أي مخطط آخر
+       تُعيد { bill_no, payment_url, amount, expires_in, raw } — والشاشة تنقل
+       العضو إلى payment_url. الرابط يُفحص https هنا لا في الشاشة: أي مخطط آخر
        (javascript: أو intent:) يُنفَّذ داخل WebView أندرويد لو مُرِّر
-       إلى location.href، فالفحص واجب على كل مستدعٍ لا على واحد. */
+       إلى location.href، فالفحص واجب على كل مستدعٍ لا على واحد.
+       الخطأ: Error بنص عربي يحمل e.bill_no (إن أُنشئت الفاتورة فعلاً) و
+       e.code (رمز شام كاش إن وُجد) و e.reason (رمز دالة الحافّة الإنجليزي). */
     shamStart: function (account, service, itemId) {
       if (!LIVE) { return Promise.reject(new Error('قاعدة النقابة غير متاحة')); }
       if (typeof fetch !== 'function') {
@@ -437,65 +584,34 @@
           Authorization: 'Bearer ' + cfg.SUPABASE_ANON_KEY,
           'Content-Type': 'application/json'
         },
-        /* بلا مبلغ عمداً — انظر رأس المنطقة */
+        /* بلا مبلغ عمداً — انظر رأس المنطقة. ولا عنوان عودة: الخادم يبنيه
+           من سرّه (SHAM_REDIRECT_URL + ?b=<رقم الفاتورة>) — عنوان الصفحة
+           داخل التطبيق https://localhost كان يُرسل العضو إلى صفحة ميتة */
         body: JSON.stringify({
-          action: 'start',
           account: account || null,
           service: service || null,
-          item: itemId || null,
-          /* عنوان العودة بعد الدفع: الصفحة نفسها التي بدأ منها العضو بلا
-             معاملات (رقم الفاتورة محفوظ على الجهاز وتسأل عنه الشاشة عند
-             العودة). https حصراً، ودالة الحافّة تتجاهله ما لم يطابق نطاق
-             المنصة المضبوط عندها — فلا يفتح هذا الحقل باب توجيهٍ إلى
-             غريب. وبدونه يعود العضو إلى العنوان الافتراضي وحده. */
-          redirect_url: (typeof location !== 'undefined' && location.protocol === 'https:')
-            ? (location.protocol + '//' + location.host + location.pathname) : null
+          item: itemId || null
         })
       }).then(function (r) {
         clearTimeout(a.timer);
-        if (!r.ok) {
-          return r.json().catch(function () { return {}; }).then(function (e) {
-            /* رموز دالة الحافّة إنجليزية والشاشة تطبع الرسالة كما هي —
-               الترجمة هنا كنمط content.url كي تنتفع بها كل مستدعية */
-            var AR = {
-              'account required': 'الدفع يتطلب حساباً في المنصة — سجّل دخولك ثم أعد المحاولة.',
-              'not approved': 'حسابك قيد مراجعة إدارة النقابة — يُفتح الدفع فور الموافقة.',
-              'service required': 'اختر الخدمة أولاً ثم أعد المحاولة.',
-              'item required': 'حدّد الكتاب أو المجلد المطلوب الاشتراك به.',
-              'not found': 'هذه الخدمة غير معروضة حالياً — أعد تحميل الشاشة.',
-              'price unavailable': 'تعذّر تحديد رسم هذه الخدمة على الخادم — استعمل التحويل اليدوي أدناه.',
-              'not configured': 'الدفع الآلي عبر شام كاش غير مفعّل بعد على المنصة — استعمل التحويل اليدوي أدناه.',
-              'agent invalid': 'حساب المنصة لدى شام كاش غير فعّال حالياً — استعمل التحويل اليدوي وأبلغ النقابة.',
-              'bill exists': 'أُنشئت فاتورتك سابقاً ولم تُلغَ — اضغط «تحديث الحالة» بدل إنشاء فاتورة ثانية.',
-              'gateway error': 'تعذّر الاتصال ببوابة شام كاش الآن — أعد المحاولة بعد قليل أو حوّل يدوياً أدناه.'
-            };
-            var code = (e && e.error) || '';
-            /* ترتيب مقصود: نصوصنا مضبوطة على شاشة الدفع وتحيل إلى التحويل
-               اليدوي، ثم رسالة الخادم العربية لما لم نغطّه، ثم الرمز خاماً
-               (قد يكون عربياً أصلاً فالخادم يضع العربية في error أحياناً) */
-            var srv = (e && e.message) || '';
-            var err = new Error(AR[code] ||
-              (/[؀-ۿ]/.test(srv) ? srv : '') || code ||
-              ('تعذّر إنشاء فاتورة الدفع (' + r.status + ')'));
-            /* 🔴 رقم الفاتورة يرافق أخطاء البوابة (١٧٠٤ «الرقم مستعمل»
-               خاصةً، وانقطاع الاتصال بعد الإنشاء): معناه أن الفاتورة
-               أُنشئت فعلاً. القاعدة الملزمة من المزوّد أن تُصالَح على
-               رقمها لا أن تُولَّد من جديد — فيُمرَّر الرقم إلى الشاشة
-               لتحفظه وتسأل عن حالته بدل ضغطةٍ ثانية تُنشئ فاتورتين. */
-            if (e && e.bill_no) { err.bill_no = String(e.bill_no); }
-            throw err;
-          });
-        }
-        return r.json();
+        return r.json().catch(function () { return null; }).then(function (j) {
+          /* ردّ 200 بـ ok:false يُعامَل خطأً أيضاً — الحكم للجسد لا للرمز */
+          if (!r.ok || (j && j.ok === false)) { throw startError(j || {}, r.status); }
+          return j || {};
+        });
       }).then(function (j) {
         var url = (j && (j.payment_url || j.paymentUrl)) || '';
         if (!/^https:\/\//i.test(url)) {
-          throw new Error('ردّت البوابة برابط دفع غير صالح — لا تُتابع، واستعمل التحويل اليدوي وأبلغ النقابة.');
+          var bad = new Error('ردّت البوابة برابط دفع غير صالح — لا تُتابع، واستعمل التحويل اليدوي وأبلغ النقابة.');
+          if (j && (j.bill_no || j.billNo)) { bad.bill_no = String(j.bill_no || j.billNo); }
+          bad.reason = 'gateway error';
+          throw bad;
         }
         return {
-          bill_no: (j.bill_no || j.billNo || ''),
+          bill_no: String(j.bill_no || j.billNo || ''),
           payment_url: url,
           amount: (j.amount == null ? null : j.amount),
+          expires_in: (j.expires_in == null ? 600 : j.expires_in),
           raw: j
         };
       }).catch(function (e) {
@@ -506,18 +622,23 @@
         var out = new Error(e && e.name === 'AbortError'
           ? 'انتهت مهلة إنشاء الفاتورة — قد تكون أُنشئت فعلاً. اضغط «تحديث الحالة» قبل إعادة المحاولة كي لا تُنشأ فاتورة ثانية.'
           : ((e && e.message) || 'تعذّر إنشاء فاتورة الدفع'));
-        /* الرقم يعبر طبقة الالتقاط سليماً — بدونه يضيع مفتاح المصالحة */
+        /* الرقم والرمزان يعبرون طبقة الالتقاط سليمين — بدون الرقم يضيع مفتاح المصالحة */
         if (e && e.bill_no) { out.bill_no = e.bill_no; }
+        if (e && e.code != null) { out.code = e.code; }
+        out.reason = (e && e.name === 'AbortError') ? 'timeout' : ((e && e.reason) || '');
         throw out;
       });
     },
 
     /* حالة الفاتورة — نداءٌ واحد عند العودة أو بضغطة «تحديث الحالة».
        ⛔ لا استطلاع دوري: المزوّد يمنعه صراحةً ويُلزم الاعتماد على الـwebhook.
-       الرقم إلزامي: sham_bill_status (ترحيلة ٠٣٠) محصورةٌ بصاحب الفاتورة
+       الرقم إلزامي: sham_bill_status (ترحيلة ٠٣٧) محصورةٌ بصاحب الفاتورة
        وتطابق الحساب بالرقم في شرط الاستعلام نفسه، فبلا رقمٍ ترفع «الفاتورة
        غير موجودة». يُرفض النداء الفارغ هنا برسالة تقول ما ينقص فعلاً بدل
-       أن يعود العضو بجوابٍ يوهمه أن فاتورته اختفت. */
+       أن يعود العضو بجوابٍ يوهمه أن فاتورته اختفت.
+       الشكل كما تعيده الدالة: state واحدة من pending/confirming/paid/expired/
+       failed/refunded/partly_refunded/grant_failed، مع payment_url لإعادة فتح
+       الفاتورة نفسها ما دامت صالحة (reopen_ok)، وtran_id نصاً. */
     shamStatus: function (account, billNo) {
       if (!LIVE) { return Promise.reject(new Error('قاعدة النقابة غير متاحة')); }
       var no = String(billNo == null ? '' : billNo).trim();
@@ -528,12 +649,15 @@
       return sb.rpc('sham_bill_status', {
         p_account: account || null,
         p_bill_no: no
-      }).then(must);
+      }).then(must).then(function (r) {
+        /* jsonb كائنٌ مفرد؛ وصيغة returns table القديمة صفٌّ داخل مصفوفة */
+        return (Object.prototype.toString.call(r) === '[object Array]') ? (r[0] || null) : r;
+      });
     },
 
     /* دفتر الفواتير لصفوف لوحة الإدارة — رقم حركة شام كاش (tranId).
        يسكن sham_bills لا payments، وشاشة المدفوعات تحتاجه للمطابقة مع
-       كشف المزوّد. القراءة بسياسة الطاقم (sham_bills_staff_read في ٠٣٠)
+       كشف المزوّد. القراءة بسياسة الطاقم (sham_bills_staff_read في ٠٣٧)
        فلا تعمل لغير جلسة طاقم — وهو المقصود. إثراء عرضٍ لا أكثر: فشلُه
        لا يجوز أن يُسقط جدول المدفوعات، فيُردّ فارغاً عند تعذّره. */
     shamBills: function (billNos) {
@@ -712,7 +836,7 @@
     return sb.rpc(name, args || {}).then(must);
   }
 
-  /* ---------- الأكواد المُوجَّهة والاستحقاقات ----------
+  /* ---------- كوبونات التطبيق والاستحقاقات ----------
      الكود يصدر من لوحة الإدارة مربوطاً بحساب بعينه — تسريبه بلا قيمة. */
   var codes = {
     /* استرداد كود لحساب العضو — الخادم يتحقق من كل شيء */
@@ -776,10 +900,31 @@
         sort: row.sort || 0,
         image_url: row.image_url === undefined ? null : row.image_url
       };
-      if (row.id) {
-        return sb.from('news').update(payload).eq('id', row.id).select().maybeSingle().then(must);
+      /* رابط الخبر (ترحيلة 039): يُرسل حين يحمله الصف، ويُفحص بقيد القاعدة نفسه */
+      var withLink = row.link_url !== undefined || row.link_label !== undefined;
+      if (withLink) {
+        var link = newsLink(row);
+        if (link.error) { return Promise.reject(new Error(link.error)); }
+        payload.link_url = link.url;
+        payload.link_label = link.label;
       }
-      return sb.from('news').insert(payload).select().maybeSingle().then(must);
+      function send(p) {
+        if (row.id) {
+          return sb.from('news').update(p).eq('id', row.id).select().maybeSingle().then(must);
+        }
+        return sb.from('news').insert(p).select().maybeSingle().then(must);
+      }
+      return send(payload).catch(function (e) {
+        if (!withLink || !isMissing(e)) { throw e; }
+        /* قبل 039: الخبر بلا رابط يُحفظ كما كان، والرابط المطلوب يسمّي الترحيلة */
+        if (payload.link_url) {
+          throw migrationErr(e, 'حقل رابط الخبر غير موجود في القاعدة بعد — ترحيلة 039 لم تُطبَّق. '
+                              + 'نفّذوها ثم أعيدوا المحاولة.', '039');
+        }
+        delete payload.link_url;
+        delete payload.link_label;
+        return send(payload);
+      });
     },
 
     remove: function (id) {
@@ -792,7 +937,23 @@
   function decorate(r) {
     r.date_ar = r.date_label || arDate(r.published_at);
     r.meta_ar = r.date_ar + (r.section ? ' · ' + r.section : '');
+    /* رابط الخبر (039): الحقلان null قبل الترحيلة، وlink_href ويبٌ صريح أو '' */
+    r.link_url = r.link_url || null;
+    r.link_label = r.link_label || null;
+    r.link_href = (r.link_url && WEB_HREF_RE.test(r.link_url)) ? r.link_url : '';
     return r;
+  }
+
+  /* رابط الخبر وزرّه بقيدَي 039: ويبٌ صريح حتى 500 حرف، والنص حتى 60 ولا نصّ بلا رابط */
+  function newsLink(row) {
+    var url = String(row.link_url == null ? '' : row.link_url).trim();
+    var label = String(row.link_label == null ? '' : row.link_label).replace(/\s+/g, ' ').trim();
+    if (!url) { return { url: null, label: null }; }
+    if (url.length > 500 || !WEB_HREF_RE.test(url)) {
+      return { error: 'رابط الخبر يبدأ بـ https:// أو http:// بلا مسافات، و500 حرف على الأكثر.' };
+    }
+    if (label.length > 60) { return { error: 'نص زر الرابط 60 حرفاً على الأكثر.' }; }
+    return { url: url, label: label || null };
   }
 
   /* ---------- سجل الاعتمادات ----------
@@ -912,6 +1073,9 @@
   /* تاريخ الاعتماد جاهزاً للعرض بالتقويم الشامي — «١٥ آب ٢٠٢٦» */
   function accDecorate(r) {
     r.cert_date_ar = r.cert_date ? arDate(r.cert_date) : '—';
+    /* مصدر البند (039): exam بندٌ آلي من شهادة اختبار، وقبل الترحيلة كل البنود يدوية */
+    r.source = r.source === 'exam' ? 'exam' : 'manual';
+    r.certificate_id = r.certificate_id || null;
     return r;
   }
 
@@ -1143,7 +1307,7 @@
   /* وجهات الأزرار المسموحة — القائمة المغلقة نفسها في app_service_href_ok
      بالقاعدة: شاشات التطبيق الداخلية ورقم هاتف، لا رابط خارجياً ولا javascript:
      (الزر يُفتح داخل WebView التطبيق). تُفحص هنا مرة ثانية بعد القاعدة. */
-  var SERVICE_HREF_RE = /^(?:(?:exam|exam-demo|verify|account|accredit|news|codes|videos|jobs|discounts|grade|pay)\.html|grade\.html\?do=course|pay\.html\?svc=[a-z][a-z-]{0,23}|accredit-list\.html\?kind=(?:engineer|org|company|sy_company|sy_office)|services\.html\?s=[a-z][a-z_]{0,23}|tel:\+?[0-9]{6,20})$/;
+  var SERVICE_HREF_RE = /^(?:(?:exam|exam-demo|verify|account|accredit|news|codes|videos|jobs|discounts|grade|pay|certificates)\.html|verify\.html\?mode=synd|grade\.html\?do=course|pay\.html\?svc=[a-z][a-z-]{0,23}|accredit-list\.html\?kind=(?:engineer|org|company|sy_company|sy_office)|services\.html\?s=[a-z][a-z_]{0,23}|tel:\+?[0-9]{6,20})$/;
   /* وجهات جاهزة تختار منها اللوحة بأسمائها العربية */
   var SERVICE_LINKS = [
     { href: 'exam.html',                          label: 'بوابة الاختبار' },
@@ -1155,6 +1319,8 @@
     { href: 'grade.html',                         label: 'الارتقاء بالمرتبة — التعهد والدفع' },
     { href: 'grade.html?do=course',               label: 'حجز موعد دورة الارتقاء' },
     { href: 'accredit-list.html?kind=engineer',   label: 'سجل المهندسين المعتمدين وفق الاختبارات' },
+    { href: 'certificates.html',                  label: 'سجل الشهادات الصادرة' },
+    { href: 'verify.html?mode=synd',              label: 'التحقق من الرقم النقابي' },
     { href: 'accredit-list.html?kind=org',        label: 'سجل المنظمات المعتمدة' },
     { href: 'accredit-list.html?kind=company',    label: 'سجل الشركات العربية والأجنبية المعتمدة' },
     { href: 'accredit-list.html?kind=sy_company', label: 'سجل الشركات الهندسية السورية' },
@@ -1305,7 +1471,7 @@
   }
 
   var admin = {
-    /* الأكواد المُوجَّهة — إصدار وعرض وإبطال (لوحة الإدارة) */
+    /* كوبونات التطبيق — إصدار وعرض وإبطال (لوحة الإدارة) */
     issueCode: function (p) {
       return sb.rpc('admin_issue_code', {
         p_kind: p.kind, p_accounts: p.accounts,
@@ -1860,7 +2026,52 @@
     revokeCert:    function (id, reason) {
       return rpc('admin_revoke_certificate', { p_id: id, p_reason: reason || null });
     },
-    restoreCert:   function (id) { return rpc('admin_restore_certificate', { p_id: id }); }
+    restoreCert:   function (id) { return rpc('admin_restore_certificate', { p_id: id }); },
+
+    /* سجل الشهادات للوحة (ترحيلة 039): السارية والمسحوبة، والمحذوفة بنسخة 003
+       من سجل التدقيق بلا id. counts للسجل كله لا للصفحة المصفّاة */
+    certRegistry: function (o) {
+      o = o || {};
+      return rpc('admin_certificates_registry', {
+        p_q: o.q || null, p_status: o.status || 'all', p_branch: o.branch || null,
+        p_from: o.from || null, p_to: o.to || null,
+        p_limit: o.limit || 50, p_offset: o.offset || 0
+      }).then(function (r) {
+        var rows = (r && Array.isArray(r.rows)) ? r.rows : [];
+        rows.forEach(function (c) {
+          c.issued_at_ar = c.issued_at ? arDate(c.issued_at) : '—';
+          c.revoked_at_ar = c.revoked_at ? arDate(c.revoked_at) : '';
+          c.score_ar = c.score == null ? '' : toAr(c.score) + '٪';
+        });
+        var n = (r && r.counts) || {};
+        return {
+          total: (r && r.total) | 0,
+          counts: { valid: n.valid | 0, revoked: n.revoked | 0, this_month: n.this_month | 0 },
+          rows: rows
+        };
+      }, function (e) {
+        throw migrationErr(e, 'دوال سجل الشهادات غير موجودة في القاعدة بعد — ترحيلة 039 لم تُطبَّق. '
+                            + 'نفّذوها ثم أعيدوا المحاولة.', '039');
+      });
+    },
+    /* فحص الرقم النقابي قبل اعتماده: كل حساب يحمله بعد التطبيع، وconflicts
+       عدد ما سوى الحساب المفتوح (accountId) */
+    checkSyndNo: function (no, accountId) {
+      return rpc('admin_check_synd_no', {
+        p_no: String(no == null ? '' : no), p_account: accountId || null
+      }).then(function (r) {
+        r = r || {};
+        return {
+          normalized: r.normalized == null ? '' : String(r.normalized),
+          format_ok: r.format_ok === true,
+          matches: Array.isArray(r.matches) ? r.matches : [],
+          conflicts: r.conflicts | 0
+        };
+      }, function (e) {
+        throw migrationErr(e, 'دالة فحص الرقم النقابي غير موجودة في القاعدة بعد — ترحيلة 039 لم تُطبَّق. '
+                            + 'نفّذوها ثم أعيدوا المحاولة.', '039');
+      });
+    }
   };
 
   /* بوابة التحديث — الاحتياط في الويب؛ الإنفاذ الحقيقي في الكود الأصلي */
@@ -1882,6 +2093,8 @@
 
   window.OSEA_API = {
     LIVE: LIVE,
+    /* منفذ داخلي لملحقات اللوحة (osea-sham-admin.js): العميل نفسه بجلسته — عميل ثانٍ يتسابق على تجديد الرمز */
+    _sb: sb,
     content: content,
     news: news,
     accredit: accredit,
@@ -1893,8 +2106,11 @@
     pricing: pricing,
     /* الدفع الآلي عبر شام كاش — وسومٌ عربية عند غياب القاعدة كسائر
        الكتابات. shamAvailable وحدها لا تفشل بل تُجيب false: هي سؤال قدرة
-       لا عملية عضو، وجوابها السلبي يُبقي الشاشة على مسارها اليدوي. */
+       لا عملية عضو، وجوابها السلبي يُبقي الشاشة على مسارها اليدوي.
+       وكذلك paymentMode: لا ترفض أبداً، وبلا قاعدة تعود باحتياط الحزمة. */
     pay: {
+      AUTO_SERVICES: AUTO_SERVICES,
+      paymentMode:   shamPay.paymentMode,
       shamAvailable: LIVE ? shamPay.shamAvailable : function () { return Promise.resolve(false); },
       shamStart:     LIVE ? shamPay.shamStart     : offline('الدفع الآلي عبر شام كاش'),
       shamStatus:    LIVE ? shamPay.shamStatus    : offline('حالة الدفع عبر شام كاش'),
@@ -1928,6 +2144,8 @@
     addAttempt: LIVE ? live.addAttempt : function () { return Promise.resolve(null); },
     certs:      LIVE ? live.certs      : offline('الشهادات'),
     findCert:   LIVE ? live.findCert   : offline('التحقق من شهادة'),
+    certRegistry: LIVE ? live.certRegistry : offline('سجل الشهادات'),
+    verifySyndNo: LIVE ? live.verifySyndNo : offline('التحقق من الرقم النقابي'),
     saveLessonProgress: LIVE ? live.saveLessonProgress : offline('حفظ تقدم الدرس'),
     accountProfile:     LIVE ? live.accountProfile     : offline('ملف الحساب'),
     issueCert:  LIVE ? live.issueCert  : function () { return Promise.reject(new Error('demo')); },

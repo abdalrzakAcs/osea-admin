@@ -36,6 +36,20 @@
 
 .rel-url{max-width:280px;overflow:hidden;text-overflow:ellipsis}
 .rel-toggle{display:inline-flex;align-items:center;gap:9px}
+/* اللوحي: الرابط سطرٌ مقصوص (كاملاً في التلميح)، والملاحظات أضيق، والرؤوس
+   والتاريخ تلتفّ — كي تظهر الحالة وتاريخ النشر بلا تمرير */
+@media (min-width:721px) and (max-width:1080px){
+  .rel-table th{white-space:normal}
+  .rel-table td.wrap{min-width:150px}
+  .rel-table td.rel-date{white-space:normal;min-width:72px}
+  .rel-table td.rel-url :is(a,span){display:block;max-width:150px;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap}
+}
+/* الهاتف: الرابط بخط أصغر، ومبدّل التفعيل بهدف لمس كامل */
+@media (max-width:720px){
+  .rel-table td.rel-url a.link{font-size:13px;font-weight:600}
+  .rel-toggle{min-height:44px;cursor:pointer}
+}
 
 /* سطر الأثر الحيّ داخل لوحة النشر */
 .rel-impact{font-size:13px;line-height:1.85;color:var(--text-secondary)}
@@ -78,7 +92,7 @@
           <span class="tag" id="totalTag">—</span>
         </div>
         <div class="adm-scroll">
-          <table class="adm-table">
+          <table class="adm-table rel-table">
             <thead>
               <tr>
                 <th>رقم الإصدار</th>
@@ -250,14 +264,14 @@
         '<td class="num">' + A.toAr(r.min_supported | 0) + '</td>' +
         '<td class="wrap">' + (r.notes ? A.esc(r.notes) : '—') + '</td>' +
         '<td class="rel-url">' + urlCell(r.download_url) + '</td>' +
-        '<td><span class="rel-toggle">' +
+        '<td><label class="rel-toggle">' +
             '<input class="adm-check" type="checkbox" data-id="' + A.esc(r.id) + '"' +
               (r.active ? ' checked' : '') +
               ' aria-label="تفعيل الإصدار ' + A.esc(r.version_name) + '" data-write>' +
             (r.active ? '<span class="tag tag--success">نشط</span>'
                       : '<span class="tag tag--error">معطّل</span>') +
-          '</span></td>' +
-        '<td>' + A.arDate(r.released_at) + '</td>' +
+          '</label></td>' +
+        '<td class="rel-date">' + A.arDate(r.released_at) + '</td>' +
       '</tr>';
     }).join('');
   }

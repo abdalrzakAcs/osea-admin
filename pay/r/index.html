@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- صفحة العودة من شام كاش (redirectUrl): https://pay.osea.org.sy/r/?b=<رقم الفاتورة>
+     والاحتياط نفسه حرفياً على https://abdalrzakacs.github.io/osea-admin/pay/r/ .
+     لا تؤكد الدفع أبداً: صحّة الدفع يحكم بها الخادم (إشعار sham-hook + التسوية)
+     والتطبيق يسأل عنها بنفسه عند العودة. لا نموذج ولا سكربت خارجي ولا تحليلات ولا أسرار.
+     ⚠️ أي تعديل على السكربت المضمَّن يغيّر بصمته: node tools/deploy-naits.mjs csp -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-cL9isb8ZRZgmxLSbLhX4tTzR7bw5gvUsbkjQq31R/h4='; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="osea-page" content="pay-return">
+<meta name="theme-color" content="#003471">
+<title>العودة إلى التطبيق — نقابة المهندسين السوريين</title>
+<link rel="icon" type="image/png" href="../logo.png">
+<style>
+  :root {
+    --navy: #003471; --navy-900: #001f47; --navy-50: #ebf1f8;
+    --gold: #D3A518; --gold-ink: #8A6A10;
+    --ink: #161616; --ink-2: #4b5563; --line: #d2d6db;
+    --page: #f6f9fc; --card: #ffffff;
+    --warn-bg: #FFF8E7; --warn-line: #e9c46a; --warn-ink: #6B520C;
+    --err-bg: #fef2f2; --err-ink: #b42318;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --navy: #76a2cd; --navy-900: #d5e2f0; --navy-50: #0d2440;
+      --gold: #D3A518; --gold-ink: #e0bd4f;
+      --ink: #eef2f6; --ink-2: #b6c0cc; --line: #2a3a50;
+      --page: #001230; --card: #071a36;
+      --warn-bg: #2b2310; --warn-line: #6B520C; --warn-ink: #f3dc96;
+      --err-bg: #3a1212; --err-ink: #f7a4a0;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--page); color: var(--ink);
+    font: 16px/1.75 Tahoma, Arial, 'Noto Naskh Arabic', 'Noto Sans Arabic', sans-serif;
+    padding: 24px 16px 40px; min-height: 100vh;
+  }
+  .card {
+    max-width: 460px; margin: 0 auto; background: var(--card);
+    border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+    box-shadow: 0 6px 24px rgba(0, 31, 71, .08);
+  }
+  .brand {
+    display: flex; align-items: center; gap: 12px; padding: 14px 18px;
+    background: #003471; color: #fff; border-bottom: 3px solid var(--gold);
+  }
+  .brand img { width: 52px; height: 52px; border-radius: 50%; background: #fff; flex: none; }
+  .brand b { display: block; font-size: 16px; }
+  .brand span { display: block; font-size: 13px; color: #FFEECA; }
+  .body { padding: 22px 20px 8px; }
+  .status { display: flex; align-items: center; gap: 12px; margin: 0 0 10px; }
+  .spin {
+    width: 26px; height: 26px; flex: none; border-radius: 50%;
+    border: 3px solid var(--navy-50); border-top-color: var(--navy);
+    animation: r 1s linear infinite;
+  }
+  @keyframes r { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; border-top-color: var(--gold); } }
+  h1 { font-size: 20px; line-height: 1.5; margin: 0; color: var(--navy-900); }
+  p { margin: 0 0 12px; }
+  .lead { color: var(--ink-2); }
+  .note {
+    border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn-ink);
+    border-radius: 10px; padding: 10px 12px; margin: 0 0 14px; font-size: 15px;
+  }
+  .note.err { border-color: var(--err-ink); background: var(--err-bg); color: var(--err-ink); }
+  .bill {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
+    border: 1px dashed var(--line); border-radius: 10px; padding: 8px 12px; margin: 0 0 16px;
+    font-size: 14px; color: var(--ink-2);
+  }
+  .bill bdi { font: 600 14px/1.4 Consolas, 'Courier New', monospace; color: var(--ink); word-break: break-all; }
+  .btn {
+    display: block; width: 100%; text-align: center; text-decoration: none;
+    border-radius: 10px; padding: 13px 16px; font-weight: 700; font-size: 17px;
+    background: #003471; color: #fff; border: 2px solid #003471; margin: 0 0 10px;
+  }
+  .btn:focus-visible, a:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .btn.alt { background: transparent; color: var(--navy); border-color: var(--line); font-weight: 600; font-size: 15px; padding: 10px 14px; }
+  details { border-top: 1px solid var(--line); margin: 8px 0 0; padding: 10px 0 4px; }
+  summary { cursor: pointer; font-weight: 700; color: var(--navy); }
+  ol { margin: 8px 0 6px; padding-inline-start: 22px; color: var(--ink-2); font-size: 15px; }
+  li { margin: 0 0 6px; }
+  .dl { display: block; text-align: center; margin: 6px 0 14px; color: var(--gold-ink); font-weight: 600; }
+  footer { text-align: center; font-size: 12px; color: var(--ink-2); padding: 0 16px 16px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="brand">
+    <img src="../logo.png" alt="" width="52" height="52">
+    <div><b>نقابة المهندسين السوريين</b><span>منصة الخدمات الرقمية — الدفع عبر شام كاش</span></div>
+  </div>
+
+  <div class="body">
+    <div class="status">
+      <span class="spin" aria-hidden="true"></span>
+      <h1 id="title">جارٍ التحقق من الدفع في التطبيق</h1>
+    </div>
+    <p class="lead">عُد إلى تطبيق المنصة لمعرفة النتيجة: التطبيق يسأل خادم النقابة عن حالة فاتورتك مباشرة ويعرضها لك.</p>
+    <p class="note"><strong>هذه الصفحة لا تؤكد الدفع</strong> ولا تُعدّ إيصالاً. لا تكرّر الدفع قبل أن يعرض التطبيق حالة الفاتورة.</p>
+
+    <div class="bill" id="billBox" hidden>
+      <span>رقم الفاتورة</span>
+      <bdi dir="ltr" id="billNo"></bdi>
+    </div>
+    <p class="note err" id="badBill" hidden>رابط العودة لا يحمل رقم فاتورة صالحاً. افتح التطبيق وادخل «الدفع والتفعيل» لمعرفة حالة آخر فاتورة.</p>
+
+    <!-- الروابط تعمل حتى دون سكربت (تفتح التطبيق بلا رقم)، والسكربت يضيف رقم الفاتورة -->
+    <div id="androidBox">
+      <a class="btn" id="openIntent" href="intent://pay#Intent;scheme=osea;package=sy.org.osea.platform;S.browser_fallback_url=https%3A%2F%2Fosea.org.sy%2Fapp%2F;end">العودة إلى التطبيق</a>
+      <a class="btn alt" id="openScheme" href="osea://pay">لم يُفتح التطبيق؟ جرّب هذا الرابط</a>
+    </div>
+    <p class="note" id="otherBox" hidden>تعمل هذه الصفحة مع تطبيق المنصة على هواتف أندرويد. أكمل من هاتفك: افتح التطبيق ← «الدفع والتفعيل» ← «تحديث الحالة».</p>
+
+    <details>
+      <summary>إن لم يُفتح التطبيق تلقائياً</summary>
+      <ol>
+        <li>افتح تطبيق «منصة نقابة المهندسين» يدوياً من شاشة هاتفك.</li>
+        <li>يفحص التطبيق حالة الفاتورة عند عودتك إليه، أو اضغط «تحديث الحالة» في شاشة الدفع.</li>
+        <li>إن اقتُطع المبلغ ولم تظهر الدفعة خلال 15 دقيقة فراجع النقابة ومعك رقم الفاتورة أعلاه ورقم العملية من شام كاش.</li>
+      </ol>
+    </details>
+    <a class="dl" href="https://osea.org.sy/app/" rel="noopener noreferrer">لم تثبّت التطبيق بعد؟ حمّل التطبيق</a>
+  </div>
+  <footer>© نقابة المهندسين السوريين المركزية — osea.org.sy</footer>
+</main>
+<script>
+(function () {
+  'use strict';
+  /* ثوابت العقد §٢ و§٩: الحزمة، الاحتياط عند غياب التطبيق، وصيغة رقم الفاتورة */
+  var PKG = 'sy.org.osea.platform';
+  var FALLBACK = 'https://osea.org.sy/app/';
+  var BILL_RE = /^[A-Za-z0-9-]{6,64}$/;
+
+  /* قراءة b — شام كاش قد يضيف معاملات أخرى إلى الرابط فنأخذ b وحده */
+  function readParam(name) {
+    try { return new URLSearchParams(window.location.search).get(name) || ''; } catch (e) { /* متصفح قديم */ }
+    var m = new RegExp('[?&]' + name + '=([^&#]*)').exec(window.location.search);
+    if (!m) { return ''; }
+    try { return decodeURIComponent(m[1].replace(/\+/g, ' ')); } catch (e2) { return ''; }
+  }
+
+  var bill = readParam('b');
+  var ok = BILL_RE.test(bill);
+  var q = ok ? '?b=' + encodeURIComponent(bill) : '';
+  var intentUrl = 'intent://pay' + q + '#Intent;scheme=osea;package=' + PKG +
+    ';S.browser_fallback_url=' + encodeURIComponent(FALLBACK) + ';end';
+  var schemeUrl = 'osea://pay' + q;
+  var android = /Android/i.test(navigator.userAgent || '');
+
+  function el(id) { return document.getElementById(id); }
+
+  /* الرقم يُعرض نصاً لا ترميزاً */
+  if (ok) {
+    el('billNo').textContent = bill;
+    el('billBox').hidden = false;
+  } else {
+    el('badBill').hidden = false;
+  }
+  el('openIntent').setAttribute('href', intentUrl);
+  el('openScheme').setAttribute('href', schemeUrl);
+
+  /* حاسوب أو آيفون: لا تطبيق هنا — تعليمات المتابعة من الهاتف، ويبقى رابط osea:// للأجهزة غير المعروفة */
+  if (!android) {
+    el('otherBox').hidden = false;
+    el('openIntent').hidden = true;
+  }
+
+  /* للفحص المحلي فقط (لا أسرار): ما فهمته الصفحة من الرابط */
+  window.OSEA_PAY_RETURN = { bill: ok ? bill : '', ok: ok, android: android, intentUrl: intentUrl, schemeUrl: schemeUrl };
+
+  /* محاولة آلية واحدة لكل فاتورة عند التحميل — المتصفح قد يمنعها بلا لمسة، فالزر باقٍ */
+  if (android && ok) {
+    var key = 'osea-pr-' + bill, tried = false;
+    try { tried = window.sessionStorage.getItem(key) === '1'; window.sessionStorage.setItem(key, '1'); } catch (e3) { /* تخزين محجوب */ }
+    if (!tried) { window.setTimeout(function () { window.location.href = intentUrl; }, 350); }
+  }
+})();
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>الأكواد المُوجَّهة — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<title>كوبونات التطبيق — لوحة الإدارة | نقابة المهندسين السوريين</title>
 <meta name="theme-color" content="#001f47">
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
@@ -26,16 +26,30 @@
 .acc-hit:hover{background:var(--navy-25)}
 .acc-hit b{color:var(--navy-800)}
 .acc-hit small{color:var(--text-secondary)}
-.acc-hit .mono{margin-inline-start:auto;font-family:var(--font-display);font-weight:700}
+/* الاسم يملأ السطر فيُدفع رقم العضوية إلى الطرف — هامش auto على عنصر ltr كان
+   يُحسب من يساره فيلتصق الرقم بالاسم */
+.acc-hit > span:first-child{flex:1;min-width:0}
+.acc-hit .mono{font-family:var(--font-display);font-weight:700}
 /* عرض الكود المُصدر — يُنسخ من هنا فقط */
 .issued-code{
   display:flex;align-items:center;justify-content:center;gap:14px;
   padding:22px;margin-block-start:8px;
   background:var(--navy-800);border-radius:12px;
   font-family:var(--font-display);font-size:30px;font-weight:700;
-  letter-spacing:4px;color:var(--gold-300);
+  letter-spacing:4px;color:var(--gold-400);  /* gold-300 غير معرَّف في identity.css فكان النص داكناً على الكحلي */
 }
 .tgl-list{font-size:12px;line-height:1.8;color:var(--text-secondary);max-width:280px}
+
+/* الهاتف: زر إزالة المستهدف هدف لمس كامل، والكوبون المُصدر بخط يتّسع لعرض الشاشة،
+   والملاحظة الغائبة لا تأخذ سطراً، وخلية الإجراءات بلا زر لا تترك شرطة يتيمة */
+@media (max-width:720px){
+  .picked .tag{padding-block:0;padding-inline-end:0}
+  .picked .tag button{width:40px;height:40px;margin-inline-start:2px;font-size:18px}
+  .issued-code{padding:18px 12px;font-size:clamp(20px,6.4vw,30px);letter-spacing:2px}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.code-nil{display:none}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.code-noact{padding:0;border:0;font-size:0}
+  .adm-table:not(.adm-table--grid) > tbody > tr > td:has(+ td.code-noact){border-block-end:0}
+}
 </style>
 </head>
 <body>
@@ -49,9 +63,9 @@
       <div class="notice" style="margin-block:22px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         <span>
-          <strong>كل كود مربوط بحسابات بعينها — التسريب بلا قيمة.</strong>
-          الكود يُعرض مرة واحدة لحظة إصداره فانسخه وسلّمه لصاحبه بنفسك.
-          «إبطال» يوقف الكود قبل استعماله، وما استُعمل فاستحقاقه باقٍ في سجل صاحبه.
+          <strong>كل كوبون مربوط بحسابات بعينها — التسريب بلا قيمة.</strong>
+          الكوبون يُعرض مرة واحدة لحظة إصداره فانسخه وسلّمه لصاحبه بنفسك.
+          «إبطال» يوقف الكوبون قبل استعماله، وما استُعمل فاستحقاقه باقٍ في سجل صاحبه.
         </span>
       </div>
 
@@ -59,15 +73,15 @@
         <div class="adm-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           <input class="input" id="q" type="search" autocomplete="off"
-                 placeholder="بحث بالكود أو الملاحظة أو اسم المستهدَف أو معرّفه">
+                 placeholder="بحث برمز الكوبون أو الملاحظة أو اسم المستهدَف أو معرّفه">
         </div>
         <span class="spacer"></span>
-        <button class="btn btn-primary btn-sm" id="addBtn" data-write>إصدار كود</button>
+        <button class="btn btn-primary btn-sm" id="addBtn" data-write>إصدار كوبون</button>
       </div>
 
       <div class="adm-table-card">
         <div class="adm-table-head">
-          <h2>سجل الأكواد</h2>
+          <h2>سجل الكوبونات</h2>
           <span class="spacer"></span>
           <span class="tag" id="totalTag">—</span>
         </div>
@@ -75,14 +89,14 @@
           <table class="adm-table">
             <thead>
               <tr>
-                <th>الكود</th>
+                <th>الكوبون</th>
                 <th>يمنح</th>
                 <th>المستهدفون</th>
                 <th>الاسترداد</th>
                 <th>الانتهاء</th>
                 <th>الملاحظة</th>
                 <th>الحالة</th>
-                <th>إجراءات</th>
+                <th class="acts">إجراءات</th>
               </tr>
             </thead>
             <tbody id="rows">
@@ -91,7 +105,7 @@
           </table>
         </div>
         <div class="adm-pager">
-          <span>الكود يُستعمل مرة واحدة لكل حساب مستهدَف، ويسجَّل كل استرداد في سجل التدقيق.</span>
+          <span>الكوبون يُستعمل مرة واحدة لكل حساب مستهدَف، ويُسجَّل كل استرداد في سجل التدقيق.</span>
         </div>
       </div>
 
@@ -143,10 +157,10 @@
 
   A.boot({
     page: 'codes',
-    title: 'الأكواد المُوجَّهة',
-    lead: 'أكواد تفعيل شخصية تصدر باسم حساب أو مجموعة حسابات لخدمة محددة — '
-        + 'محاولة امتحان أو اشتراك ببنود محددة أو بمجلد أو بكامل المكتبة. الكود لا يعمل إلا لأصحابه.',
-    crumb: 'الأكواد'
+    title: 'كوبونات التطبيق',
+    lead: 'كوبونات شخصية تصدر باسم حساب أو مجموعة حسابات لخدمة محددة — '
+        + 'محاولة امتحان أو اشتراك ببنود محددة أو بمجلد أو بكامل المكتبة. الكوبون لا يعمل إلا لأصحابه.',
+    crumb: 'كوبونات التطبيق'
   }).then(function (st) {
     if (!st) { return; }
     tbody = $('rows');
@@ -226,9 +240,9 @@
     var active = items.filter(function (r) { return r.active && !expired(r); }).length;
     var redeemed = items.reduce(function (n, r) { return n + (r.redeemed || 0); }, 0);
     $('kpis').innerHTML =
-      kpi('إجمالي الأكواد', items.length, 'كل ما أُصدر') +
+      kpi('إجمالي الكوبونات', items.length, 'كل ما أُصدر') +
       kpi('ساري', active, 'قابل للاستعمال') +
-      kpi('مُبطَل', items.length - active, 'أوقفته الإدارة') +
+      kpi('غير ساري', items.length - active, 'مُبطَل أو منتهي الصلاحية') +
       kpi('استرداد مسجَّل', redeemed, 'استعمال فعلي');
 
     var rows = visible();
@@ -236,7 +250,7 @@
 
     if (!rows.length) {
       tbody.innerHTML = '<tr><td colspan="8">' +
-        A.emptyState(items.length ? 'لا نتائج مطابقة.' : 'لا أكواد بعد — أصدر أول كود.') +
+        A.emptyState(items.length ? 'لا نتائج مطابقة.' : 'لا كوبونات بعد — أصدر أول كوبون.') +
         '</td></tr>';
       return;
     }
@@ -247,17 +261,17 @@
       }).join('<br>');
       return '<tr>' +
         '<td class="code-cell" dir="ltr">' + A.esc(r.code) + '</td>' +
-        '<td>' + A.esc(kindText(r)) + '</td>' +
+        '<td class="wrap">' + A.esc(kindText(r)) + '</td>' +
         '<td><div class="tgl-list">' + (tgl || '—') + '</div></td>' +
         '<td>' + A.toAr(r.redeemed || 0) + ' من ' + A.toAr(r.targets || 0) + '</td>' +
         '<td>' + (r.expires_at ? A.arDateTime(r.expires_at) : '—') + '</td>' +
-        '<td>' + A.esc(r.note || '—') + '</td>' +
+        '<td class="wrap' + (r.note ? '' : ' code-nil') + '">' + A.esc(r.note || '—') + '</td>' +
         '<td>' + (!r.active
             ? '<span class="tag tag--error">مُبطَل</span>'
             : expired(r)
               ? '<span class="tag tag--gold">منتهٍ</span>'
               : '<span class="tag tag--success">ساري</span>') + '</td>' +
-        '<td class="adm-actions">' +
+        '<td class="adm-actions acts' + (r.active ? '' : ' code-noact') + '">' +
           (r.active
             ? '<button class="btn btn-outline btn-sm" data-revoke="' + A.esc(r.id) + '" data-write>إبطال</button>'
             : '—') +
@@ -280,13 +294,19 @@
       '<span class="adm-kpi-hint">' + A.esc(hint) + '</span></div>';
   }
 
-  /* ---------- إصدار كود ---------- */
+  /* رسائل دوال القاعدة تسمّيه «الكود» — تُعرض بتسمية الواجهة */
+  function couponText(m) {
+    return String(m == null ? '' : m).replace(/الكود/g, 'الكوبون').replace(/كود/g, 'كوبون')
+      .replace(/الأكواد/g, 'الكوبونات');
+  }
+
+  /* ---------- إصدار كوبون ---------- */
 
   var picked = [];   /* الحسابات المستهدفة المختارة في اللوحة المفتوحة */
 
   function issueBody() {
     return '' +
-      '<div class="field"><span>ماذا يمنح الكود</span>' +
+      '<div class="field"><span>ماذا يمنح الكوبون</span>' +
         '<select class="input" id="c-kind">' +
           '<option value="exam">محاولة اختبار اعتماد</option>' +
           '<option value="books">اشتراك ببنود محددة (كتاب/استمارة/درس)</option>' +
@@ -323,13 +343,13 @@
         '<div class="field" id="c-months-wrap" hidden><span>مدة الاشتراك (أشهر)</span>' +
           '<input class="input" id="c-months" type="text" inputmode="numeric" autocomplete="off" value="1">' +
           '<span class="hint" id="c-months-hint" hidden>اتركها فارغة لاشتراك دائم بالمجلد.</span></div>' +
-        '<div class="field"><span>انتهاء صلاحية الكود (اختياري)</span>' +
+        '<div class="field"><span>انتهاء صلاحية الكوبون (اختياري)</span>' +
           '<input class="input" id="c-expires" type="date" min="' +
             new Date().toISOString().slice(0, 10) + '"></div>' +
       '</div>' +
       '<label class="field"><span>ملاحظة داخلية (اختياري)</span>' +
         '<input class="input" id="c-note" maxlength="200" placeholder="مثال: دفعة فرع حلب — آب"></label>' +
-      '<div class="field"><span>الحسابات المستهدفة — الكود لا يعمل لغيرها</span>' +
+      '<div class="field"><span>الحسابات المستهدفة — الكوبون لا يعمل لغيرها</span>' +
         '<input class="input" id="c-acc" type="search" autocomplete="off" ' +
           'placeholder="ابحث بالمعرّف أو الاسم أو الرقم النقابي أو الهاتف">' +
         '<div class="acc-hits" id="c-hits" hidden></div>' +
@@ -397,8 +417,8 @@
 
   function openIssue() {
     var sh = A.sheet({
-      title: 'إصدار كود مُوجَّه',
-      okLabel: 'إصدار الكود',
+      title: 'إصدار كوبون',
+      okLabel: 'إصدار الكوبون',
       body: issueBody(),
       onOk: function (host) {
         var kind = host.querySelector('#c-kind').value;
@@ -437,6 +457,8 @@
           note: host.querySelector('#c-note').value.trim() || null,
           /* نهاية اليوم بتوقيت دمشق — لا UTC الذي يمدّد الصلاحية ثلاث ساعات */
           expires: expires ? (expires + 'T23:59:59+03:00') : null
+        }).catch(function (err) {
+          throw new Error(couponText(A.errText(err)));
         }).then(function (r) {
           load();
           showIssued(r.code);
@@ -447,18 +469,18 @@
     wireIssue(sh.el);
   }
 
-  /* الكود يُعرض هنا مرة واحدة فقط — لا يُخزَّن معروضاً في أي مكان آخر */
+  /* الكوبون يُعرض هنا مرة واحدة فقط — لا يُخزَّن معروضاً في أي مكان آخر */
   function showIssued(code) {
     A.sheet({
-      title: 'صدر الكود — انسخه الآن',
+      title: 'صدر الكوبون — انسخه الآن',
       hideOk: true,
       closeLabel: 'أغلقت ونسخته',
       body:
         '<p style="font-size:13.5px;line-height:1.9;color:var(--text-secondary)">' +
-          'سلّم هذا الكود لأصحابه بنفسك (اتصال أو رسالة خاصة). ' +
+          'سلّم هذا الكوبون لأصحابه بنفسك (اتصال أو رسالة خاصة). ' +
           'لن يظهر كاملاً مرة أخرى، ولا يعمل إلا للحسابات المستهدفة.</p>' +
         '<div class="issued-code" dir="ltr"><span id="issuedVal">' + A.esc(code) + '</span></div>' +
-        '<button type="button" class="btn btn-outline btn-block" id="copyCode" style="margin-block-start:14px">نسخ الكود</button>'
+        '<button type="button" class="btn btn-outline btn-block" id="copyCode" style="margin-block-start:14px">نسخ الكوبون</button>'
     });
     var btn = document.getElementById('copyCode');
     if (btn) {
@@ -479,16 +501,16 @@
   function askRevoke(r) {
     if (!r) { return; }
     A.confirm({
-      title: 'إبطال الكود',
-      text: 'سيتوقف الكود «' + r.code + '» فوراً ولن يقبله التطبيق بعد الآن. '
+      title: 'إبطال الكوبون',
+      text: 'سيتوقف الكوبون «' + r.code + '» فوراً ولن يقبله التطبيق بعد الآن. '
           + 'ما استُرد به قبل الإبطال يبقى سارياً في سجل أصحابه. الإبطال لا يُتراجع عنه.',
       okLabel: 'إبطال نهائي'
     }).then(function (ok) {
       if (!ok) { return; }
       API.admin.revokeCode(r.id).then(function () {
-        A.toast('أُبطل الكود «' + r.code + '».', 'ok');
+        A.toast('أُبطل الكوبون «' + r.code + '».', 'ok');
         load();
-      }).catch(function (err) { A.toast(A.errText(err), 'bad'); });
+      }).catch(function (err) { A.toast(couponText(A.errText(err)), 'bad'); });
     });
   }
 })();

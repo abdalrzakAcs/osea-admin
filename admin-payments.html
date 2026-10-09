@@ -28,6 +28,114 @@
    بلا العزل ينزلق النقطتان إلى يسار الرقم ويقرأ الموظف سطراً مقلوباً. */
 .pay-sub-rtl { direction: rtl; }
 .pay-ref { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; letter-spacing: .3px; }
+
+/* ---------- تبويبات الصفحة (نمط admin-jobs) ----------
+   التبويب يبدّل ما تعرضه الصفحة كله، والرقاقة تحت الجدول تصفّي صفوفه —
+   والشكلان المختلفان يمنعان الخلط بينهما */
+.pay-tabs { display: flex; flex-wrap: wrap; gap: 4px; width: max-content; max-width: 100%;
+  padding: 5px; margin-block: 22px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-pill); box-shadow: var(--shadow-rest); }
+.pay-tab { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding-inline: 18px;
+  font-family: inherit; font-size: 14.5px; font-weight: 700; color: var(--navy-700); background: transparent;
+  border: 0; border-radius: var(--radius-pill); cursor: pointer;
+  transition: background var(--t-micro) var(--ease-std), color var(--t-micro) var(--ease-std); }
+.pay-tab:hover { background: var(--navy-25); }
+.pay-tab[aria-selected="true"] { background: var(--navy-700); color: #fff; }
+.pay-tab:focus-visible { outline: 3px solid var(--navy-200); outline-offset: 2px; }
+.pay-tab .n { font-size: 12px; font-weight: 700; padding-inline: 8px; line-height: 20px;
+  border-radius: var(--radius-pill); background: var(--navy-50); color: var(--navy-700); }
+.pay-tab .n[data-mode="on"] { background: var(--success-50); color: var(--success-600); }
+.pay-tab .n[data-mode="testers"] { background: var(--cream-100); color: var(--gold-700); }
+.pay-tab[aria-selected="true"] .n { background: rgba(255,255,255,.2); color: #fff; }
+/* الهاتف: التبويبات صفٌّ واحد يتمرّر أفقياً داخل إطاره بدل سطرين متراكبين */
+@media (max-width: 720px) {
+  .pay-tabs { flex-wrap: nowrap; width: 100%; overflow-x: auto; scrollbar-width: none;
+    overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
+    /* ظلّ خفيف على الحافة التي خلفها تبويبات مخفية: الغطاءان يتحرّكان مع المحتوى
+       (local) فيُخفيان الظلّ الثابت (scroll) حين تبلغ تلك الحافة طرفها */
+    background:
+      linear-gradient(to right, var(--surface) 40%, transparent) left center / 28px 100% no-repeat local,
+      linear-gradient(to left, var(--surface) 40%, transparent) right center / 28px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, var(--navy-100), transparent) left center / 12px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, var(--navy-100), transparent) right center / 12px 100% no-repeat scroll,
+      var(--surface); }
+  .pay-tabs::-webkit-scrollbar { display: none; }
+  .pay-tab { flex: none; padding-inline: 16px; }
+}
+
+/* قائمة نتائج الإشعار: قائمة منسدلة بلوحة ألوان فاتحة ثابتة */
+select.input { color-scheme: light; }
+.pay-sel { width: auto; min-width: 220px; }
+textarea.input { padding-block: 10px; line-height: 1.8; min-height: 84px; resize: vertical; }
+
+/* جداول التبويبات الجديدة على شاشة 1280 بلا تمرير أفقي: حشوة أضيق (نمط
+   admin-jobs)، وخلايا النص الطويل تلتفّ بعرض أدنى أصغر من .wrap العامة (220) —
+   وإلا كان عمود «إجراءات» في الطرف الأيسر هو المقصوص، وهو ما تحتاجه الإدارة */
+@media (min-width: 721px) {
+  .pay-tight th, .pay-tight td { padding-inline: 10px; }
+  .pay-tight td.pay-w { white-space: normal; min-width: 130px; max-width: 220px; }
+  .pay-tight td.pay-st { white-space: normal; min-width: 190px; max-width: 290px; }
+  /* التاريخ سطرٌ والساعة تحته */
+  .pay-tight td.pay-dt { white-space: normal; min-width: 120px; max-width: 150px; }
+  .pay-tight .adm-sub { white-space: nowrap; }
+  .pay-tight td.pay-st .adm-sub, .pay-tight td.pay-w .adm-sub { white-space: normal; }
+}
+
+/* الهاتف (بطاقات): الرموز الطويلة بعرض البطاقة تحت تسميتها (adm-cell-stack)، والفرع
+   يُخفى (يُقرأ من ملف الحساب)، والترقيم يغيب حين تتّسع صفحة واحدة لكل الصفوف (العدد
+   في الوسم)، وخلية الإجراءات بلا أزرار لا تترك شرطة يتيمة في أسفل البطاقة */
+@media (max-width: 720px) {
+  .pay-m-hide { display: none !important; }
+  .adm-table-head > .adm-pager:not(:has([data-go]:not([disabled]))) { display: none; }
+  .adm-table td.adm-cell-title .adm-sub { font-weight: 400; }
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.pay-noact { padding: 0; border: 0; }
+  .adm-table:not(.adm-table--grid) > tbody > tr > td.pay-noact > * { display: none !important; }
+  .adm-table:not(.adm-table--grid) > tbody > tr > td:has(+ td.pay-noact) { border-block-end: 0; }
+}
+/* أزرار الصف متجاورة بفاصل — الخلية تبقى خلية جدول لا flex */
+.adm-actions .btn + .btn { margin-inline-start: 6px; }
+
+/* الخطأ التقني الطويل (رسالة المزوّد أو last_error) يلتفّ داخل خليته */
+.pay-err { display: block; max-width: 340px; white-space: normal; overflow-wrap: anywhere;
+  font-size: 12px; color: var(--text-secondary); margin-block-start: 3px; }
+
+/* ---------- نافذة الاسترداد ---------- */
+.rf-sum { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 13.5px;
+  padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--navy-25); }
+.rf-sum dt { color: var(--text-secondary); font-weight: 600; }
+.rf-sum dd { margin: 0; font-weight: 700; color: var(--navy-800); }
+.rf-key { direction: ltr; unicode-bidi: isolate; font-size: 11.5px; letter-spacing: .2px;
+  color: var(--text-secondary); overflow-wrap: anywhere; }
+.rf-review[hidden], .rf-state[hidden] { display: none; }
+.rf-review { border: 2px solid var(--gold-600); border-radius: 10px; padding: 14px; background: var(--cream-50);
+  font-size: 14px; line-height: 1.9; }
+.rf-review b { color: var(--navy-800); }
+
+/* ---------- مفتاح الدفع ---------- */
+.set-modes { display: grid; gap: 10px; border: 0; padding: 0; margin: 0; }
+.set-modes legend { font-weight: 700; font-size: 14px; color: var(--text-display); margin-block-end: 6px; }
+.set-mode { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 10px; font-size: 14px; line-height: 1.7; }
+.set-mode input { margin-block-start: 5px; accent-color: var(--navy-700); }
+.set-mode small { display: block; font-size: 12.5px; color: var(--text-secondary); }
+.set-mode:has(input:checked) { border-color: var(--navy-700); background: var(--navy-25); }
+.set-mode[data-v="on"]:has(input:checked) { border-color: var(--success-600); background: var(--success-50); }
+.set-sec { border-block-start: var(--adm-hair); padding-block-start: 18px; display: grid; gap: 12px; }
+.set-sec h3 { font-size: 15px; margin: 0; }
+.set-testers { display: grid; gap: 6px; }
+.set-tester { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 13.5px; }
+.set-tester .grow { flex: 1; min-width: 0; }
+.set-results { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.set-results li { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border: 1px dashed var(--border);
+  border-radius: 8px; font-size: 13.5px; }
+.set-results li .grow { flex: 1; min-width: 0; }
+.set-warn { border-inline-start: 4px solid var(--error-600); background: var(--error-50); padding: 12px 14px;
+  border-radius: 8px; font-size: 13px; line-height: 1.85; color: var(--text-primary); }
+.set-foot { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-block-start: var(--adm-hair);
+  padding-block-start: 16px; }
+.set-foot .spacer { flex: 1; }
+.set-body { display: grid; gap: 18px; max-width: 860px; }
 </style>
 </head>
 <body>
@@ -36,51 +144,214 @@
   <section class="section--tight">
     <div class="container">
 
-      <!-- المؤشرات من admin_overview: محسوبة على كامل السجل لا على الصفوف المعروضة -->
+      <!-- المؤشرات: العدّ من admin_overview، والإيراد الصافي من admin_revenue
+           (المدقَّق ناقص المستردّ) — محسوبة على كامل السجل لا على الصفوف المعروضة -->
       <div class="adm-kpis" id="kpis"></div>
 
-      <!-- شريط الأدوات: بحث في المتصفح على الصفوف المجلوبة + قيد دفعة + تصدير -->
-      <div class="adm-bar" style="margin-block-start:20px">
-        <div class="adm-search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input class="input" id="q" type="search" autocomplete="off"
-                 placeholder="بحث باسم الحساب أو رقم العملية">
-        </div>
-        <span class="spacer"></span>
-        <button class="btn btn-primary btn-sm" id="addBtn" data-write>تسجيل دفعة</button>
-        <button class="btn btn-outline btn-sm" id="exportBtn">تصدير Excel</button>
+      <div class="pay-tabs" id="payTabs" role="tablist" aria-label="أقسام صفحة المدفوعات">
+        <button type="button" class="pay-tab" role="tab" id="tabPayments" data-tab="payments"
+                aria-controls="panelPayments" aria-selected="true" tabindex="0">سجل الدفعات</button>
+        <button type="button" class="pay-tab" role="tab" id="tabBills" data-tab="bills"
+                aria-controls="panelBills" aria-selected="false" tabindex="-1">فواتير شام كاش</button>
+        <button type="button" class="pay-tab" role="tab" id="tabEvents" data-tab="events"
+                aria-controls="panelEvents" aria-selected="false" tabindex="-1">سجل الإشعارات</button>
+        <button type="button" class="pay-tab" role="tab" id="tabRefunds" data-tab="refunds"
+                aria-controls="panelRefunds" aria-selected="false" tabindex="-1">الاستردادات</button>
+        <button type="button" class="pay-tab" role="tab" id="tabSettings" data-tab="settings"
+                aria-controls="panelSettings" aria-selected="false" tabindex="-1">مفتاح الدفع<span class="n" id="modeN">—</span></button>
       </div>
 
-      <div class="adm-bar" style="margin-block-start:-8px">
-        <div class="adm-filters" id="filters" role="group" aria-label="تصفية بنوع الدفعة"></div>
-      </div>
-
-      <div class="adm-table-card">
-        <div class="adm-table-head">
-          <h2>سجل الدفعات</h2>
+      <!-- ============================ سجل الدفعات ============================ -->
+      <div id="panelPayments" role="tabpanel" aria-labelledby="tabPayments">
+        <!-- شريط الأدوات: بحث في المتصفح على الصفوف المجلوبة + قيد دفعة + تصدير -->
+        <div class="adm-bar">
+          <div class="adm-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input class="input" id="q" type="search" autocomplete="off"
+                   placeholder="بحث باسم الحساب أو رقم العملية">
+          </div>
           <span class="spacer"></span>
-          <span class="tag" id="totalTag">—</span>
-          <div class="adm-pager" id="pagerEl" style="margin-block-start:10px"></div>
+          <button class="btn btn-primary btn-sm" id="addBtn" data-write>تسجيل دفعة</button>
+          <button class="btn btn-outline btn-sm" id="exportBtn">تصدير Excel</button>
         </div>
-        <div class="adm-scroll">
-          <table class="adm-table">
-            <thead>
-              <tr>
-                <th>اسم الحساب</th>
-                <th>الفرع</th>
-                <th>رقم العملية</th>
-                <th>القناة</th>
-                <th>المبلغ</th>
-                <th>الخدمة</th>
-                <th>الحالة</th>
-                <th>التوقيت</th>
-                <th>إجراءات</th>
-              </tr>
-            </thead>
-            <tbody id="rows">
-              <tr><td colspan="9"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
-            </tbody>
-          </table>
+
+        <div class="adm-bar" style="margin-block-start:-8px">
+          <div class="adm-filters" id="filters" role="group" aria-label="تصفية بنوع الدفعة"></div>
+        </div>
+
+        <div class="adm-table-card">
+          <div class="adm-table-head">
+            <h2>سجل الدفعات</h2>
+            <span class="spacer"></span>
+            <span class="tag" id="totalTag">—</span>
+            <div class="adm-pager" id="pagerEl" style="margin-block-start:10px"></div>
+          </div>
+          <div class="adm-scroll">
+            <table class="adm-table pay-tight">
+              <thead>
+                <tr>
+                  <th>اسم الحساب</th>
+                  <th>الفرع</th>
+                  <th>رقم العملية</th>
+                  <th>القناة</th>
+                  <th>المبلغ</th>
+                  <th>الخدمة</th>
+                  <th>الحالة</th>
+                  <th>التوقيت</th>
+                  <th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="rows">
+                <tr><td colspan="9"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================ فواتير شام كاش ============================ -->
+      <div id="panelBills" role="tabpanel" aria-labelledby="tabBills" hidden>
+        <div class="adm-bar">
+          <div class="adm-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input class="input" id="bq" type="search" autocomplete="off"
+                   placeholder="بحث برقم الفاتورة أو اسم الحساب أو رقم العضوية">
+          </div>
+          <span class="spacer"></span>
+          <button class="btn btn-outline btn-sm" id="bReload">تحديث</button>
+        </div>
+        <div class="adm-bar" style="margin-block-start:-8px">
+          <div class="adm-filters" id="bFilters" role="group" aria-label="تصفية الفواتير بالحالة"></div>
+        </div>
+        <div class="adm-table-card">
+          <div class="adm-table-head">
+            <h2>فواتير الدفع الآلي</h2>
+            <span class="spacer"></span>
+            <span class="tag" id="bTotal">—</span>
+            <p class="pay-note">كل فاتورة فُتحت عبر بوابة شام كاش — المدفوعة والمعلّقة والمنتهية وما لم يُنشأ
+              لدى المزوّد. «تحقق الآن» يسأل شام كاش مرة واحدة عن فاتورة مضى على إنشائها عشر دقائق
+              ولم يصل تأكيدها؛ والتسوية الآلية تجري كل خمس دقائق دون تدخّل.</p>
+            <div class="adm-pager" id="bPager" style="margin-block-start:10px"></div>
+          </div>
+          <div class="adm-scroll">
+            <table class="adm-table pay-tight">
+              <thead>
+                <tr>
+                  <th>الفاتورة</th>
+                  <th>الحساب</th>
+                  <th>الخدمة</th>
+                  <th>المبلغ</th>
+                  <th>الحالة</th>
+                  <th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="bRows">
+                <tr><td colspan="6"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================ سجل الإشعارات ============================ -->
+      <div id="panelEvents" role="tabpanel" aria-labelledby="tabEvents" hidden>
+        <div class="adm-bar">
+          <div class="adm-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input class="input" id="eq" type="search" autocomplete="off" dir="ltr"
+                   placeholder="رقم الفاتورة">
+          </div>
+          <select class="input pay-sel" id="eOutcome" aria-label="تصفية بنتيجة الإشعار"></select>
+          <span class="spacer"></span>
+          <button class="btn btn-outline btn-sm" id="eReload">تحديث</button>
+        </div>
+        <div class="adm-table-card">
+          <div class="adm-table-head">
+            <h2>إشعارات شام كاش الواردة</h2>
+            <span class="spacer"></span>
+            <span class="tag" id="eTotal">—</span>
+            <p class="pay-note">كل إشعار (webhook) وصل من شام كاش يُسجَّل هنا بنتيجته وردّنا عليه — بلا الرمز
+              المشفّر نفسه ولا أي سرّ. الردّ 503 يطلب من شام كاش إعادة الإرسال، وهو المقصود في الحالات
+              المؤقتة.</p>
+            <div class="adm-pager" id="ePager" style="margin-block-start:10px"></div>
+          </div>
+          <div class="adm-scroll">
+            <table class="adm-table pay-tight">
+              <thead>
+                <tr>
+                  <th>وقت الوصول</th>
+                  <th>الفاتورة</th>
+                  <th>النتيجة</th>
+                  <th>ردّنا</th>
+                  <th>الحالة الواردة</th>
+                  <th>عملية شام كاش</th>
+                  <th>التفصيل</th>
+                </tr>
+              </thead>
+              <tbody id="eRows">
+                <tr><td colspan="7"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================ الاستردادات ============================ -->
+      <div id="panelRefunds" role="tabpanel" aria-labelledby="tabRefunds" hidden>
+        <div class="adm-bar">
+          <div class="adm-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input class="input" id="rq" type="search" autocomplete="off" dir="ltr"
+                   placeholder="رقم الفاتورة">
+          </div>
+          <span class="spacer"></span>
+          <button class="btn btn-outline btn-sm" id="rReload">تحديث</button>
+        </div>
+        <div class="adm-bar" style="margin-block-start:-8px">
+          <div class="adm-filters" id="rFilters" role="group" aria-label="تصفية الاستردادات بالحالة"></div>
+        </div>
+        <div class="adm-table-card">
+          <div class="adm-table-head">
+            <h2>سجل الاستردادات</h2>
+            <span class="spacer"></span>
+            <span class="tag" id="rTotal">—</span>
+            <p class="pay-note">يبدأ الاسترداد من تبويب «فواتير شام كاش» على فاتورة مدفوعة. المحاولة الفاشلة
+              أو مجهولة المصير تُعاد من هنا بمفتاح العملية نفسه — فلا يُستردّ المبلغ مرتين.</p>
+            <div class="adm-pager" id="rPager" style="margin-block-start:10px"></div>
+          </div>
+          <div class="adm-scroll">
+            <table class="adm-table pay-tight">
+              <thead>
+                <tr>
+                  <th>الطلب</th>
+                  <th>الفاتورة</th>
+                  <th>الحساب</th>
+                  <th>المبلغ</th>
+                  <th>الحالة</th>
+                  <th>السبب</th>
+                  <th>الاستحقاق</th>
+                  <th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="rRows">
+                <tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================ مفتاح الدفع ============================ -->
+      <div id="panelSettings" role="tabpanel" aria-labelledby="tabSettings" hidden>
+        <div class="adm-table-card">
+          <div class="adm-table-head">
+            <h2>مفتاح الدفع الإلكتروني</h2>
+            <span class="spacer"></span>
+            <span class="tag" id="setTag">—</span>
+          </div>
+          <div class="adm-card-body" id="setHost">
+            <div class="adm-state"><p>جارٍ التحميل…</p></div>
+          </div>
         </div>
       </div>
 
@@ -91,6 +362,7 @@
 <script src="assets/js/supabase.js"></script>
 <script src="assets/js/osea-config.js"></script>
 <script src="assets/js/osea-api.js"></script>
+<script src="assets/js/osea-sham-admin.js"></script>
 <script src="assets/js/admin.js"></script>
 <script src="assets/js/main.js"></script>
 <script>
@@ -114,7 +386,11 @@
     /* تسعير البند المفرد (ترحيلة 022): كتاب أو استمارة أو درس مسعَّر بنفسه */
     'item-m':   'اشتراك شهري ببند',
     'item-y':   'اشتراك سنوي ببند',
-    'item-o':   'اشتراك دائم ببند'
+    'item-o':   'اشتراك دائم ببند',
+    /* خدمات العضوية والمراتب (٠٢٦) — يدوية وحدها، لا فاتورة آلية لها */
+    'renewal':       'تجديد الاشتراك السنوي',
+    'grade-upgrade': 'رسوم الارتقاء بالمرتبة',
+    'grade-course':  'دورة الارتقاء بالمرتبة'
   };
   var bookTitles = {};   /* item_id ⟵ العنوان، من الكتالوج — يحلّ دفعات book-* وitem-* */
   var folderNames = {};  /* item_id ⟵ اسم المجلد، من admin_folders (يشمل المعطّل) */
@@ -124,20 +400,37 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var tbody, kpisEl, filtersEl;
+  /* صلاحية الكتابة: المراقب (viewer) يرى ولا يكتب — الأزرار تُخفى بـdata-write
+     والحقول تُعطَّل، والقاعدة تحرس على كل حال */
+  var canWrite = false;
+  var TABS = ['payments', 'bills', 'events', 'refunds', 'settings'];
+  var TAB_IDS = { payments: ['tabPayments', 'panelPayments'], bills: ['tabBills', 'panelBills'],
+                  events: ['tabEvents', 'panelEvents'], refunds: ['tabRefunds', 'panelRefunds'],
+                  settings: ['tabSettings', 'panelSettings'] };
+  var loaded = {};
 
   A.boot({
     page: 'payments',
     title: 'المدفوعات',
     lead: 'سجل الدفعات المقيَّدة على المنصة بقناتيها — قيدٌ يدوي برقم العملية يدقّقه الطاقم، '
-        + 'ودفعٌ آلي عبر بوابة شام كاش تُسوّيه البوابة بنفسها بلا تدقيق. '
-        + 'وإعفاء لمن استُثني من الرسوم، وحذفٌ لأي قيد خاطئ يُثبَّت في سجل التدقيق.',
+        + 'ودفعٌ آلي عبر بوابة شام كاش تُسوّيه البوابة بنفسها بلا تدقيق، مع فواتيرها وإشعاراتها '
+        + 'واستردادها ومفتاح تشغيلها. وإعفاء لمن استُثني من الرسوم، وحذفٌ لأي قيد يدوي خاطئ يُثبَّت في سجل التدقيق.',
     crumb: 'المدفوعات'
   }).then(function (st) {
     if (!st) return;
+    canWrite = st.role !== 'viewer';
     tbody = $('rows'); kpisEl = $('kpis'); filtersEl = $('filters');
+    /* رابط من صفحة المطابقة: ?tab=bills&q=<رقم الفاتورة> يفتح الفاتورة نفسها */
+    var mq = /(?:^|[?&])q=([^&]*)/.exec(location.search);
+    if (mq) {
+      try { bst.q = decodeURIComponent(mq[1].replace(/\+/g, ' ')).trim().slice(0, 80); } catch (e) { bst.q = ''; }
+      $('bq').value = bst.q;
+    }
     wire();
+    wireTabs();
     loadKpis();
-    loadRows();
+    loadModeBadge();
+    setTab(initialTab(), false);
   });
 
   function wire() {
@@ -149,12 +442,108 @@
     $('addBtn').addEventListener('click', openAdd);
     $('exportBtn').addEventListener('click', exportView);
     tbody.addEventListener('click', onRowClick);
+
+    $('bq').addEventListener('input', A.debounce(function () {
+      bst.q = $('bq').value.trim(); bst.offset = 0; loadBills();
+    }, 300));
+    $('bReload').addEventListener('click', loadBills);
+    $('bRows').addEventListener('click', onBillClick);
+
+    $('eOutcome').innerHTML = '<option value="">كل النتائج</option>' + Object.keys(OUTCOME).map(function (k) {
+      return '<option value="' + k + '">' + A.esc(OUTCOME[k][0]) + '</option>';
+    }).join('');
+    $('eq').addEventListener('input', A.debounce(function () {
+      est.bill = $('eq').value.trim(); est.offset = 0; loadEvents();
+    }, 300));
+    $('eOutcome').addEventListener('change', function () {
+      est.outcome = $('eOutcome').value; est.offset = 0; loadEvents();
+    });
+    $('eReload').addEventListener('click', loadEvents);
+
+    $('rq').addEventListener('input', A.debounce(function () {
+      rst.bill = $('rq').value.trim(); rst.offset = 0; loadRefunds();
+    }, 300));
+    $('rReload').addEventListener('click', loadRefunds);
+    $('rRows').addEventListener('click', onRefundClick);
+  }
+
+  /* ---------------------------------------------------------------- التبويبات
+     نمط tablist: المختار وحده في تسلسل Tab، والأسهم تنقل بين التبويبات.
+     والتبويب يُكتب في العنوان (?tab=bills) كي يعيد التحديث الموظفَ إلى حيث كان.
+     كل تبويب يُحمَّل عند أول فتح لا عند الإقلاع: سجل الدفعات يعمل وحده
+     حتى لو لم تُطبَّق ترحيلتا شام كاش بعد. */
+  function initialTab() {
+    var m = /(?:^|[?&])tab=([a-z]+)(?:&|$)/.exec(location.search);
+    return (m && TABS.indexOf(m[1]) > -1) ? m[1] : 'payments';
+  }
+  /* الشريط يتمرّر أفقياً على الهاتف: التبويب المختار يُجلب إلى مجاله داخل الشريط وحده
+     (scrollIntoView كان سيمرّر الصفحة كلها إليه عند الإقلاع) */
+  function revealTab(b) {
+    var list = $('payTabs');
+    if (list.scrollWidth <= list.clientWidth + 1) return;
+    var lr = list.getBoundingClientRect(), br = b.getBoundingClientRect(), pad = 12;
+    if (br.left < lr.left + pad) { list.scrollLeft -= lr.left + pad - br.left; }
+    else if (br.right > lr.right - pad) { list.scrollLeft += br.right - lr.right + pad; }
+  }
+  function setTab(name, focus) {
+    if (TABS.indexOf(name) < 0) { name = 'payments'; }
+    TABS.forEach(function (t) {
+      var on = t === name, b = $(TAB_IDS[t][0]);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+      $(TAB_IDS[t][1]).hidden = !on;
+      if (on && focus) { b.focus(); }
+      if (on) { revealTab(b); }
+    });
+    try {
+      var parts = location.search.replace(/^\?/, '').split('&').filter(function (kv) {
+        return kv && !/^tab(?:=|$)/.test(kv);
+      });
+      if (name !== 'payments') { parts.push('tab=' + name); }
+      var next = location.pathname + (parts.length ? '?' + parts.join('&') : '') + location.hash;
+      if (next !== location.pathname + location.search + location.hash) {
+        history.replaceState(history.state, '', next);
+      }
+    } catch (e) { /* مستند بلا عنوان قابل للتعديل (srcdoc) — التبويب يعمل بلا ذاكرة */ }
+    if (!loaded[name]) {
+      loaded[name] = true;
+      ({ payments: loadRows, bills: loadBills, events: loadEvents,
+         refunds: loadRefunds, settings: loadSettings })[name]();
+    }
+  }
+  function wireTabs() {
+    var list = $('payTabs');
+    list.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-tab]');
+      if (b) { setTab(b.getAttribute('data-tab'), false); }
+    });
+    list.addEventListener('keydown', function (e) {
+      var t = e.target.closest('[data-tab]');
+      var cur = t ? TABS.indexOf(t.getAttribute('data-tab')) : -1;
+      if (cur < 0) return;
+      var nxt = -1;
+      /* الاتجاه بصري في RTL: السهم الأيسر يتقدّم */
+      if (e.key === 'ArrowLeft') { nxt = (cur + 1) % TABS.length; }
+      else if (e.key === 'ArrowRight') { nxt = (cur - 1 + TABS.length) % TABS.length; }
+      else if (e.key === 'Home') { nxt = 0; }
+      else if (e.key === 'End') { nxt = TABS.length - 1; }
+      if (nxt < 0) return;
+      e.preventDefault();
+      setTab(TABS[nxt], true);
+    });
   }
 
   /* ---------------------------------------------------------------- التنسيق */
   /* مبلغ بالليرة: فاصل آلاف عربي ثم أرقام هندية — الرقم في نص عربي فيبقى هندياً */
   function amt(n) {
     return A.toAr(String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+  }
+  /* مبالغ الفواتير numeric(18,2): الكسر يظهر إن وُجد فعلاً، وإلا فالعدد الصحيح وحده */
+  function money(n) {
+    var v = Number(n) || 0, neg = v < 0;
+    var cents = Math.round(Math.abs(v) * 100), frac = cents % 100;
+    return (neg ? '-' : '') + amt(Math.floor(cents / 100)) +
+      (frac ? '.' + (frac < 10 ? '0' : '') + frac : '');
   }
   /* تمييز العدد في الفصحى يتغيّر بتغيّر العدد — «5 دفعة» لحنٌ ظاهر في واجهة رسمية */
   function nPay(n) {
@@ -163,23 +552,38 @@
     if (n === 2) return 'دفعتان';
     return A.toAr(n) + (n >= 3 && n <= 10 ? ' دفعات' : ' دفعة');
   }
+  /* دالة غائبة = ترحيلة لم تُطبَّق بعد (لا عطل): القسم المعنيّ وحده يقول ذلك
+     بهدوء، وباقي الصفحة يعمل كما هو */
+  function missingFn(e) {
+    var m = (e && (e.message || '')) + '';
+    return !!e && (e.code === 'PGRST202' || e.code === '42883' ||
+      /Could not find the function|function .* does not exist/i.test(m));
+  }
+  function itemName(id) { return folderNames[id] || bookTitles[id] || id; }
+  function svcCell(service, item) {
+    return service
+      ? A.esc(SVC[service] || service) +
+        (item ? '<span class="adm-sub">' + A.esc(itemName(item)) + '</span>' : '')
+      : '—';
+  }
 
   /* ---------------------------------------------------------------- القناة
      الدفع الآلي عبر بوابة شام كاش يُقيَّد من القاعدة لا من موظف: دالة الحافّة
      تفتح الفاتورة في sham_bills، ثم يصل تأكيد الدفع من البوابة (webhook)
-     فتُنشئ sham_settle_bill صفَّ الدفعة **مصدَّقاً مباشرةً** (status
-     'verified' و method 'sham_auto') وتمنح الاستحقاق — بلا أي تدقيق إداري
-     ولا decided_by، لأنه لا مدقّق بشري وراء هذا القرار.
+     أو من التسوية الآلية (getBillInfo) فتُنشئ sham_settle_bill صفَّ الدفعة
+     **مصدَّقاً مباشرةً** (status 'verified' و method 'sham_auto') وتمنح
+     الاستحقاق — بلا أي تدقيق إداري ولا decided_by، لأنه لا مدقّق بشري
+     وراء هذا القرار.
 
      تمييزه عن التحويل اليدوي واجبٌ في هذا الجدول لا زينة: بدونه يقرأ
      الموظف «مدقَّقة ومفعَّلة» فيظنّ أن زميلاً دقّقها بيده، ويطلب صاحبها
      رقم عملية لا وجود له في الكشف اليدوي.
 
-     المعيار الأول والقاطع: method = 'sham_auto' (ترحيلة ٠٣٠). ورقم
+     المعيار الأول والقاطع: method = 'sham_auto' (ترحيلة ٠٣٧). ورقم
      الفاتورة مشتقٌّ من رقم العملية نفسه: sham_settle_bill تكتبه
      'SA-' || bill_no، فلا يحتاج الجدول عموداً إضافياً. وتُقرأ أعمدةٌ
      صريحة أيضاً إن أضافتها ترحيلة لاحقة — أعمّ من الاشتقاق ولا تُعطّله. */
-  var shamTrans = {};   /* bill_no ⟵ tranId، من دفتر sham_bills */
+  var shamInfo = {};    /* bill_no ⟵ {tran_id, status_id}، من دفتر sham_bills */
   function billNoOf(r) {
     if (!r) { return ''; }
     if (r.sham_bill_no || r.bill_no) { return r.sham_bill_no || r.bill_no; }
@@ -189,7 +593,12 @@
   function tranIdOf(r) {
     if (r && (r.sham_tran_id || r.tran_id)) { return r.sham_tran_id || r.tran_id; }
     var b = billNoOf(r);
-    return (b && shamTrans[b] != null) ? String(shamTrans[b]) : '';
+    return (b && shamInfo[b] && shamInfo[b].tran_id != null) ? String(shamInfo[b].tran_id) : '';
+  }
+  /* حالة الاسترداد من دفتر الفواتير: 5 جزئي، 2 كلي (الدفعة نفسها تبقى verified) */
+  function refundOf(r) {
+    var b = billNoOf(r), s = b && shamInfo[b] ? (shamInfo[b].status_id | 0) : 0;
+    return s === 2 ? 'full' : s === 5 ? 'part' : '';
   }
   function isAuto(r)   { return !!r && (r.method === 'sham_auto' || !!r.sham_bill_no); }
   function chanLabel(r) {
@@ -211,26 +620,52 @@
       '<span class="adm-kpi-hint">' + A.esc(hint) + '</span></div>';
   }
 
-  /* الإيراد من admin_overview لا من الصفوف المجلوبة: تلك مقصوصة على 200 صف
-     فجمعها يعطي رقماً أصغر من الحقيقة بلا أي إشارة إلى النقص */
+  /* العدّ من admin_overview، والإيراد من admin_revenue (٠٣٨): المدقَّق غير
+     المعفى ناقص الاستردادات الناجحة. كان الرقم مجموع كل الصفوف غير المعفاة
+     — المعلّقة والمرفوضة معها — فيكبر الإيراد بما لم يُحصَّل قط.
+     قبل ٠٣٨ يُقرأ مجموع المدقَّق من admin_list_payments (verified_sum) — رقم
+     صحيح أيضاً لأنه لا استرداد قبل ٠٣٨ أصلاً. */
+  function revenueNow() {
+    if (!API.admin.revenue) { return Promise.reject(new Error('no revenue')); }
+    return API.admin.revenue(null, null).then(function (r) {
+      return { net: Number(r && r.net) || 0, gross: Number(r && r.gross) || 0,
+               refunds: Number(r && r.refunds) || 0, count: r && r.count, full: true };
+    });
+  }
+  function revenueFallback() {
+    return API.admin.listPayments({ status: 'verified', limit: 1, offset: 0 }).then(function (d) {
+      var v = Number(d && d.verified_sum) || 0;
+      return { net: v, gross: v, refunds: 0, count: null, full: false };
+    });
+  }
   function loadKpis() {
     kpisEl.innerHTML =
       kpi('عدد الدفعات', '—', 'جارٍ التحميل…', '') +
       kpi('دفعات مدفوعة', '—', 'جارٍ التحميل…', '') +
       kpi('دفعات معفاة', '—', 'جارٍ التحميل…', 'adm-kpi--warm') +
-      kpi('الإيراد الكلي', '—', 'جارٍ التحميل…', 'adm-kpi--gold');
+      kpi('الإيراد الصافي', '—', 'جارٍ التحميل…', 'adm-kpi--gold');
 
-    API.admin.overview(30).then(function (d) {
-      var p = (d && d.payments) || {};
+    Promise.all([
+      API.admin.overview(30),
+      revenueNow().catch(function () { return revenueFallback().catch(function () { return null; }); })
+    ]).then(function (res) {
+      var p = (res[0] && res[0].payments) || {}, rv = res[1];
+      var revHtml = rv ? money(rv.net) + ' <span class="pay-unit">ل.س</span>' : '—';
+      var revHint = !rv ? 'تعذّرت قراءة الإيراد المدقَّق.'
+        : !rv.full ? 'مجموع الدفعات المدقَّقة غير المعفاة — الاستردادات تُخصم بعد ترحيلة ٠٣٨.'
+        : rv.refunds > 0 ? ('مدقَّق ' + money(rv.gross) + ' ل.س ناقص مستردّ ' + money(rv.refunds) + ' ل.س.')
+        : 'مجموع الدفعات المدقَّقة غير المعفاة في كامل السجل — لا استردادات.';
+      var paidN = (rv && rv.full && rv.count != null) ? rv.count : p.paid;
       kpisEl.innerHTML =
         kpi('عدد الدفعات', A.toAr(p.count | 0),
             'كل ما قُيّد على المنصة منذ إطلاقها.', '') +
-        kpi('دفعات مدفوعة', A.toAr(p.paid | 0),
-            'قيود لها مبلغ محصَّل فعلاً.', '') +
+        kpi(rv && rv.full && rv.count != null ? 'دفعات مدقَّقة' : 'دفعات غير معفاة', A.toAr(paidN | 0),
+            rv && rv.full && rv.count != null
+              ? 'قيود مدقَّقة بمبلغ محصَّل — يدوية وآلية.'
+              : 'قيود لها مبلغ — بأي حالة تدقيق.', '') +
         kpi('دفعات معفاة', A.toAr(p.exempt | 0),
             'قيود بمبلغ صفر لمن استُثني من الرسوم.', 'adm-kpi--warm') +
-        kpi('الإيراد الكلي', amt(p.revenue | 0) + ' <span class="pay-unit">ل.س</span>',
-            'مجموع مبالغ الدفعات غير المعفاة في كامل السجل.', 'adm-kpi--gold');
+        kpi('الإيراد الصافي', revHtml, revHint, 'adm-kpi--gold');
     }).catch(function (e) {
       kpisEl.innerHTML = '<div class="adm-kpi" style="grid-column:1/-1">' +
         A.errorState(A.errText(e), 'kpiRetry') + '</div>';
@@ -238,9 +673,8 @@
     });
   }
 
-  /* ---------------------------------------------------------------- الجدول */
-  function loadRows() {
-    tbody.innerHTML = '<tr><td colspan="9"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+  /* أسماء البنود والمجلدات للخدمات المسعَّرة — تُجلب مرة لكل الجداول */
+  function loadNames() {
     if (!Object.keys(bookTitles).length) {
       API.content.catalog().then(function (cat) {
         (cat || []).forEach(function (c) { bookTitles[c.id] = c.title; });
@@ -253,6 +687,12 @@
         (((d || {}).folders) || []).forEach(function (f) { folderNames[f.id] = f.name; });
       }).catch(function () {});
     }
+  }
+
+  /* ---------------------------------------------------------------- الجدول */
+  function loadRows() {
+    tbody.innerHTML = '<tr><td colspan="9"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    loadNames();
     API.admin.listPayments({
       search: state.search || null,
       status: state.filter === 'all' ? null : state.filter,
@@ -266,21 +706,21 @@
       });
       view = rows;
       paint();
-      /* رقم حركة شام كاش (tranId) يسكن دفتر sham_bills لا جدول payments:
-         يُجلب لصفوف الصفحة وحدها (لا لكل السجل) ثم تُعاد الرسمة. إثراء
-         عرضٍ لا شرط صحة — فشلُه يُسكَت عنه ويبقى الجدول كاملاً برقم
-         الفاتورة والقناة. */
+      /* رقم حركة شام كاش (tranId) وحالة الاسترداد يسكنان دفتر sham_bills
+         لا جدول payments: يُجلبان لصفوف الصفحة وحدها (لا لكل السجل) ثم
+         تُعاد الرسمة. إثراء عرضٍ لا شرط صحة — فشلُه يُسكَت عنه ويبقى
+         الجدول كاملاً برقم الفاتورة والقناة. */
       var need = [], k;
       for (k = 0; k < rows.length; k++) {
         var bn = billNoOf(rows[k]);
-        if (bn && shamTrans[bn] == null) { need.push(bn); }
+        if (bn && !shamInfo[bn]) { need.push(bn); }
       }
       if (need.length && API.pay && API.pay.shamBills) {
         API.pay.shamBills(need).then(function (bills) {
           var got = false, j;
           for (j = 0; j < (bills || []).length; j++) {
-            if (bills[j] && bills[j].bill_no && bills[j].tran_id != null) {
-              shamTrans[bills[j].bill_no] = bills[j].tran_id;
+            if (bills[j] && bills[j].bill_no) {
+              shamInfo[bills[j].bill_no] = { tran_id: bills[j].tran_id, status_id: bills[j].status_id };
               got = true;
             }
           }
@@ -326,6 +766,35 @@
     $('totalTag').textContent = nPay(state.total);
   }
 
+  /* وسم الحالة بمصدرها. الصف الآلي المعلّق في ٠٣٧ ليس «بانتظار البوابة»:
+     sham_settle_bill لا تُنشئ صفَّ دفعة آلية إلا بعد تأكيد الدفع (status 4)،
+     فإن بقي pending فمعناه أن المبلغ وصل وتعذّر المنح (بندٌ حُذف أو عُطّل) —
+     ولن يتسوّى وحده أبداً. يحتاج قراراً بشرياً: منحاً يدوياً أو استرداداً. */
+  function statusCell(r) {
+    var rf = refundOf(r);
+    var rfTag = rf === 'full' ? '<span class="tag tag--navy">مستردّة كلياً</span>'
+              : rf === 'part' ? '<span class="tag tag--navy">مستردّة جزئياً</span>' : '';
+    if (r.status === 'pending') {
+      return isAuto(r)
+        ? '<span class="tag tag--error">مدفوعة — تعذّر المنح</span>' +
+          '<span class="adm-sub">يحتاج قرار (منح يدوي أو استرداد)</span>' + rfTag
+        : '<span class="tag tag--gold">قيد التدقيق</span>';
+    }
+    if (r.status === 'rejected') {
+      return '<span class="tag tag--error">' + (isAuto(r) ? 'مُغلقة كغير مدفوعة' : 'مرفوضة') + '</span>' + rfTag;
+    }
+    return isAuto(r)
+      ? '<span class="tag tag--success">مدفوعة آلياً</span>' + (rfTag ? ' ' + rfTag : '') +
+        '<span class="adm-sub">سوّتها البوابة — بلا تدقيق إداري</span>'
+      : '<span class="tag tag--success">مدقَّقة ومفعَّلة</span>';
+  }
+  function statusText(r) {
+    var rf = refundOf(r), suf = rf === 'full' ? ' — مستردّة كلياً' : rf === 'part' ? ' — مستردّة جزئياً' : '';
+    return (r.status === 'pending' ? (isAuto(r) ? 'مدفوعة — تعذّر المنح، يحتاج قرار' : 'قيد التدقيق')
+      : r.status === 'rejected' ? (isAuto(r) ? 'مُغلقة كغير مدفوعة' : 'مرفوضة')
+      : (isAuto(r) ? 'مدفوعة آلياً' : 'مدقَّقة ومفعَّلة')) + suf;
+  }
+
   function paintRows() {
     if (!view.length) {
       var filtered = !!state.search || state.filter !== 'all';
@@ -340,57 +809,46 @@
 
     tbody.innerHTML = view.map(function (r) {
       var acc = r.accounts || {};
-      var money = (r.amount | 0) > 0 ? amt(r.amount) + ' ل.س' : '—';
+      var money0 = (r.amount | 0) > 0 ? amt(r.amount) + ' ل.س' : '—';
       var name = acc.name
         ? '<a class="link" href="admin-user-detail.html?id=' + A.esc(r.account_id) + '">' +
             A.esc(acc.name) + '</a>'
         : '<a class="link" href="admin-user-detail.html?id=' + A.esc(r.account_id) + '">حساب محذوف أو غير متاح</a>';
+      var auto = isAuto(r);
       return '<tr data-id="' + A.esc(r.id) + '">' +
-        '<td class="wrap">' + name +
+        '<td class="pay-w">' + name +
           (acc.exempt ? '<span class="adm-sub">الحساب معفى من الرسوم</span>' : '') + '</td>' +
-        '<td>' + A.esc(acc.branch || '—') + '</td>' +
-        '<td class="num adm-mono" dir="ltr" style="text-align:start">' + A.esc(r.op_no) +
+        '<td class="pay-m-hide">' + A.esc(acc.branch || '—') + '</td>' +
+        '<td class="num adm-mono adm-cell-stack" dir="ltr" style="text-align:start">' + A.esc(r.op_no) +
           /* أرقام البوابة تحت رقم العملية لا في عمودين إضافيين: بهما
              يطابق الموظف الصف مع كشف شام كاش دون أن يتضخّم الجدول */
           refLine('رقم الفاتورة', billNoOf(r)) +
           refLine('عملية شام كاش', tranIdOf(r)) + '</td>' +
-        '<td class="wrap">' + (isAuto(r)
+        '<td>' + (auto
           ? '<span class="tag tag--navy">شام كاش — آلي</span>'
           : '<span class="tag">' + A.esc(chanLabel(r)) + '</span>') + '</td>' +
-        '<td class="num strong">' + money + '</td>' +
-        '<td class="wrap">' + (r.service
-          ? A.esc(SVC[r.service] || r.service) +
-            (r.item_id ? '<span class="adm-sub">' + A.esc(folderNames[r.item_id] || bookTitles[r.item_id] || r.item_id) + '</span>' : '')
+        '<td class="num strong">' + money0 + '</td>' +
+        '<td class="pay-w">' + (r.service
+          ? svcCell(r.service, r.item_id)
           : (r.exempt ? '<span class="tag tag--gold">معفاة</span>' : '—')) + '</td>' +
-        /* الحالة تُسمّى بمصدرها: صفٌّ آلي «بانتظار تأكيد البوابة» لا
-           «قيد التدقيق» — لا شيء ينتظر الموظف فيه، والمسوَّى منه سوّته
-           البوابة لا يدُ أحد */
-        '<td>' + (r.status === 'pending'
-            ? (isAuto(r)
-                ? '<span class="tag tag--gold">بانتظار تأكيد شام كاش</span>'
-                : '<span class="tag tag--gold">قيد التدقيق</span>')
-            : r.status === 'rejected'
-              ? '<span class="tag tag--error">' + (isAuto(r) ? 'مُغلقة كغير مدفوعة' : 'مرفوضة') + '</span>'
-              : (isAuto(r)
-                  ? '<span class="tag tag--success">مدفوعة آلياً</span>' +
-                    '<span class="adm-sub">سوّتها البوابة — بلا تدقيق إداري</span>'
-                  : '<span class="tag tag--success">مدقَّقة ومفعَّلة</span>')) + '</td>' +
-        '<td>' + A.arDateTime(r.paid_at) + '</td>' +
-        /* الصف الآلي لا يدخل طابور التدقيق بزرّ «تدقيق وتفعيل» الأزرق:
-           تسويته بيد البوابة لا بيد الموظف. وبترحيلة ٠٣٠ لا يُخلق صفُّ
-           دفعةٍ آلية إلا مصدَّقاً أصلاً — الفاتورة غير المدفوعة تبقى في
-           sham_bills ولا تظهر هنا — فهذا الفرع حارسٌ لا علاج: لو صار
-           يوماً صفٌّ آلي معلّقاً (تدخّلٌ يدوي في القاعدة) وجب ألّا يُعرض
-           كأنه ينتظر تدقيقاً عادياً، بل بمخرجٍ استثنائي موسومٍ باسمه. */
+        '<td class="pay-st">' + statusCell(r) + '</td>' +
+        '<td class="pay-dt">' + A.arDateTime(r.paid_at) + '</td>' +
+        /* الصف الآلي لا يدخل طابور التدقيق بزرّ «تدقيق وتفعيل» الأزرق ولا
+           يُحذف: سجلٌّ مالي لمبلغ وصل فعلاً (admin_delete_payment في ٠٣٧
+           يرفض حذفه أيضاً). المخرجان الوحيدان: منحٌ يدوي لمدفوعةٍ تعذّر
+           منحها، أو استرداد المبلغ لصاحبه. */
         '<td class="adm-actions">' +
-          (r.status === 'pending'
-            ? (isAuto(r)
-                ? '<span class="adm-sub">تُسوَّى تلقائياً عند تأكيد البوابة</span>' +
-                  '<button class="btn btn-outline btn-sm" data-act="ok" data-write>تفعيل يدوي استثنائي</button>' +
-                  '<button class="btn btn-outline btn-sm" data-act="no" data-write>إغلاق كغير مدفوعة</button>'
-                : '<button class="btn btn-primary btn-sm" data-act="ok" data-write>تدقيق وتفعيل</button>' +
-                  '<button class="btn btn-outline btn-sm" data-act="no" data-write>رفض</button>')
-            : '<button class="btn btn-outline btn-sm" data-act="del" data-write>حذف</button>') +
+          (auto
+            ? (r.status === 'pending'
+                ? '<button class="btn btn-primary btn-sm" data-act="ok" data-write>منح يدوي</button>' +
+                  '<button class="btn btn-outline btn-sm" data-act="refund" data-write>استرداد…</button>'
+                : r.status === 'verified' && refundOf(r) !== 'full'
+                  ? '<button class="btn btn-outline btn-sm" data-act="refund" data-write>استرداد…</button>'
+                  : '<span class="adm-sub">سجلّ مالي — لا يُحذف</span>')
+            : (r.status === 'pending'
+                ? '<button class="btn btn-primary btn-sm" data-act="ok" data-write>تدقيق وتفعيل</button>' +
+                  '<button class="btn btn-outline btn-sm" data-act="no" data-write>رفض</button>'
+                : '<button class="btn btn-outline btn-sm" data-act="del" data-write>حذف</button>')) +
         '</td>' +
       '</tr>';
     }).join('');
@@ -402,41 +860,37 @@
     /* اسم المجلد أو البند (كتاب/استمارة/درس) في نص التأكيد: المدير يوافق
        على مال حقيقي — يجب أن يرى أي بند وأي خطة سيمنحها قبل الضغط */
     var what = (r.service ? (SVC[r.service] || r.service) : 'دفعة بلا خدمة محددة')
-      + (r.item_id ? ' — «' + (folderNames[r.item_id] || bookTitles[r.item_id] || r.item_id) + '»' : '');
-    /* نصّ التأكيد يتبع القناة: الصف الآلي ليس «رقم عملية يدوي يُطابَق»،
-       وتفعيله بيدٍ تجاوزٌ لتأكيد البوابة — يجب أن يقرأ الموظف ذلك صراحةً
-       قبل أن يضغط، لا أن يُسأل سؤال المسار اليدوي نفسه. */
+      + (r.item_id ? ' — «' + itemName(r.item_id) + '»' : '');
+    /* نصّ التأكيد يتبع القناة: الصف الآلي ليس «رقم عملية يدوي يُطابَق»، بل
+       مبلغٌ أكّدت البوابة وصوله وتعذّر منح استحقاقه آلياً */
     var auto = isAuto(r);
     var gref = billNoOf(r) ? 'فاتورة ' + billNoOf(r) : 'الفاتورة ' + r.op_no;
     if (tranIdOf(r)) { gref += ' · عملية ' + tranIdOf(r); }
     A.confirm({
       title: approve
-        ? (auto ? 'تفعيل يدوي استثنائي' : 'تدقيق وتفعيل الدفعة')
-        : (auto ? 'إغلاق الفاتورة كغير مدفوعة' : 'رفض الدفعة'),
+        ? (auto ? 'منح يدوي لدفعة آلية' : 'تدقيق وتفعيل الدفعة')
+        : 'رفض الدفعة',
       okLabel: approve
-        ? (auto ? 'تفعيل استثنائي' : 'تدقيق وتفعيل')
-        : (auto ? 'إغلاق كغير مدفوعة' : 'رفض الدفعة'),
+        ? (auto ? 'منح الاستحقاق' : 'تدقيق وتفعيل')
+        : 'رفض الدفعة',
       text: approve
         ? (auto
-            ? 'هذه دفعة آلية عبر بوابة شام كاش تُسوَّى بتأكيد البوابة لا بيدك (' + gref + '). ' +
-              'لا تفعّلها يدوياً إلا إن تأكدت من وصول المبلغ فعلاً في حساب النقابة لدى شام كاش ' +
-              'وتعذّر وصول التأكيد. بالموافقة يُمنح «' + who + '» استحقاق: ' + what + ' فوراً، ' +
-              'ويُسجَّل التجاوز في سجل التدقيق باسمك.'
+            ? 'هذه دفعة آلية أكّدت بوابة شام كاش وصول مبلغها (' + gref + ')، لكن منح الاستحقاق ' +
+              'تعذّر آلياً — غالباً لأن البند حُذف أو عُطّل بعد فتح الفاتورة. بالموافقة يُمنح «' + who +
+              '» استحقاق: ' + what + ' فوراً، ويُسجَّل القرار في سجل التدقيق باسمك. ' +
+              'إن لم يعد البند متاحاً فالاسترداد هو المخرج الصحيح لا المنح.'
             : 'تأكدت من رقم العملية ' + r.op_no + ' في حساب شام كاش؟ بالموافقة يُمنح «' + who +
               '» استحقاق: ' + what + ' — فوراً وتلقائياً، ويظهر في حسابه.')
-        : (auto
-            ? 'ستُغلق فاتورة «' + who + '» الآلية (' + gref + ') كغير مدفوعة ولن يُمنح أي استحقاق. ' +
-              'تحقق أولاً من عدم وصول المبلغ في حساب النقابة لدى شام كاش. ' +
-              'الإغلاق يُسجَّل في سجل التدقيق باسمك.'
-            : 'سترُفض دفعة «' + who + '» رقم ' + r.op_no + ' ولن يُمنح أي استحقاق. ' +
-              'الرفض يُسجَّل في سجل التدقيق باسمك.')
+        : 'سترُفض دفعة «' + who + '» رقم ' + r.op_no + ' ولن يُمنح أي استحقاق. ' +
+          'الرفض يُسجَّل في سجل التدقيق باسمك.'
     }).then(function (ok) {
       if (ok === null || ok === false) return;
       API.admin.verifyPayment(r.id, approve).then(function () {
         A.toast(approve
-          ? (auto ? 'فُعّل الاستحقاق يدوياً استثناءً.' : 'دُقّقت الدفعة وفُعّل الاستحقاق.')
-          : (auto ? 'أُغلقت الفاتورة كغير مدفوعة.' : 'رُفضت الدفعة.'), 'ok');
+          ? (auto ? 'مُنح الاستحقاق يدوياً.' : 'دُقّقت الدفعة وفُعّل الاستحقاق.')
+          : 'رُفضت الدفعة.', 'ok');
         loadRows(); loadKpis();
+        if (loaded.bills) { loadBills(); }
       }).catch(function (err) { A.toast(A.errText(err), 'bad'); });
     });
   }
@@ -444,17 +898,19 @@
   /* ---------------------------------------------------------------- الحذف */
   function onRowClick(e) {
     var act = e.target.closest('[data-act]');
-    if (act && act.getAttribute('data-act') !== 'del') {
-      var id0 = act.closest('tr').getAttribute('data-id');
-      var r0 = rows.filter(function (x) { return String(x.id) === id0; })[0];
-      if (r0) { decide(r0, act.getAttribute('data-act') === 'ok'); }
-      return;
-    }
-    var btn = e.target.closest('[data-act="del"]');
-    if (!btn) return;
-    var id = btn.closest('tr').getAttribute('data-id');
+    if (!act) return;
+    var id = act.closest('tr').getAttribute('data-id');
     var r = rows.filter(function (x) { return String(x.id) === id; })[0];
     if (!r) return;
+    var kind = act.getAttribute('data-act');
+    if (kind === 'ok' || kind === 'no') { decide(r, kind === 'ok'); return; }
+    if (kind === 'refund') { refundFromPayment(r); return; }
+    if (kind !== 'del') return;
+    /* حارس واجهة فوق حارس القاعدة: الدفعة الآلية لا تُحذف */
+    if (isAuto(r)) {
+      A.toast('الدفعات الآلية سجلّ مالي لا يُحذف — استعمل الاسترداد.', 'bad');
+      return;
+    }
     var who = (r.accounts && r.accounts.name) || 'حساب غير متاح';
 
     A.confirm({
@@ -469,6 +925,20 @@
         A.toast('حُذفت الدفعة ' + r.op_no + '.', 'ok');
         loadRows(); loadKpis();
       }).catch(function (err) { A.toast(A.errText(err), 'bad'); });
+    });
+  }
+
+  /* الاسترداد من صفّ الدفعة: النافذة تحتاج صفّ الفاتورة نفسه (المتبقي
+     والاسترداد الجاري) — يُجلب بالرقم من دفتر الفواتير لحظة الضغط */
+  function refundFromPayment(r) {
+    var bn = billNoOf(r);
+    if (!bn) { A.toast('لا رقم فاتورة لهذه الدفعة.', 'bad'); return; }
+    API.admin.shamBills({ q: bn, limit: 5, offset: 0 }).then(function (d) {
+      var b = ((d && d.rows) || []).filter(function (x) { return x.bill_no === bn; })[0];
+      if (!b) { throw new Error('الفاتورة ' + bn + ' غير موجودة في دفتر شام كاش.'); }
+      openRefund(b);
+    }).catch(function (e) {
+      A.toast(missingFn(e) ? 'الاسترداد يحتاج ترحيلتي ٠٣٧ و٠٣٨ — لم تُطبَّقا بعد.' : A.errText(e), 'bad');
     });
   }
 
@@ -526,7 +996,7 @@
         var opNo = host.querySelector('#pOp').value
           .replace(/[٠-٩]/g, function (d) { return String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)); })
           .replace(/[۰-۹]/g, function (d) { return String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); })
-          .replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '')
+          .replace(/[‎‏‪-‮⁦-⁩]/g, '')
           .trim();
         /* توحيد مع قالب دفعات الأعضاء (ترحيل 011): رقم شامي — بفواصل أو
            بسابقة SC أو دونهما — يُخزَّن SC-<الأرقام>، فيصطدم المكرَّر بقيد
@@ -541,19 +1011,19 @@
 
         if (!accId) { return Promise.reject(new Error('اختر الحساب أولاً.')); }
         if (!opNo) { return Promise.reject(new Error('أدخل رقم العملية.')); }
-        var money = 0;
+        var money1 = 0;
         if (!exempt) {
           if (!/^\d{1,9}$/.test(raw)) {
             return Promise.reject(new Error('المبلغ يجب أن يكون عدداً صحيحاً بالليرة، صفراً فما فوق.'));
           }
-          money = parseInt(raw, 10);
+          money1 = parseInt(raw, 10);
         }
 
         /* دالة الإدارة لا دالة الأعضاء: نص حر بلا قالب SC-، تملأ created_by،
            تحترم الإعفاء وتسجّل في التدقيق — كانت موصولة خطأً بدالة الأعضاء
            الصارمة فرُفض كل رقم فعلي حتى الاقتراح المولَّد هنا */
         return API.admin.addPayment({
-          account_id: accId, op_no: opNo, amount: money, exempt: exempt
+          account_id: accId, op_no: opNo, amount: money1, exempt: exempt
         }).then(function () {
           A.toast('قُيّدت الدفعة ' + opNo + '.', 'ok');
           loadRows(); loadKpis();
@@ -636,12 +1106,873 @@
         return [acc.name || '', acc.branch || '', r.op_no || '',
                 chanLabel(r), billNoOf(r), tranIdOf(r), r.amount | 0,
                 r.exempt ? 'معفاة' : 'مدفوعة',
-                r.status === 'pending' ? (isAuto(r) ? 'بانتظار تأكيد البوابة' : 'قيد التدقيق')
-                  : r.status === 'rejected' ? (isAuto(r) ? 'مُغلقة كغير مدفوعة' : 'مرفوضة')
-                  : (isAuto(r) ? 'مدفوعة آلياً' : 'مدقَّقة ومفعَّلة'),
+                statusText(r),
                 r.paid_at || ''];
       }));
     A.toast('صُدّر الملف — ' + nPay(view.length) + '.', 'ok');
+  }
+
+  /* ======================================================================
+     فواتير شام كاش (admin_sham_bills — ٠٣٧/٠٣٨)
+     ====================================================================== */
+  /* الحالة المشتقّة من sham_bill_state — جدول §٢ في عقد ٠٣٧ */
+  var BILL_STATE = {
+    pending:         ['بانتظار الدفع',          'tag--gold'],
+    confirming:      ['قيد التأكيد',             'tag--gold'],
+    paid:            ['مدفوعة',                  'tag--success'],
+    grant_failed:    ['مدفوعة — تعذّر المنح',     'tag--error'],
+    partly_refunded: ['مستردّة جزئياً',           'tag--navy'],
+    refunded:        ['مستردّة كلياً',            'tag--navy'],
+    expired:         ['منتهية بلا دفع',           ''],
+    failed:          ['لم تُنشأ لدى شام كاش',     'tag--error']
+  };
+  var RECON = {
+    paid: 'مدفوعة', expired: 'منتهية', still_pending: 'ما تزال معلّقة',
+    refunded: 'مستردّة كلياً', partly_refunded: 'مستردّة جزئياً',
+    not_found: 'غير موجودة لدى شام كاش', conflict: 'تعارض مع حالة المنصة',
+    refund_drift: 'استرداد لدى المزوّد لم يُسجَّل عندنا — حُدّث المبلغ'
+  };
+  function reconLabel(v) {
+    if (!v) { return ''; }
+    if (RECON[v]) { return RECON[v]; }
+    var m = /^error:(.+)$/.exec(String(v));
+    return m ? (m[1] === 'net' ? 'تعذّر الوصول إلى شام كاش' : 'خطأ من شام كاش (' + m[1] + ')') : String(v);
+  }
+  var bst = { q: '', state: 'all', total: 0, limit: PAGE, offset: 0 };
+  var bills = [];
+
+  function loadBills() {
+    var host = $('bRows');
+    host.innerHTML = '<tr><td colspan="6"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    loadNames();
+    var p = { limit: bst.limit, offset: bst.offset };
+    if (bst.state !== 'all') { p.state = bst.state; }
+    if (bst.q) { p.q = bst.q; }
+    API.admin.shamBills(p).then(function (d) {
+      bst.total = (d && d.total) | 0;
+      bills = (d && d.rows) || [];
+      paintBillFilters();
+      $('bTotal').textContent = A.count(bst.total, 'فاتورة واحدة', 'فاتورتان', 'فواتير', 'فاتورة');
+      paintBills();
+      A.pager($('bPager'), bst, function (off) { bst.offset = off; loadBills(); });
+    }).catch(function (e) {
+      $('bTotal').textContent = '—';
+      $('bPager').innerHTML = '';
+      if (missingFn(e)) {
+        $('bFilters').innerHTML = '';
+        host.innerHTML = '<tr><td colspan="6">' + A.emptyState('فواتير شام كاش بانتظار ترحيلة ٠٣٧',
+          'تظهر الفواتير هنا بعد أن يطبّق المشغّل الترحيلة — تبويب «سجل الدفعات» يعمل كما هو.') + '</td></tr>';
+        return;
+      }
+      host.innerHTML = '<tr><td colspan="6">' + A.errorState(A.errText(e), 'bRetry') + '</td></tr>';
+      var r = $('bRetry'); if (r) r.addEventListener('click', loadBills);
+    });
+  }
+
+  function paintBillFilters() {
+    var defs = [['all', 'الكل']].concat(Object.keys(BILL_STATE).map(function (k) {
+      return [k, BILL_STATE[k][0]];
+    }));
+    var host = $('bFilters');
+    host.innerHTML = defs.map(function (d) {
+      return '<button class="adm-chip" data-bf="' + d[0] + '" aria-pressed="' +
+        (bst.state === d[0]) + '">' + A.esc(d[1]) + '</button>';
+    }).join('');
+    host.querySelectorAll('[data-bf]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        bst.state = b.getAttribute('data-bf'); bst.offset = 0; loadBills();
+      });
+    });
+  }
+
+  function billStateCell(b) {
+    var s = BILL_STATE[b.state] || [b.state || '—', ''];
+    var out = '<span class="tag ' + s[1] + '">' + A.esc(s[0]) + '</span>';
+    if (b.state === 'grant_failed') {
+      out += '<span class="adm-sub">يحتاج قرار (منح يدوي أو استرداد)</span>';
+    } else if (b.state === 'failed') {
+      out += '<span class="adm-sub">لم يُقتطع شيء من العضو' +
+        (b.create_code != null ? ' — رمز ' + A.esc(b.create_code) : '') + '</span>' +
+        (b.create_message ? '<span class="pay-err">' + A.esc(b.create_message) + '</span>' : '');
+    } else if (b.state === 'confirming') {
+      out += '<span class="adm-sub">نتيجة الإنشاء غير محسومة — تُسوّى آلياً بعد 12 دقيقة</span>';
+    }
+    if (b.inflight_refund) { out += '<span class="adm-sub"><b>استرداد جارٍ</b> — أكمله من تبويب «الاستردادات»</span>'; }
+    if (b.recon_result) {
+      out += '<span class="adm-sub">آخر تسوية: ' + A.esc(reconLabel(b.recon_result)) +
+        (b.recon_checked_at ? ' · ' + A.arDateTime(b.recon_checked_at) : '') + '</span>';
+    }
+    if ((b.recon_attempts | 0) >= 3 && (b.state === 'pending' || b.state === 'confirming')) {
+      out += '<span class="adm-sub adm-danger">استُنفدت المحاولات الآلية الثلاث — يحتاج حسماً يدوياً</span>';
+    }
+    if (b.last_error && b.state !== 'paid') {
+      out += '<span class="pay-err" dir="auto">' + A.esc(String(b.last_error).slice(0, 200)) + '</span>';
+    }
+    return out;
+  }
+
+  function paintBills() {
+    var host = $('bRows');
+    if (!bills.length) {
+      var filtered = !!bst.q || bst.state !== 'all';
+      host.innerHTML = '<tr><td colspan="6">' + A.emptyState(
+        filtered ? 'لا فواتير مطابقة' : 'لا فواتير بعد',
+        filtered ? 'جرّب توسيع البحث أو إلغاء التصفية.'
+                 : 'تُفتح الفاتورة حين يضغط العضو «ادفع الآن عبر شام كاش» — والمفتاح مطفأ افتراضياً.'
+      ) + '</td></tr>';
+      return;
+    }
+    host.innerHTML = bills.map(function (b) {
+      var refunded = Number(b.refunded_amount) || 0;
+      var acts = '';
+      if (b.can_check_now) {
+        acts += '<button class="btn btn-outline btn-sm" data-bact="check">تحقق الآن</button>';
+      }
+      if (b.state === 'grant_failed' && b.payment_id) {
+        acts += '<button class="btn btn-primary btn-sm" data-bact="grant" data-write>منح يدوي</button>';
+      }
+      if (b.can_refund) {
+        acts += '<button class="btn btn-outline btn-sm" data-bact="refund" data-write>استرداد…</button>';
+      }
+      var noAct = !acts;
+      if (noAct) { acts = '<span class="adm-sub">—</span>'; }
+      /* رقم الدفعة (op_no) لا يُطبع: هو 'SA-' + رقم الفاتورة نفسه، وسطره
+         كان يمدّ الجدول بلا معلومة جديدة. ولحظة الإنشاء تحت الرقم، ولحظة
+         التسوية تحت الحالة — بلا عمود توقيت مستقل يدفع «إجراءات» خارج الشاشة */
+      return '<tr data-bill="' + A.esc(b.bill_no) + '">' +
+        '<td class="num adm-mono" dir="ltr" style="text-align:start">' + A.esc(b.bill_no) +
+          refLine('عملية شام كاش', b.tran_id) +
+          '<span class="adm-sub pay-sub-rtl">' + A.arDateTime(b.created_at) + '</span></td>' +
+        '<td class="pay-w">' + (b.account_id
+          ? '<a class="link" href="admin-user-detail.html?id=' + A.esc(b.account_id) + '">' +
+              A.esc(b.account_name || 'حساب غير متاح') + '</a>'
+          : A.esc(b.account_name || '—')) +
+          (b.member_no ? '<span class="adm-sub">رقم العضوية: ' + A.esc(b.member_no) + '</span>' : '') + '</td>' +
+        '<td class="pay-w">' + svcCell(b.service, b.item_id) + '</td>' +
+        '<td class="num"><span class="strong">' + money(b.amount) + '</span> ل.س' +
+          (refunded > 0 ? '<span class="adm-sub">مستردّ ' + money(refunded) + '</span>' +
+            '<span class="adm-sub">المتبقي ' + money(b.remaining) + '</span>' : '') + '</td>' +
+        '<td class="pay-st">' + billStateCell(b) +
+          (b.settled_at ? '<span class="adm-sub">سُوّيت: ' + A.arDateTime(b.settled_at) + '</span>' : '') + '</td>' +
+        '<td class="adm-actions' + (noAct ? ' pay-noact' : '') + '">' + acts + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function billByNo(no) {
+    return bills.filter(function (b) { return b.bill_no === no; })[0] || null;
+  }
+
+  function onBillClick(e) {
+    var btn = e.target.closest('[data-bact]');
+    if (!btn) return;
+    var b = billByNo(btn.closest('tr').getAttribute('data-bill'));
+    if (!b) return;
+    var act = btn.getAttribute('data-bact');
+    if (act === 'check') { checkNow(b, btn); }
+    else if (act === 'refund') { openRefund(b); }
+    else if (act === 'grant') { grantBill(b); }
+  }
+
+  /* «تحقق الآن»: نداء getBillInfo واحد عبر sham-recon — الخادم يحرس العمر
+     (١٠ دقائق) والانشغال (دقيقتان)، والزر يُعطَّل طوال النداء فلا يتكرّر */
+  function checkNow(b, btn) {
+    btn.disabled = true;
+    var t = btn.textContent;
+    btn.textContent = 'جارٍ السؤال…';
+    API.admin.shamCheckNow(b.bill_no).then(function (r) {
+      A.toast((r && r.message) || ('نتيجة التسوية: ' + reconLabel(r && r.recon_result)), 'ok', 6000);
+      loadBills();
+      if (r && (r.recon_result === 'paid' || r.recon_result === 'refund_drift')) {
+        loadKpis();
+        if (loaded.payments) { loadRows(); }
+      }
+    }).catch(function (e) {
+      A.toast(A.errText(e), 'bad');
+      btn.disabled = false;
+      btn.textContent = t;
+    });
+  }
+
+  /* منح يدوي من صفّ الفاتورة: الدفعة نفسها (payment_id) بمسار التدقيق القائم */
+  function grantBill(b) {
+    var what = (SVC[b.service] || b.service) + (b.item_id ? ' — «' + itemName(b.item_id) + '»' : '');
+    A.confirm({
+      title: 'منح يدوي لدفعة آلية',
+      okLabel: 'منح الاستحقاق',
+      text: 'أكّدت شام كاش دفع الفاتورة ' + b.bill_no + ' (' + money(b.amount) + ' ل.س) وتعذّر منح ' +
+            'استحقاقها آلياً — غالباً لأن البند حُذف أو عُطّل. بالموافقة يُمنح «' +
+            (b.account_name || 'الحساب') + '» استحقاق: ' + what + ' فوراً، ويُسجَّل القرار باسمك. ' +
+            'إن لم يعد البند متاحاً فالاسترداد هو المخرج الصحيح لا المنح.'
+    }).then(function (ok) {
+      if (ok === null || ok === false) return;
+      API.admin.verifyPayment(b.payment_id, true).then(function () {
+        A.toast('مُنح الاستحقاق يدوياً.', 'ok');
+        loadBills(); loadKpis();
+        if (loaded.payments) { loadRows(); }
+      }).catch(function (err) { A.toast(A.errText(err), 'bad'); });
+    });
+  }
+
+  /* ======================================================================
+     نافذة الاسترداد (sham-refund — ٠٣٨)
+     ----------------------------------------------------------------------
+     مفتاح التماثل يُولَّد عند فتح النافذة ويُعاد إرساله في كل ضغطة وكل إعادة
+     حتى تُغلق بنجاح: الدالة تحفظه في sham_refunds قبل أي نداء لشام كاش،
+     وشام كاش لا يكرّر استرداداً نجح بالمفتاح نفسه. وبعد أول إرسال يُقفل
+     المبلغ وخيار السحب — المفتاح نفسه بمبلغ آخر طلبٌ آخر ترفضه القاعدة.
+     سحب الاستحقاق غير مختار افتراضياً حتى تقرّر النقابة سياستها.
+     ====================================================================== */
+  function parseAmount(s) {
+    var v = String(s == null ? '' : s)
+      .replace(/[٠-٩]/g, function (d) { return String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)); })
+      .replace(/[۰-۹]/g, function (d) { return String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); })
+      .replace(/[,،٬\s]/g, '').replace(/٫/g, '.');
+    if (!/^\d{1,12}(\.\d{1,2})?$/.test(v)) { return null; }
+    return Math.round(parseFloat(v) * 100) / 100;
+  }
+
+  function openRefund(b) {
+    if (!b.can_refund) {
+      A.toast(b.inflight_refund
+        ? 'استرداد آخر جارٍ على هذه الفاتورة — أكمله من تبويب «الاستردادات» أولاً.'
+        : 'لا رصيد قابلاً للاسترداد في هذه الفاتورة.', 'bad');
+      return;
+    }
+    var key = API.admin.newIdempotencyKey();
+    var remaining = Number(b.remaining) || 0;
+    var sent = false;        /* أُرسل المفتاح مرة على الأقل — المبلغ والسحب مقفلان */
+    var reviewed = false;    /* الخطوة الثانية: ملخّص قبل الإرسال الفعلي */
+    var busy = false;
+    var what = (SVC[b.service] || b.service || '—') + (b.item_id ? ' — «' + itemName(b.item_id) + '»' : '');
+
+    var s = A.sheet({
+      title: 'استرداد من فاتورة شام كاش',
+      okLabel: 'مراجعة الاسترداد',
+      body:
+        '<dl class="rf-sum">' +
+          '<dt>الفاتورة</dt><dd class="adm-mono" dir="ltr" style="text-align:start">' + A.esc(b.bill_no) + '</dd>' +
+          '<dt>الحساب</dt><dd>' + A.esc(b.account_name || '—') +
+            (b.member_no ? ' — ' + A.esc(b.member_no) : '') + '</dd>' +
+          '<dt>الخدمة</dt><dd>' + A.esc(what) + '</dd>' +
+          '<dt>المدفوع</dt><dd>' + money(b.amount) + ' ل.س</dd>' +
+          '<dt>المستردّ سابقاً</dt><dd>' + money(b.refunded_amount) + ' ل.س</dd>' +
+          '<dt>المتبقي القابل للاسترداد</dt><dd>' + money(remaining) + ' ل.س</dd>' +
+        '</dl>' +
+        '<div class="field"><label for="rfAmount">مبلغ الاسترداد (ل.س)</label>' +
+          '<input class="input" id="rfAmount" dir="ltr" inputmode="decimal" value="' + A.esc(String(remaining)) + '">' +
+          '<span class="hint">من 0.01 حتى المتبقي (' + money(remaining) + ') — الاسترداد الجزئي مقبول، ' +
+            'والعملة عملة الفاتورة نفسها.</span></div>' +
+        '<div class="field"><label for="rfNote">سبب الاسترداد (إلزامي)</label>' +
+          '<textarea class="input" id="rfNote" maxlength="200" ' +
+            'placeholder="مثال: البند حُذف بعد الدفع — يُعاد المبلغ للعضو"></textarea>' +
+          '<span class="hint">يُحفظ مع العملية ويُرسل ملاحظةً إلى شام كاش — 200 محرف على الأكثر.</span></div>' +
+        '<div class="field"><label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer">' +
+          '<input class="adm-check" type="checkbox" id="rfRevoke" style="margin-block-start:3px">' +
+          '<span>سحب الاستحقاق الممنوح بهذه الدفعة عند نجاح الاسترداد' +
+            '<span class="adm-sub">غير مختار افتراضياً حتى تقرّر النقابة سياستها. السحب يُنهي ' +
+            'الاشتراك أو المحاولة غير المستهلكة فوراً، ولا يمسّ محاولة استُهلكت.</span></span></label></div>' +
+        '<div class="notice notice--error">' + A.ICONS.info + '<span><strong>مال حقيقي:</strong> ' +
+          'الاسترداد يُرسل المبلغ من حساب النقابة لدى شام كاش إلى حساب العضو، ولا يُتراجع عنه.</span></div>' +
+        '<div class="rf-review" id="rfReview" hidden></div>' +
+        '<div class="notice rf-state" id="rfState" hidden></div>' +
+        '<span class="rf-key">مفتاح العملية: <span id="rfKey">' + A.esc(key) + '</span></span>',
+      onOk: function () { submit(); }
+    });
+    var host = s.el;
+    var okBtn = host.querySelector('[data-ok]');
+    var amtEl = host.querySelector('#rfAmount');
+    var noteEl = host.querySelector('#rfNote');
+    var revEl = host.querySelector('#rfRevoke');
+    var reviewEl = host.querySelector('#rfReview');
+    var stateEl = host.querySelector('#rfState');
+
+    /* أي تعديل قبل الإرسال يعيد النافذة إلى الخطوة الأولى — لا يُرسل ملخّصٌ بائت */
+    function unreview() {
+      if (sent) return;
+      reviewed = false;
+      reviewEl.hidden = true;
+      okBtn.textContent = 'مراجعة الاسترداد';
+      okBtn.className = 'btn btn-primary';
+    }
+    amtEl.addEventListener('input', unreview);
+    noteEl.addEventListener('input', unreview);
+    revEl.addEventListener('change', unreview);
+
+    function showState(msg, kind) {
+      stateEl.hidden = !msg;
+      stateEl.className = 'notice rf-state' + (kind === 'bad' ? ' notice--error' : kind === 'ok' ? ' notice--success' : '');
+      stateEl.innerHTML = msg ? (A.ICONS.info + '<span>' + A.esc(msg) + '</span>') : '';
+    }
+
+    function read() {
+      var a = parseAmount(amtEl.value);
+      var note = noteEl.value.trim();
+      if (a === null || a <= 0) {
+        amtEl.setAttribute('aria-invalid', 'true'); amtEl.focus();
+        throw new Error('المبلغ رقم موجب بخانتين عشريتين على الأكثر.');
+      }
+      if (a > remaining + 1e-9) {
+        amtEl.setAttribute('aria-invalid', 'true'); amtEl.focus();
+        throw new Error('المبلغ يتجاوز المتبقي القابل للاسترداد (' + money(remaining) + ' ل.س).');
+      }
+      amtEl.removeAttribute('aria-invalid');
+      if (!note) {
+        noteEl.setAttribute('aria-invalid', 'true'); noteEl.focus();
+        throw new Error('اكتب سبب الاسترداد — يُحفظ مع العملية.');
+      }
+      noteEl.removeAttribute('aria-invalid');
+      return { amount: a, note: note.slice(0, 200), revoke: !!revEl.checked };
+    }
+
+    function submit() {
+      if (busy) return;
+      var v;
+      try { v = read(); } catch (e) { A.toast(e.message, 'bad'); return; }
+      if (!reviewed && !sent) {
+        reviewed = true;
+        reviewEl.hidden = false;
+        reviewEl.innerHTML = 'سيُستردّ <b>' + money(v.amount) + ' ل.س</b> من الفاتورة <b dir="ltr">' +
+          A.esc(b.bill_no) + '</b> إلى حساب شام كاش لـ«' + A.esc(b.account_name || 'العضو') + '». ' +
+          (v.revoke ? '<b>ويُسحب الاستحقاق</b> عند النجاح.' : 'ولا يُسحب الاستحقاق.') +
+          ' اضغط «تأكيد الإرسال» للمتابعة.';
+        okBtn.textContent = 'تأكيد الإرسال — ' + money(v.amount) + ' ل.س';
+        okBtn.className = 'btn btn-danger';
+        if (reviewEl.scrollIntoView) { reviewEl.scrollIntoView({ block: 'nearest' }); }
+        return;
+      }
+      busy = true;
+      sent = true;
+      amtEl.disabled = true;
+      revEl.disabled = true;
+      okBtn.disabled = true;
+      okBtn.textContent = 'جارٍ الإرسال…';
+      showState('', '');
+      API.admin.shamRefund({
+        bill_no: b.bill_no, amount: v.amount, note: v.note,
+        idempotency_key: key, revoke: v.revoke
+      }).then(function (r) {
+        var rf = (r && r.refund) || {};
+        A.toast('نجح الاسترداد: ' + money(rf.amount != null ? rf.amount : v.amount) + ' ل.س' +
+          (rf.tran_id ? ' — عملية ' + rf.tran_id : '') +
+          (rf.revoked_count ? ' — سُحب ' + A.toAr(rf.revoked_count) + ' استحقاق' : '') + '.', 'ok', 6000);
+        s.close();
+        afterRefund();
+      }).catch(function (e) {
+        busy = false;
+        okBtn.disabled = false;
+        okBtn.className = 'btn btn-primary';
+        okBtn.textContent = 'إعادة المحاولة بالمفتاح نفسه';
+        reviewEl.hidden = true;
+        var msg = A.errText(e);
+        if (e && (e.reason === 'unknown' || e.reason === 'network' || e.status === 504)) {
+          showState(msg + ' الإعادة بالمفتاح نفسه آمنة: إن كان الاسترداد قد نجح لن يتكرّر.', 'bad');
+        } else if (e && e.reason === 'failed') {
+          showState('رفضت شام كاش الاسترداد' + (e.code ? ' (رمز ' + e.code + ')' : '') + ': ' + msg +
+            ' — يمكن الإعادة بالمفتاح نفسه بعد معالجة السبب.', 'bad');
+        } else {
+          showState(msg, 'bad');
+        }
+        /* حالة الفاتورة والسجل تغيّرا غالباً (صفّ استرداد محفوظ) — تُحدَّث في الخلفية */
+        if (loaded.refunds) { loadRefunds(); }
+      });
+    }
+  }
+
+  function afterRefund() {
+    loadKpis();
+    if (loaded.bills) { loadBills(); }
+    if (loaded.refunds) { loadRefunds(); }
+    if (loaded.payments) { shamInfo = {}; loadRows(); }
+  }
+
+  /* ======================================================================
+     سجل الإشعارات (admin_sham_webhook_events — ٠٣٧)
+     ====================================================================== */
+  /* [التسمية، صنف الوسم] — 503 «إعادة مطلوبة» مقصودة: شام كاش يعيد الإرسال */
+  var OUTCOME = {
+    settled:        ['سُوّيت',                         'tag--success'],
+    duplicate:      ['مكرَّر — سُوّي سابقاً',           ''],
+    ignored:        ['أُهمل — خارج الترتيب',            ''],
+    unknown_bill:   ['فاتورة مجهولة',                   'tag--error'],
+    bad_status:     ['حالة غير مقبولة',                 'tag--error'],
+    bad_json:       ['ليس JSON',                        'tag--error'],
+    no_encdata:     ['بلا encData',                     'tag--error'],
+    decrypt_failed: ['فشل فكّ التشفير',                 'tag--error'],
+    bad_payload:    ['حمولة غير صالحة',                 'tag--error'],
+    bad_claims:     ['iat/exp مفقودان',                 'tag--error'],
+    bad_iat:        ['iat في المستقبل',                 'tag--error'],
+    bad_fields:     ['حقول غير صالحة',                  'tag--error'],
+    expired_retry:  ['رمز منتهٍ — طُلبت الإعادة',        'tag--gold'],
+    settle_error:   ['خطأ تسوية — طُلبت الإعادة',        'tag--gold']
+  };
+  var IN_STATUS = { 1: 'معلّقة', 2: 'مستردّة كلياً', 3: 'انتهت', 4: 'دُفعت', 5: 'مستردّة جزئياً' };
+  var est = { bill: '', outcome: '', total: 0, limit: PAGE, offset: 0 };
+
+  function loadEvents() {
+    var host = $('eRows');
+    host.innerHTML = '<tr><td colspan="7"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    var p = { limit: est.limit, offset: est.offset };
+    if (est.bill) { p.bill_no = est.bill; }
+    if (est.outcome) { p.outcome = est.outcome; }
+    API.admin.shamWebhookEvents(p).then(function (d) {
+      est.total = (d && d.total) | 0;
+      var list = (d && d.rows) || [];
+      $('eTotal').textContent = A.count(est.total, 'إشعار واحد', 'إشعاران', 'إشعارات', 'إشعاراً');
+      A.pager($('ePager'), est, function (off) { est.offset = off; loadEvents(); });
+      if (!list.length) {
+        host.innerHTML = '<tr><td colspan="7">' + A.emptyState(
+          (est.bill || est.outcome) ? 'لا إشعارات مطابقة' : 'لم يصل أي إشعار بعد',
+          (est.bill || est.outcome) ? 'جرّب إلغاء التصفية.'
+            : 'يُسجَّل هنا كل إشعار ترسله شام كاش إلى دالة sham-hook بعد تفعيل الدفع.') + '</td></tr>';
+        return;
+      }
+      host.innerHTML = list.map(function (ev) {
+        var o = OUTCOME[ev.outcome] || [ev.outcome || '—', ''];
+        var http = ev.http_status | 0;
+        return '<tr>' +
+          '<td>' + A.arDateTime(ev.received_at) + '</td>' +
+          '<td class="num adm-mono adm-cell-stack" dir="ltr" style="text-align:start">' + A.esc(ev.bill_no || '—') + '</td>' +
+          '<td><span class="tag ' + o[1] + '">' + A.esc(o[0]) + '</span></td>' +
+          '<td class="num"><span class="tag' + (http === 200 ? '' : ' tag--gold') + '">' + A.esc(http || '—') + '</span>' +
+            (http === 503 ? '<span class="adm-sub">طُلب من شام كاش الإعادة</span>' : '') + '</td>' +
+          '<td>' + (ev.status_id != null ? A.esc(IN_STATUS[ev.status_id] || ev.status_id) : '—') + '</td>' +
+          '<td class="num adm-mono" dir="ltr" style="text-align:start">' + A.esc(ev.tran_id || '—') + '</td>' +
+          '<td class="pay-st">' + (ev.error ? '<span class="pay-err" dir="auto">' + A.esc(ev.error) + '</span>' : '—') + '</td>' +
+        '</tr>';
+      }).join('');
+    }).catch(function (e) {
+      $('eTotal').textContent = '—';
+      $('ePager').innerHTML = '';
+      if (missingFn(e)) {
+        host.innerHTML = '<tr><td colspan="7">' + A.emptyState('سجل الإشعارات بانتظار ترحيلة ٠٣٧',
+          'يظهر السجل بعد تطبيق الترحيلة ونشر دالة sham-hook.') + '</td></tr>';
+        return;
+      }
+      host.innerHTML = '<tr><td colspan="7">' + A.errorState(A.errText(e), 'eRetry') + '</td></tr>';
+      var r = $('eRetry'); if (r) r.addEventListener('click', loadEvents);
+    });
+  }
+
+  /* ======================================================================
+     سجل الاستردادات (admin_sham_refunds — ٠٣٨)
+     ====================================================================== */
+  var RF_STATUS = {
+    requested: ['جارٍ',          'tag--gold'],
+    succeeded: ['ناجح',          'tag--success'],
+    failed:    ['رفضته شام كاش', 'tag--error'],
+    unknown:   ['مجهول المصير',  'tag--gold']
+  };
+  /* «جارٍ» منذ أكثر من خمس دقائق = نداء انقطع قبل تسجيل نتيجته: يُعامل
+     معاملة المجهول ويُعاد بالمفتاح نفسه — وإلا بقي يحجز الفاتورة عن أي
+     استرداد جديد (استرداد واحد جارٍ لكل فاتورة) */
+  var STUCK_MS = 5 * 60 * 1000;
+  var rst = { bill: '', status: 'all', total: 0, limit: PAGE, offset: 0 };
+  var refunds = [];
+
+  function retryable(r) {
+    if (r.status === 'failed' || r.status === 'unknown') { return true; }
+    if (r.status !== 'requested') { return false; }
+    var t = Date.parse(r.updated_at || r.created_at || '');
+    return !isNaN(t) && Date.now() - t > STUCK_MS;
+  }
+
+  function loadRefunds() {
+    var host = $('rRows');
+    host.innerHTML = '<tr><td colspan="8"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    var p = { limit: rst.limit, offset: rst.offset };
+    if (rst.bill) { p.bill_no = rst.bill; }
+    if (rst.status !== 'all') { p.status = rst.status; }
+    API.admin.shamRefunds(p).then(function (d) {
+      rst.total = (d && d.total) | 0;
+      refunds = (d && d.rows) || [];
+      paintRefundFilters();
+      $('rTotal').textContent = A.count(rst.total, 'استرداد واحد', 'استردادان', 'استردادات', 'استرداداً');
+      A.pager($('rPager'), rst, function (off) { rst.offset = off; loadRefunds(); });
+      paintRefunds();
+    }).catch(function (e) {
+      $('rTotal').textContent = '—';
+      $('rPager').innerHTML = '';
+      if (missingFn(e)) {
+        $('rFilters').innerHTML = '';
+        host.innerHTML = '<tr><td colspan="8">' + A.emptyState('الاستردادات بانتظار ترحيلة ٠٣٨',
+          'يظهر السجل ويُفتح الاسترداد بعد تطبيق الترحيلة ونشر دالة sham-refund.') + '</td></tr>';
+        return;
+      }
+      host.innerHTML = '<tr><td colspan="8">' + A.errorState(A.errText(e), 'rRetry') + '</td></tr>';
+      var r = $('rRetry'); if (r) r.addEventListener('click', loadRefunds);
+    });
+  }
+
+  function paintRefundFilters() {
+    var defs = [['all', 'الكل']].concat(Object.keys(RF_STATUS).map(function (k) { return [k, RF_STATUS[k][0]]; }));
+    var host = $('rFilters');
+    host.innerHTML = defs.map(function (d) {
+      return '<button class="adm-chip" data-rf="' + d[0] + '" aria-pressed="' +
+        (rst.status === d[0]) + '">' + A.esc(d[1]) + '</button>';
+    }).join('');
+    host.querySelectorAll('[data-rf]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        rst.status = b.getAttribute('data-rf'); rst.offset = 0; loadRefunds();
+      });
+    });
+  }
+
+  function paintRefunds() {
+    var host = $('rRows');
+    if (!refunds.length) {
+      var filtered = !!rst.bill || rst.status !== 'all';
+      host.innerHTML = '<tr><td colspan="8">' + A.emptyState(
+        filtered ? 'لا استردادات مطابقة' : 'لا استردادات بعد',
+        filtered ? 'جرّب إلغاء التصفية.' : 'كل استرداد يُطلب من اللوحة يظهر هنا بحالته ومفتاحه.') + '</td></tr>';
+      return;
+    }
+    host.innerHTML = refunds.map(function (r) {
+      var st = RF_STATUS[r.status] || [r.status || '—', ''];
+      var stuck = r.status === 'requested' && retryable(r);
+      return '<tr data-rid="' + A.esc(r.id) + '">' +
+        '<td>' + A.arDateTime(r.created_at) +
+          (r.requested_by_name ? '<span class="adm-sub">بطلب: ' + A.esc(r.requested_by_name) + '</span>' : '') +
+          ((r.attempts | 0) > 1 ? '<span class="adm-sub">المحاولات: ' + A.toAr(r.attempts) + '</span>' : '') + '</td>' +
+        '<td class="num adm-mono adm-cell-stack" dir="ltr" style="text-align:start">' + A.esc(r.bill_no) +
+          refLine('عملية الاسترداد', r.tran_id) +
+          '<span class="adm-sub rf-key">' + A.esc(r.idempotency_key) + '</span></td>' +
+        '<td class="pay-w">' + A.esc(r.account_name || '—') +
+          (r.member_no ? '<span class="adm-sub">رقم العضوية: ' + A.esc(r.member_no) + '</span>' : '') + '</td>' +
+        '<td class="num strong">' + money(r.amount) + ' ل.س</td>' +
+        '<td class="pay-st"><span class="tag ' + st[1] + '">' + A.esc(st[0]) + '</span>' +
+          (stuck ? '<span class="adm-sub adm-danger">عالق منذ أكثر من خمس دقائق</span>' : '') +
+          (r.result_code != null && r.status !== 'succeeded'
+            ? '<span class="adm-sub">رمز ' + A.esc(r.result_code) + '</span>' : '') +
+          (r.message && r.status !== 'succeeded' ? '<span class="pay-err" dir="auto">' + A.esc(r.message) + '</span>' : '') +
+          (r.settled_at ? '<span class="adm-sub">نجح: ' + A.arDateTime(r.settled_at) + '</span>' : '') + '</td>' +
+        '<td class="pay-w">' + A.esc(r.note || '—') + '</td>' +
+        '<td>' + (r.revoke
+          ? '<span class="tag tag--gold">يُسحب</span>' +
+            (r.status === 'succeeded' ? '<span class="adm-sub">سُحب: ' + A.toAr(r.revoked_count | 0) + '</span>' : '')
+          : '<span class="adm-sub">لا سحب</span>') + '</td>' +
+        '<td class="adm-actions' + (retryable(r) ? '' : ' pay-noact') + '">' + (retryable(r)
+          ? '<button class="btn btn-outline btn-sm" data-ract="retry" data-write>إعادة بالمفتاح نفسه</button>'
+          : '<span class="adm-sub">—</span>') + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function onRefundClick(e) {
+    var btn = e.target.closest('[data-ract="retry"]');
+    if (!btn) return;
+    var id = btn.closest('tr').getAttribute('data-rid');
+    var r = refunds.filter(function (x) { return String(x.id) === id; })[0];
+    if (!r) return;
+    A.confirm({
+      title: 'إعادة إرسال الاسترداد',
+      okLabel: 'إعادة الإرسال',
+      danger: true,
+      text: 'سيُعاد طلب استرداد ' + money(r.amount) + ' ل.س من الفاتورة ' + r.bill_no +
+            ' بمفتاح العملية نفسه (' + r.idempotency_key + '). إن كان الاسترداد قد نجح لدى شام كاش ' +
+            'فلن يتكرّر — يُسجَّل نجاحه فقط. المبلغ والسبب وخيار السحب كما طُلبت أول مرة.'
+    }).then(function (ok) {
+      if (ok === null || ok === false) return;
+      btn.disabled = true;
+      btn.textContent = 'جارٍ الإرسال…';
+      API.admin.shamRefund({
+        bill_no: r.bill_no, amount: Number(r.amount), note: r.note || null,
+        idempotency_key: r.idempotency_key, revoke: !!r.revoke
+      }).then(function () {
+        A.toast('نجح الاسترداد: ' + money(r.amount) + ' ل.س.', 'ok', 6000);
+        afterRefund();
+        if (!loaded.refunds) { loadRefunds(); }
+      }).catch(function (err) {
+        A.toast(A.errText(err), 'bad', 8000);
+        loadRefunds();
+      });
+    });
+  }
+
+  /* ======================================================================
+     مفتاح الدفع الإلكتروني (admin_platform_settings — ٠٣٧)
+     ----------------------------------------------------------------------
+     إعداد خادمي يقرؤه تطبيق 3.5 عند فتح شاشة الدفع (public_payment_mode)،
+     فيسري بلا إصدار جديد. أعضاء 3.4 لا يقرؤونه ويبقون على سلوكهم.
+     الافتراضي الآمن: مطفأ، والتجربة المجانية مفعّلة — أي سلوك اليوم حرفياً.
+     الحفظ جزئي: المفاتيح التي تغيّرت وحدها تُرسل (admin_set_platform_settings).
+     ====================================================================== */
+  var MODE = {
+    off:     ['مطفأ',            'لا يرى أي عضو الدفع الإلكتروني — سلوك اليوم (الافتراضي الآمن).'],
+    testers: ['للمختبرين فقط',   'الحسابات المدرجة أدناه وحدها ترى «ادفع الآن عبر شام كاش» — لتجربة المال الحقيقي قبل الإطلاق.'],
+    on:      ['مفعّل للجميع',     'كل عضو موافَق عليه يرى الدفع الآلي لخدمات الامتحان والمجلدات والبنود والكتب.']
+  };
+  var MODE_TAG = { off: '', testers: 'tag--gold', on: 'tag--success' };
+  var ACC_ST = { approved: 'موافَق', pending: 'قيد المراجعة', rejected: 'مرفوض' };
+  var MAX_TESTERS = 50;
+  var VERIFY_RX = /^https:\/\/[A-Za-z0-9.-]+(:[0-9]+)?(\/[A-Za-z0-9._~%\/-]*)?$/;
+  var setCur = null, setForm = null;
+
+  function cloneSet(s) {
+    s = s || {};
+    return {
+      mode: MODE[s.mode] ? s.mode : 'off',
+      free_trial: s.free_trial !== false,
+      verify_base: s.verify_base || '',
+      testers: (s.testers || []).map(function (t) {
+        return { id: String(t.id), name: t.name || '', member_no: t.member_no || '', status: t.status || '' };
+      })
+    };
+  }
+  function paintModeBadge(mode) {
+    var n = $('modeN');
+    n.textContent = mode ? MODE[mode][0].replace(' للجميع', '').replace(' فقط', '') : '—';
+    if (mode) { n.setAttribute('data-mode', mode); } else { n.removeAttribute('data-mode'); }
+    /* الشارة تغيّر عرض تبويبها: يُعاد ضبط موضع المختار في الشريط المتمرّر */
+    var on = $('payTabs').querySelector('[aria-selected="true"]');
+    if (on) { revealTab(on); }
+  }
+  /* شارة التبويب تُقرأ عند الإقلاع: المفتاح أهم ما في الصفحة ويجب أن يُرى
+     بلا فتح تبويبه. غياب الدالة (قبل ٠٣٧) يترك الشارة «—» بصمت */
+  function loadModeBadge() {
+    if (!API.admin.platformSettings) { return; }
+    API.admin.platformSettings().then(function (s) {
+      paintModeBadge(cloneSet(s).mode);
+    }).catch(function () { paintModeBadge(null); });
+  }
+
+  function loadSettings() {
+    var host = $('setHost');
+    host.innerHTML = '<div class="adm-state"><p>جارٍ التحميل…</p></div>';
+    API.admin.platformSettings().then(function (s) {
+      setCur = cloneSet(s);
+      setForm = cloneSet(s);
+      paintModeBadge(setCur.mode);
+      paintSettings();
+    }).catch(function (e) {
+      $('setTag').textContent = '—';
+      if (missingFn(e)) {
+        host.innerHTML = A.emptyState('مفتاح الدفع بانتظار ترحيلة ٠٣٧',
+          'حتى تطبيقها يبقى الدفع الإلكتروني مطفأً والتجربة المجانية كما هي — لا شيء يتغيّر للأعضاء.');
+        return;
+      }
+      host.innerHTML = A.errorState(A.errText(e), 'setRetry');
+      var r = $('setRetry'); if (r) r.addEventListener('click', loadSettings);
+    });
+  }
+
+  function setPatch() {
+    var p = {};
+    if (setForm.mode !== setCur.mode) { p.mode = setForm.mode; }
+    if (setForm.free_trial !== setCur.free_trial) { p.free_trial = setForm.free_trial; }
+    var vb = setForm.verify_base.trim();
+    if (vb !== setCur.verify_base) { p.verify_base = vb || null; }
+    var a = setForm.testers.map(function (t) { return t.id; });
+    var b = setCur.testers.map(function (t) { return t.id; });
+    if (a.join(',') !== b.join(',')) { p.testers = a; }
+    return p;
+  }
+
+  function paintSettings() {
+    var host = $('setHost');
+    var tag = $('setTag');
+    tag.textContent = MODE[setCur.mode][0] + (setCur.free_trial ? ' · التجربة المجانية مفعّلة' : ' · التجربة المجانية مطفأة');
+    tag.className = 'tag ' + MODE_TAG[setCur.mode];
+    var dis = canWrite ? '' : ' disabled';
+
+    host.innerHTML =
+      '<div class="set-body">' +
+        '<div class="notice">' + A.ICONS.info + '<span>المفتاح خادمي: يقرؤه تطبيق العضو 3.5 عند فتح شاشة ' +
+          'الدفع فيسري فوراً بلا إصدار جديد. أعضاء الإصدار 3.4 لا يقرؤونه ويبقون على سلوكهم الحالي ' +
+          '(التجربة المجانية). قائمة المختبرين لا تُكشف لأي عضو — كلٌّ يعرف عن نفسه فقط.</span></div>' +
+
+        '<fieldset class="set-modes"' + dis + '><legend>وضع الدفع الآلي عبر شام كاش</legend>' +
+          Object.keys(MODE).map(function (k) {
+            return '<label class="set-mode" data-v="' + k + '"><input type="radio" name="setMode" value="' + k + '"' +
+              (setForm.mode === k ? ' checked' : '') + '><span><b>' + A.esc(MODE[k][0]) + '</b>' +
+              '<small>' + A.esc(MODE[k][1]) + '</small></span></label>';
+          }).join('') +
+        '</fieldset>' +
+
+        '<div class="set-sec"><h3>المختبرون <span class="tag" id="tCount"></span></h3>' +
+          '<span class="adm-sub" style="margin:0">يرون الدفع الآلي في وضع «للمختبرين فقط» وحده، وتُتجاهل ' +
+            'القائمة في الوضعين الآخرين. حتى ' + A.toAr(MAX_TESTERS) + ' حساباً.</span>' +
+          '<div class="set-testers" id="tList"></div>' +
+          (canWrite
+            ? '<div class="field"><label for="tQ">إضافة مختبر</label>' +
+                '<input class="input" id="tQ" type="search" autocomplete="off" ' +
+                  'placeholder="بحث بالاسم أو الرقم النقابي أو رقم العضوية">' +
+                '<ul class="set-results" id="tResults"></ul></div>'
+            : '') +
+        '</div>' +
+
+        '<div class="set-sec"><h3>التجربة المجانية</h3>' +
+          '<label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">' +
+            '<input class="adm-check" type="checkbox" id="setFree" style="margin-block-start:3px"' +
+              (setForm.free_trial ? ' checked' : '') + dis + '>' +
+            '<span><b>التجربة المجانية مفعّلة</b><span class="adm-sub">مفعّلة = سلوك اليوم حرفياً: ' +
+              'أزرار التفعيل المجاني في شاشة الدفع، ولا رسم مطلوب للامتحان والمجلدات.</span></span></label>' +
+          '<div class="set-warn" id="freeWarn"' + (setForm.free_trial ? ' hidden' : '') + '>' +
+            '<b>تحذير:</b> إطفاء التجربة المجانية يغيّر ما يراه كل أعضاء الإصدار 3.5 فوراً — تختفي ' +
+            'أزرار التفعيل المجاني ويصير الامتحان والمجلدات المدفوعة بالرسم. لا تطفئها قبل أن تعمل ' +
+            'قناة دفع فعلاً (التحويل اليدوي المدقَّق أو شام كاش) وقبل إعلان النقابة.</div>' +
+        '</div>' +
+
+        '<div class="set-sec"><h3>رابط التحقق من الشهادات (اختياري)</h3>' +
+          '<div class="field"><label for="setVerify">أصل صفحة التحقق في رموز QR الجديدة</label>' +
+            '<input class="input" id="setVerify" dir="ltr" maxlength="200" placeholder="https://verify.osea.org.sy"' +
+              ' value="' + A.esc(setForm.verify_base) + '"' + dis + '>' +
+            '<span class="hint">فارغ = الرابط المضمَّن في التطبيق. https حصراً — يُستعمل في الشهادات ' +
+              'التي تصدر بعد الحفظ، ولا يمسّ الشهادات الصادرة. القيمة أصل النطاق وحده ' +
+              '(https://verify.osea.org.sy بلا /verify.html) — التطبيق يضيف /verify.html?code= بنفسه. ' +
+              'لا تُضبط إلا بعد رفع verify.osea.org.sy وتجربة رمز شهادة حقيقي عليه.</span></div>' +
+        '</div>' +
+
+        '<div class="set-foot">' +
+          '<span class="adm-sub" id="setDirty" style="margin:0">لا تغييرات غير محفوظة.</span>' +
+          '<span class="spacer"></span>' +
+          '<button class="btn btn-outline btn-sm" id="setUndo" data-write disabled>تراجع</button>' +
+          '<button class="btn btn-primary btn-sm" id="setSave" data-write disabled>حفظ الإعدادات</button>' +
+        '</div>' +
+      '</div>';
+
+    paintTesters();
+    host.querySelectorAll('input[name="setMode"]').forEach(function (r) {
+      r.addEventListener('change', function () { setForm.mode = r.value; paintTesters(); syncDirty(); });
+    });
+    $('setFree').addEventListener('change', function () {
+      setForm.free_trial = this.checked;
+      $('freeWarn').hidden = setForm.free_trial;
+      syncDirty();
+    });
+    $('setVerify').addEventListener('input', function () { setForm.verify_base = this.value; syncDirty(); });
+    $('setUndo').addEventListener('click', function () { setForm = cloneSet(setCur); paintSettings(); });
+    $('setSave').addEventListener('click', saveSettings);
+    $('tList').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-tdel]');
+      if (!b) return;
+      var id = b.getAttribute('data-tdel');
+      setForm.testers = setForm.testers.filter(function (t) { return t.id !== id; });
+      paintTesters(); syncDirty();
+    });
+    if (canWrite) {
+      var found = [];
+      $('tQ').addEventListener('input', A.debounce(function () {
+        var q = $('tQ').value.trim();
+        var res = $('tResults');
+        if (q.length < 2) { res.innerHTML = ''; return; }
+        res.innerHTML = '<li><span class="adm-sub" style="margin:0">جارٍ البحث…</span></li>';
+        API.admin.accounts({ search: q, limit: 8, offset: 0 }).then(function (d) {
+          found = (d && d.rows) || [];
+          if (!found.length) { res.innerHTML = '<li><span class="adm-sub" style="margin:0">لا حساب مطابق.</span></li>'; return; }
+          res.innerHTML = found.map(function (a) {
+            var has = setForm.testers.some(function (t) { return t.id === String(a.id); });
+            var bad = a.status === 'rejected';
+            return '<li><span class="grow">' + A.esc(a.name || '—') +
+              '<span class="adm-sub" style="margin:0">' + A.esc([a.member_no ? 'رقم العضوية ' + a.member_no : '',
+                a.synd_no ? 'النقابي ' + a.synd_no : '', ACC_ST[a.status] || a.status || ''].filter(Boolean).join(' · ')) +
+              '</span></span>' +
+              (has ? '<span class="tag">مُدرج</span>'
+                : bad ? '<span class="tag tag--error">مرفوض — لا يُدرج</span>'
+                : '<button class="btn btn-outline btn-sm" data-tadd="' + A.esc(a.id) + '">إضافة</button>') + '</li>';
+          }).join('');
+        }).catch(function (e) {
+          res.innerHTML = '<li><span class="adm-sub adm-danger" style="margin:0">' + A.esc(A.errText(e)) + '</span></li>';
+        });
+      }, 300));
+      $('tResults').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-tadd]');
+        if (!b) return;
+        var a = found.filter(function (x) { return String(x.id) === b.getAttribute('data-tadd'); })[0];
+        if (!a) return;
+        if (setForm.testers.length >= MAX_TESTERS) {
+          A.toast('بلغت القائمة حدّها (' + A.toAr(MAX_TESTERS) + ' حساباً).', 'bad'); return;
+        }
+        setForm.testers.push({ id: String(a.id), name: a.name || '', member_no: a.member_no || '', status: a.status || '' });
+        b.outerHTML = '<span class="tag">مُدرج</span>';
+        paintTesters(); syncDirty();
+      });
+    }
+    syncDirty();
+  }
+
+  function paintTesters() {
+    var list = $('tList');
+    $('tCount').textContent = A.toAr(setForm.testers.length) + ' من ' + A.toAr(MAX_TESTERS);
+    if (!setForm.testers.length) {
+      list.innerHTML = '<span class="adm-sub" style="margin:0">لا مختبرين' +
+        (setForm.mode === 'testers' ? ' — في هذا الوضع لن يرى أحدٌ الدفع الآلي.' : '.') + '</span>';
+      return;
+    }
+    list.innerHTML = setForm.testers.map(function (t) {
+      return '<div class="set-tester"><span class="grow"><b>' + A.esc(t.name || t.id) + '</b>' +
+        '<span class="adm-sub" style="margin:0">' + A.esc([t.member_no ? 'رقم العضوية ' + t.member_no : '',
+          ACC_ST[t.status] || t.status || ''].filter(Boolean).join(' · ')) + '</span></span>' +
+        (canWrite ? '<button class="btn btn-outline btn-sm" data-tdel="' + A.esc(t.id) + '" data-write>إزالة</button>' : '') +
+        '</div>';
+    }).join('');
+  }
+
+  function syncDirty() {
+    var p = setPatch(), n = Object.keys(p).length;
+    $('setSave').disabled = !n;
+    $('setUndo').disabled = !n;
+    $('setDirty').textContent = n ? 'تغييرات غير محفوظة: ' + A.toAr(n) + '.' : 'لا تغييرات غير محفوظة.';
+  }
+
+  function saveSettings() {
+    var p = setPatch();
+    if (!Object.keys(p).length) { A.toast('لا تغييرات لحفظها.'); return; }
+    if (p.verify_base != null && (p.verify_base.length > 200 || !VERIFY_RX.test(p.verify_base))) {
+      $('setVerify').setAttribute('aria-invalid', 'true');
+      A.toast('رابط التحقق يجب أن يبدأ بـ https:// وبلا معاملات أو مسافات — أو اتركه فارغاً.', 'bad');
+      return;
+    }
+    /* القاعدة لا الصفحة: التطبيق يُلحق /verify.html بنفسه */
+    if (p.verify_base != null && /\.html?\/*$/i.test(p.verify_base)) {
+      $('setVerify').setAttribute('aria-invalid', 'true');
+      A.toast('اكتب قاعدة رابط التحقق بلا اسم الصفحة — مثل https://verify.osea.org.sy (التطبيق يُلحق verify.html بنفسه).', 'bad');
+      return;
+    }
+    $('setVerify').removeAttribute('aria-invalid');
+
+    /* تأكيد صريح قبل قرارين يغيّران ما يراه الأعضاء: فتح الدفع للجميع،
+       وإطفاء التجربة المجانية. أي إلغاء في الطريق يوقف الحفظ كله */
+    var chain = Promise.resolve(true);
+    if (p.mode === 'on') {
+      chain = chain.then(function (go) {
+        if (!go) return false;
+        return A.confirm({
+          title: 'تفعيل الدفع الإلكتروني للجميع؟', danger: true, okLabel: 'تفعيل للجميع',
+          text: 'من لحظة الحفظ يرى كل عضو موافَق عليه في الإصدار 3.5 زرّ «ادفع الآن عبر شام كاش» لخدمات ' +
+                'الامتحان والمجلدات والبنود والكتب، وتُقتطع المبالغ فعلاً من حسابات الأعضاء لدى شام كاش. ' +
+                'تأكد أن جولة المختبرين نجحت، وأن الأسرار ودوال الحافّة والتسوية الآلية تعمل.'
+        }).then(function (v) { return v !== null && v !== false; });
+      });
+    }
+    if (p.free_trial === false) {
+      chain = chain.then(function (go) {
+        if (!go) return false;
+        return A.confirm({
+          title: 'إطفاء التجربة المجانية؟', danger: true, okLabel: 'إطفاء التجربة المجانية',
+          text: 'تحذير: يختفي التفعيل المجاني من شاشة الدفع لكل أعضاء الإصدار 3.5 فوراً، ويصير الامتحان ' +
+                'والمجلدات المدفوعة بالرسم. أعضاء 3.4 لا يتأثرون حتى يحدّثوا. لا تتابع إلا بقرار النقابة ' +
+                'وبقناة دفع عاملة.'
+        }).then(function (v) { return v !== null && v !== false; });
+      });
+    }
+    chain.then(function (go) {
+      if (!go) return;
+      var btn = $('setSave');
+      btn.disabled = true;
+      btn.textContent = 'جارٍ الحفظ…';
+      API.admin.setPlatformSettings(p).then(function (s) {
+        setCur = cloneSet(s);
+        setForm = cloneSet(s);
+        paintModeBadge(setCur.mode);
+        paintSettings();
+        A.toast('حُفظت إعدادات الدفع — ' + MODE[setCur.mode][0] + '.', 'ok');
+      }).catch(function (e) {
+        A.toast(A.errText(e), 'bad', 8000);
+        btn.textContent = 'حفظ الإعدادات';
+        syncDirty();
+      });
+    });
   }
 })();
 </script>

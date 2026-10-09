@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سجل الشهادات — لوحة الإدارة | نقابة المهندسين السوريين</title>
+<meta name="theme-color" content="#001f47">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/logo-mark-96.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/identity.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<style>
+/* أنماط الصفحة — بتوكنات الهوية حصراً */
+@media (min-width:721px){ .adm-kpis{grid-template-columns:repeat(3,1fr)} }
+
+.crt-tools{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.crt-tools .input{flex:0 1 180px;min-height:38px;font-size:13.5px;padding-inline:12px}
+.crt-range{display:inline-flex;align-items:center;gap:8px;
+  font-size:13px;font-weight:600;color:var(--text-secondary)}
+.crt-range .input{flex:0 1 160px;width:160px}
+.crt-clear{font-size:13px;font-weight:700;color:var(--navy-700);text-decoration:underline;
+  text-underline-offset:3px;text-decoration-color:var(--gold-600);min-height:38px;padding-inline:4px}
+
+.crt-code{direction:ltr;unicode-bidi:isolate;letter-spacing:.3px}
+.crt-acts{display:flex;gap:6px;align-items:center}
+.crt-acts .btn{white-space:nowrap}
+.crt-m-only{display:none}
+
+/* من 721: الاسم وسبب السحب يلتفّان بعرض محدود، فيتّسع الجدول لشاشة 1280 بلا تمرير
+   أفقي، وعلى اللوحيّ يبقى عمود الإجراءات الملتصق أضيق ما يمكن */
+@media (min-width:721px){
+  .adm-table td.crt-name{min-width:160px;max-width:240px}
+  .adm-table td.crt-st{white-space:normal;min-width:110px;max-width:190px}
+}
+@media (min-width:721px) and (max-width:1280px){
+  .crt-table th,.crt-table td{padding-inline:10px}
+}
+
+/* رأس النسخة المطبوعة — لا يظهر على الشاشة */
+.crt-print-head{display:none}
+@page{size:A4 landscape;margin:12mm}
+
+/* الهاتف: رقم الشهادة عنوان البطاقة، والنوع وسمٌ بجوار الدرجة بدل سطرٍ مستقل */
+@media (max-width:720px){
+  .crt-tools .input,.crt-range{flex:1 1 100%}
+  .crt-tools .input{min-height:44px}
+  .crt-range{display:grid;grid-template-columns:auto 1fr;gap:8px 10px}
+  .crt-range .input{width:100%}
+  .crt-clear{min-height:44px}
+  .adm-table td.crt-m-hide{display:none !important}
+  .crt-m-only{display:inline}
+  .adm-table td.adm-cell-title .crt-code{letter-spacing:.2px}
+}
+
+@media print{
+  .statebar,.masthead,.navbar,.breadcrumb,.page-head,.adm-bar,.adm-pager,.adm-toasts,
+  .adm-table .acts,#retry{display:none !important}
+  body{background:var(--surface)}
+  .crt-print-head{display:flex;align-items:center;gap:16px;padding-bottom:14px;margin-bottom:18px;
+    border-bottom:3px solid var(--gold-400)}
+  .crt-print-head img{width:56px;height:56px}
+  .crt-print-head b{font-size:17px}
+  .crt-print-head small{display:block;margin-top:4px;color:var(--text-secondary)}
+  .adm-kpi,.adm-table-card{box-shadow:none !important}
+  .adm-scroll{overflow:visible}
+  .adm-table{font-size:11.5px}
+  .adm-table th,.adm-table td{padding:7px 8px;white-space:normal}
+  .adm-table th{position:static}
+  .adm-table .adm-mono{overflow-wrap:normal}
+  .adm-table .crt-code{white-space:nowrap}
+  .adm-table td.wrap{min-width:0}
+  .adm-table td.crt-m-hide{display:table-cell !important}
+  .crt-m-only{display:none !important}
+}
+</style>
+</head>
+<body>
+
+<main>
+  <section class="section--tight">
+    <div class="container">
+
+      <div class="crt-print-head">
+        <img src="assets/img/logo-mark-192.png" alt="">
+        <span>
+          <b>نقابة المهندسين السوريين — سجل الشهادات الصادرة</b>
+          <small id="printMeta"></small>
+        </span>
+      </div>
+
+      <div class="adm-kpis" id="kpis"></div>
+
+      <div class="adm-bar" style="margin-block-start:24px">
+        <div class="adm-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="input" id="q" type="search" autocomplete="off"
+                 placeholder="بحث بالاسم أو رقم الشهادة أو الرقم النقابي">
+        </div>
+        <span class="spacer"></span>
+        <button class="btn btn-outline btn-sm" id="printBtn">طباعة</button>
+        <button class="btn btn-outline btn-sm" id="exportBtn">تصدير Excel</button>
+      </div>
+
+      <div class="adm-bar" style="margin-block-start:-8px">
+        <div class="crt-tools">
+          <div class="adm-filters" id="filters" role="group" aria-label="تصفية بالحالة"></div>
+          <select class="input" id="branch" aria-label="تصفية بالفرع">
+            <option value="all">كل الفروع</option>
+          </select>
+          <span class="crt-range">
+            <label for="from">من</label>
+            <input class="input" id="from" type="date" aria-label="تاريخ الإصدار من">
+            <label for="to">إلى</label>
+            <input class="input" id="to" type="date" aria-label="تاريخ الإصدار إلى">
+          </span>
+          <button type="button" class="crt-clear" id="clearBtn" hidden>مسح التصفية</button>
+        </div>
+      </div>
+
+      <div class="adm-table-card">
+        <div class="adm-table-head">
+          <h2>الشهادات الصادرة</h2>
+          <span class="spacer"></span>
+          <span class="tag" id="totalTag">—</span>
+        </div>
+        <div class="adm-scroll">
+          <table class="adm-table crt-table">
+            <thead>
+              <tr>
+                <th class="adm-card-title">رقم الشهادة</th>
+                <th>الاسم</th>
+                <th>الرقم النقابي</th>
+                <th>الفرع</th>
+                <th>النوع</th>
+                <th>الدرجة</th>
+                <th>تاريخ الإصدار</th>
+                <th>الحالة</th>
+                <th>سجل المعتمدين</th>
+                <th class="acts">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="10"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="adm-pager" id="pager"></div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/osea-config.js"></script>
+<script src="assets/js/osea-api.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.ADMIN, API = window.OSEA_API;
+
+  var COLS = 10;
+  var PAGE = 50;
+  /* دفعة التصدير — دون سقف الدالة في القاعدة (200) */
+  var BATCH = 100;
+
+  var STATUS = [['all', 'الكل'], ['valid', 'سارية'], ['revoked', 'مسحوبة']];
+
+  var state = { q: '', status: 'all', branch: 'all', from: '', to: '',
+                limit: PAGE, offset: 0, total: 0 };
+  var rows = [];
+  var counts = null;
+  var seq = 0;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody, pagerEl;
+
+  A.boot({
+    page: 'certs',
+    title: 'سجل الشهادات',
+    lead: 'الشهادات الصادرة عن بوابة الاختبارات بحالتها وبندها في سجل المهندسين '
+        + 'المعتمدين، مع البحث والتصفية والتصدير والطباعة.',
+    crumb: 'سجل الشهادات'
+  }).then(function (st) {
+    if (!st) { return; }
+    tbody = $('rows'); pagerEl = $('pager');
+    fillBranches();
+    wire();
+    load();
+  });
+
+  /* ---------------------------------------------------------------- الربط */
+  function wire() {
+    $('q').addEventListener('input', A.debounce(function () {
+      state.q = A.toAr($('q').value).trim(); state.offset = 0; load();
+    }, 300));
+    $('branch').addEventListener('change', function () {
+      state.branch = this.value; state.offset = 0; load();
+    });
+    $('from').addEventListener('change', onRange);
+    $('to').addEventListener('change', onRange);
+    $('clearBtn').addEventListener('click', function () {
+      $('q').value = ''; $('branch').value = 'all'; $('from').value = ''; $('to').value = '';
+      state.q = ''; state.status = 'all'; state.branch = 'all'; state.from = ''; state.to = '';
+      state.offset = 0; load();
+    });
+    $('filters').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-f]');
+      if (!b) { return; }
+      state.status = b.getAttribute('data-f'); state.offset = 0; load();
+    });
+    $('printBtn').addEventListener('click', function () { window.print(); });
+    $('exportBtn').addEventListener('click', exportAll);
+    tbody.addEventListener('click', onRowClick);
+    /* الطباعة جدولٌ لا بطاقات مهما ضاقت الصفحة */
+    var table = tbody.closest('table');
+    window.addEventListener('beforeprint', function () { table.classList.add('adm-table--grid'); });
+    window.addEventListener('afterprint', function () { table.classList.remove('adm-table--grid'); });
+  }
+
+  function onRange(e) {
+    var f = $('from').value, t = $('to').value;
+    if (f && t && f > t) {
+      /* الحقل يعود إلى القيمة المطبّقة فلا يخالف المعروضُ الجدول */
+      e.target.value = state[e.target.id] || '';
+      A.toast('تاريخ البداية بعد تاريخ النهاية.', 'bad');
+      return;
+    }
+    state.from = f; state.to = t; state.offset = 0; load();
+  }
+
+  function fillBranches() {
+    var list = API.GOVERNORATES || (API.accredit && API.accredit.GOVERNORATES) || [];
+    var sel = $('branch');
+    list.forEach(function (b) {
+      var o = document.createElement('option');
+      o.value = o.textContent = b;
+      sel.appendChild(o);
+    });
+  }
+
+  /* ---------------------------------------------------------------- الطلب */
+  function query(o) {
+    return {
+      q: o.q || null,
+      status: o.status || 'all',
+      branch: o.branch && o.branch !== 'all' ? o.branch : null,
+      from: o.from || null,
+      to: o.to || null,
+      limit: o.limit,
+      offset: o.offset
+    };
+  }
+
+  /* الدالة الغائبة معناها أن ترحيلة 039 لم تُطبَّق */
+  function missingFn(e) {
+    var m = String((e && (e.message || e.hint || e.details)) || '');
+    return !!((e && (e.code === 'PGRST202' || e.code === '42883')) ||
+      /Could not find the function|function .* does not exist|039|٠٣٩/i.test(m));
+  }
+  function dbErr(e) {
+    if (missingFn(e)) {
+      return 'دوال سجل الشهادات غير موجودة في القاعدة بعد — ترحيلة 039 لم تُطبَّق. '
+           + 'نفّذوها ثم أعيدوا المحاولة.';
+    }
+    return A.errText(e);
+  }
+
+  function fetchPage(o) {
+    if (!API.admin || typeof API.admin.certRegistry !== 'function') {
+      return Promise.reject(new Error('واجهة البيانات المحمّلة أقدم من هذه الصفحة — حدّثوا الصفحة.'));
+    }
+    return API.admin.certRegistry(query(o));
+  }
+
+  function load() {
+    var mine = ++seq;
+    tbody.innerHTML = '<tr><td colspan="' + COLS + '"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
+    paintChips();
+    paintClear();
+    fetchPage(state).then(function (d) {
+      if (mine !== seq) { return; }
+      d = d || {};
+      rows = d.rows || [];
+      state.total = d.total | 0;
+      counts = d.counts || null;
+      /* صفحة فرغت بعد سحب أو تغيّر في السجل: الانتقال إلى آخر صفحة قائمة */
+      var last = state.total > 0 ? Math.floor((state.total - 1) / state.limit) * state.limit : 0;
+      if (!rows.length && state.offset > last) {
+        state.offset = last;
+        load();
+        return;
+      }
+      paintKpis();
+      paintChips();
+      paintRows();
+      $('totalTag').textContent = A.count(state.total, 'شهادة واحدة', 'شهادتان', 'شهادات', 'شهادة');
+      A.pager(pagerEl, state, function (off) {
+        state.offset = off; load(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      paintPrintMeta();
+    }).catch(function (e) {
+      if (mine !== seq) { return; }
+      rows = []; counts = null; state.total = 0;
+      paintKpis();
+      paintChips();
+      pagerEl.innerHTML = '';
+      $('totalTag').textContent = '—';
+      var msg = dbErr(e);
+      tbody.innerHTML = '<tr><td colspan="' + COLS + '">' +
+        (missingFn(e) ? A.emptyState('سجل الشهادات غير متاح بعد', msg) : A.errorState(msg, 'retry')) +
+        '</td></tr>';
+      var r = $('retry'); if (r) { r.addEventListener('click', load); }
+    });
+  }
+
+  /* ---------------------------------------------------------------- المؤشرات */
+  function kpi(label, num, hint, cls) {
+    return '<div class="adm-kpi' + (cls ? ' ' + cls : '') + '">' +
+      '<span class="adm-kpi-label">' + A.esc(label) + '</span>' +
+      '<b class="adm-kpi-num">' + A.esc(num) + '</b>' +
+      (hint ? '<span class="adm-kpi-hint">' + A.esc(hint) + '</span>' : '') +
+    '</div>';
+  }
+  function monthStart() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01';
+  }
+  function paintKpis() {
+    var c = counts || {};
+    var has = !!counts;
+    $('kpis').innerHTML =
+      kpi('الشهادات السارية', has ? A.num(c.valid) : '—', 'رمزها صالح في صفحة التحقق العلنية.') +
+      kpi('الشهادات المسحوبة', has ? A.num(c.revoked) : '—', 'تظهر في صفحة التحقق موسومة بالسحب.', 'adm-kpi--warm') +
+      kpi('صادرة هذا الشهر', has ? A.num(c.this_month) : '—', 'منذ ' + A.arDate(monthStart()) + '.', 'adm-kpi--gold');
+  }
+
+  /* counts للسجل كله، فلا تُعرض على الرقائق مع بحث أو فرع أو مدى */
+  function paintChips() {
+    var c = counts || {};
+    var show = !!counts && !(state.q || state.branch !== 'all' || state.from || state.to);
+    var n = { all: show ? (c.valid | 0) + (c.revoked | 0) : null,
+              valid: show ? c.valid | 0 : null, revoked: show ? c.revoked | 0 : null };
+    $('filters').innerHTML = STATUS.map(function (s) {
+      return '<button type="button" class="adm-chip" data-f="' + s[0] + '" aria-pressed="' +
+        (state.status === s[0]) + '">' + A.esc(s[1]) +
+        (n[s[0]] == null ? '' : '<span class="n">' + A.toAr(n[s[0]]) + '</span>') + '</button>';
+    }).join('');
+  }
+
+  function filtered() {
+    return !!(state.q || state.status !== 'all' || state.branch !== 'all' || state.from || state.to);
+  }
+  function paintClear() { $('clearBtn').hidden = !filtered(); }
+
+  /* ---------------------------------------------------------------- الجدول */
+  function verifyHref(code) {
+    return (window.OSEA_VERIFY_BASE || 'verify.html') + '?code=' + encodeURIComponent(code);
+  }
+
+  function typeTag(t) {
+    if (!t) { return '—'; }
+    return t === 'تميّز'
+      ? '<span class="tag tag--gold">تميّز</span>'
+      : '<span class="tag tag--success">' + A.esc(t) + '</span>';
+  }
+
+  function statusCell(r) {
+    if (!r.revoked) { return '<span class="tag tag--success">سارية</span>'; }
+    return '<span class="tag tag--error">مسحوبة</span>' +
+      (r.revoked_at ? '<span class="adm-sub">' + A.esc(A.arDate(String(r.revoked_at).slice(0, 10))) + '</span>' : '') +
+      (r.revoke_reason ? '<span class="adm-sub">' + A.esc(r.revoke_reason) + '</span>' : '');
+  }
+
+  function accrCell(r) {
+    if (!r.accreditation_id) {
+      return r.revoked ? '—' : '<span class="tag tag--error">غير مدرج</span>';
+    }
+    var tag = r.accreditation_active
+      ? '<span class="tag tag--success">منشور</span>'
+      : '<span class="tag">غير منشور</span>';
+    return '<a href="admin-accredit.html?q=' + A.esc(encodeURIComponent(r.code || '')) + '">' + tag + '</a>';
+  }
+
+  function paintRows() {
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="' + COLS + '">' + A.emptyState(
+        filtered() ? 'لا نتائج مطابقة' : 'لا شهادات صادرة بعد',
+        filtered() ? 'جرّب توسيع البحث أو مسح التصفية.' : 'تظهر الشهادة هنا فور صدورها.'
+      ) + '</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(function (r, i) {
+      var acts = [];
+      if (r.code) {
+        acts.push('<a class="btn btn-outline btn-sm" href="' + A.esc(verifyHref(r.code)) +
+          '" target="_blank" rel="noopener">التحقق</a>');
+      }
+      if (r.id && !r.revoked) {
+        acts.push('<button type="button" class="btn btn-outline btn-sm" data-act="revoke" data-write>سحب</button>');
+      }
+      if (r.id && r.revoked) {
+        acts.push('<button type="button" class="btn btn-outline btn-sm" data-act="restore" data-write>إعادة</button>');
+      }
+      if (r.account_id) {
+        acts.push('<a class="btn btn-outline btn-sm" href="admin-user-detail.html?id=' +
+          A.esc(encodeURIComponent(r.account_id)) + '">ملف العضو</a>');
+      }
+      return '<tr data-i="' + i + '">' +
+        '<td class="num strong adm-mono"><span class="crt-code">' + A.esc(r.code || '—') + '</span></td>' +
+        '<td class="wrap crt-name">' + A.esc(r.holder_name || '—') +
+          (r.member_no ? '<span class="adm-sub">رقم العضوية: ' + A.esc(A.toAr(r.member_no)) + '</span>' : '') +
+        '</td>' +
+        '<td class="num">' + (r.synd_no ? '<span class="crt-code">' + A.esc(A.toAr(r.synd_no)) + '</span>' : '—') + '</td>' +
+        '<td>' + A.esc(r.branch || '—') + '</td>' +
+        '<td class="crt-m-hide">' + typeTag(r.cert_type) + '</td>' +
+        /* على الهاتف يُطوى عمود النوع ويُقرأ وسمُه بجوار الدرجة */
+        '<td class="num">' + (r.score == null ? '—' : A.esc(A.toAr(r.score)) + '٪') +
+          (r.cert_type ? '<span class="crt-m-only"> ' + typeTag(r.cert_type) + '</span>' : '') + '</td>' +
+        '<td>' + A.esc(r.issued_at ? A.arDate(String(r.issued_at).slice(0, 10)) : '—') + '</td>' +
+        '<td class="crt-st">' + statusCell(r) + '</td>' +
+        '<td>' + accrCell(r) + '</td>' +
+        '<td class="acts"><span class="crt-acts">' + acts.join('') + '</span></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function onRowClick(e) {
+    var btn = e.target.closest('[data-act]');
+    if (!btn) { return; }
+    var tr = btn.closest('tr[data-i]');
+    var r = tr ? rows[+tr.getAttribute('data-i')] : null;
+    if (!r || !r.id) { return; }
+    if (btn.getAttribute('data-act') === 'revoke') { askRevoke(r); }
+    else { askRestore(r); }
+  }
+
+  /* ---------------------------------------------------------------- السحب والإعادة */
+  function askRevoke(r) {
+    A.confirm({
+      title: 'سحب الشهادة',
+      danger: true,
+      okLabel: 'سحب الشهادة',
+      text: 'ستُسحب الشهادة ' + r.code + ' الصادرة باسم «' + r.holder_name + '»، '
+          + 'وتظهر مسحوبة في صفحة التحقق، ويُوقف نشر بندها في سجل المهندسين المعتمدين.',
+      reason: 'سبب السحب',
+      reasonRequired: true
+    }).then(function (reason) {
+      if (reason === null) { return; }
+      API.admin.revokeCert(r.id, reason).then(function () {
+        A.toast('سُحبت الشهادة ' + r.code + '.', 'ok');
+        load();
+      }).catch(function (e) { A.toast(A.errText(e), 'bad'); });
+    });
+  }
+
+  function askRestore(r) {
+    A.confirm({
+      title: 'إعادة الشهادة',
+      okLabel: 'إعادة الشهادة',
+      text: 'ستعود الشهادة ' + r.code + ' الصادرة باسم «' + r.holder_name + '» سارية، '
+          + 'ويُعاد نشر بندها في سجل المهندسين المعتمدين.'
+    }).then(function (ok) {
+      if (!ok) { return; }
+      API.admin.restoreCert(r.id).then(function () {
+        A.toast('أُعيدت الشهادة ' + r.code + '.', 'ok');
+        load();
+      }).catch(function (e) { A.toast(A.errText(e), 'bad'); });
+    });
+  }
+
+  /* ---------------------------------------------------------------- الطباعة */
+  function filterSummary() {
+    var bits = [];
+    var st = STATUS.filter(function (s) { return s[0] === state.status; })[0];
+    if (state.status !== 'all' && st) { bits.push('الحالة: ' + st[1]); }
+    if (state.branch !== 'all') { bits.push('الفرع: ' + state.branch); }
+    if (state.from) { bits.push('من ' + A.arDate(state.from)); }
+    if (state.to) { bits.push('إلى ' + A.arDate(state.to)); }
+    if (state.q) { bits.push('بحث: ' + state.q); }
+    return bits;
+  }
+  function paintPrintMeta() {
+    var bits = filterSummary();
+    var from = state.total ? state.offset + 1 : 0;
+    var to = Math.min(state.offset + state.limit, state.total);
+    bits.push('الصفوف ' + A.toAr(from) + '–' + A.toAr(to) + ' من ' + A.toAr(state.total));
+    bits.push('طُبع في ' + A.arDate(new Date().toISOString()));
+    $('printMeta').textContent = bits.join(' · ');
+  }
+
+  /* ---------------------------------------------------------------- التصدير */
+  function fetchAll() {
+    var all = [];
+    var o = { q: state.q, status: state.status, branch: state.branch,
+              from: state.from, to: state.to, limit: BATCH, offset: 0 };
+    function next() {
+      return fetchPage(o).then(function (d) {
+        var got = (d && d.rows) || [];
+        all = all.concat(got);
+        var total = (d && d.total) | 0;
+        if (!got.length || all.length >= total || all.length >= 20000) { return all; }
+        o.offset += got.length;
+        return next();
+      });
+    }
+    return next();
+  }
+
+  function exportAll() {
+    var btn = $('exportBtn');
+    btn.disabled = true; btn.textContent = 'جارٍ التجهيز…';
+    fetchAll().then(function (all) {
+      if (!all.length) { A.toast('لا صفوف لتصديرها.', 'bad'); return; }
+      A.exportCsv('osea-certificates-registry.csv',
+        ['رقم الشهادة', 'الاسم', 'الرقم النقابي', 'رقم العضوية', 'الفرع', 'النوع', 'الدرجة',
+         'تاريخ الإصدار', 'الحالة', 'تاريخ السحب', 'سبب السحب', 'سجل المعتمدين'],
+        all.map(function (r) {
+          return [r.code || '', r.holder_name || '', A.toAr(r.synd_no || ''), A.toAr(r.member_no || ''),
+                  r.branch || '', r.cert_type || '',
+                  r.score == null ? '' : Number(r.score),
+                  r.issued_at ? String(r.issued_at).slice(0, 10) : '',
+                  r.revoked ? 'مسحوبة' : 'سارية',
+                  r.revoked_at ? String(r.revoked_at).slice(0, 10) : '',
+                  r.revoke_reason || '',
+                  !r.accreditation_id ? 'غير مدرج' : (r.accreditation_active ? 'منشور' : 'غير منشور')];
+        }));
+      A.toast('صُدّرت ' + A.count(all.length, 'شهادة واحدة', 'شهادتان', 'شهادات', 'شهادة') + '.', 'ok');
+    }).catch(function (e) {
+      A.toast(dbErr(e), 'bad');
+    }).then(function () {
+      btn.disabled = false; btn.textContent = 'تصدير Excel';
+    });
+  }
+})();
+</script>
+</body>
+</html>
