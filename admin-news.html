@@ -61,6 +61,9 @@
 .np-text p{margin:0}
 .np-text p + p{margin-block-start:10px}
 .np-text .np-lead{font-weight:700;color:var(--text-display)}
+.np-inlink{display:inline-flex;align-items:center;gap:4px;font-weight:700;color:var(--navy-700);
+  text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--gold-400)}
+.np-inlink svg{width:14px;height:14px;flex:none}
 .np-linkbox{display:grid;gap:8px;margin-block-start:18px;padding-block-start:14px;border-block-start:1px solid var(--border)}
 .np-linkbox .btn{width:100%}
 .np-note{font-size:11.5px;color:var(--text-secondary);text-align:center;margin:0}
@@ -395,7 +398,7 @@
         '<input class="input" id="f-link" type="url" inputmode="url" dir="ltr" maxlength="500" ' +
           'placeholder="https://" autocomplete="off" value="' + A.esc(r.link_url || '') + '"></label>' +
       '<label class="field"><span>نص زر الرابط (اختياري)</span>' +
-        '<input class="input" id="f-linklabel" maxlength="60" placeholder="فتح الرابط" value="' +
+        '<input class="input" id="f-linklabel" maxlength="60" placeholder="اضغط هنا لفتح الرابط" value="' +
           A.esc(r.link_label || '') + '"></label>' +
       '<div class="sheet-pair">' +
         '<label class="field"><span>القسم — يظهر بجانب التاريخ</span>' +
@@ -529,18 +532,40 @@
   }
 
   /* ---------- المعاينة: البطاقة وصفحة الخبر كما يراهما العضو ---------- */
+  /* رابط داخل النص يظهر للعضو «اضغط هنا»، ويُحذف من ملخّص البطاقة */
+  var TEXT_URL_RE = /(?:https?:\/\/|www\.)[^\s<>"'\\]+/gi;
+  var URL_TAIL_RE = /[.,،؛:!?؟)\]}»"'’”]+$/;
+  function textHtml(s) {
+    var out = '', last = 0, m;
+    TEXT_URL_RE.lastIndex = 0;
+    while ((m = TEXT_URL_RE.exec(s))) {
+      var raw = m[0], tail = (URL_TAIL_RE.exec(raw) || [''])[0];
+      raw = raw.slice(0, raw.length - tail.length);
+      var url = webUrl(/^www\./i.test(raw) ? 'https://' + raw : raw);
+      out += A.esc(s.slice(last, m.index));
+      out += url
+        ? '<a class="np-inlink" href="' + A.esc(url) + '" target="_blank" rel="noopener noreferrer">' +
+            'اضغط هنا' + ICON_EXT + '</a>' + A.esc(tail)
+        : A.esc(m[0]);
+      last = m.index + m[0].length;
+    }
+    return (out + A.esc(s.slice(last))).replace(/\n/g, '<br>');
+  }
+  function brief(s) {
+    return String(s == null ? '' : s).replace(TEXT_URL_RE, '')
+      .replace(/[ \t]{2,}/g, ' ').replace(/\s+([.,،؛:])(?=\s|$)/g, '$1').replace(/[\s:،؛–—-]+$/, '').trim();
+  }
   function paras(s, cls) {
     var t = String(s == null ? '' : s).replace(/\r\n?/g, '\n').trim();
     if (!t) { return ''; }
     return t.split(/\n[ \t]*\n+/).map(function (p) {
-      return '<p' + (cls ? ' class="' + cls + '"' : '') + '>' +
-        A.esc(p.trim()).replace(/\n/g, '<br>') + '</p>';
+      return '<p' + (cls ? ' class="' + cls + '"' : '') + '>' + textHtml(p.trim()) + '</p>';
     }).join('');
   }
 
   function previewHTML(r) {
     var img = webUrl(r.image_url), link = webUrl(r.link_url);
-    var label = String(r.link_label == null ? '' : r.link_label).trim() || 'فتح الرابط';
+    var label = String(r.link_label == null ? '' : r.link_label).trim() || 'اضغط هنا لفتح الرابط';
     var band = '<div class="np-band"><span class="np-cat">' + A.esc(secLabel(r.section) || 'المنصة') + '</span>' +
       (r.chip ? '<span class="np-chip">' + A.esc(r.chip) + '</span>' : '') +
       '<span class="np-date">' + A.esc(r.date_ar) + '</span></div>';
@@ -550,7 +575,7 @@
       '<div class="np-card">' +
         (img ? '<div class="np-cover"><img src="' + A.esc(img) + '" alt=""></div>' : '') +
         band +
-        '<div class="np-body"><h3>' + A.esc(r.title) + '</h3><p>' + A.esc(r.summary) + '</p>' +
+        '<div class="np-body"><h3>' + A.esc(r.title) + '</h3><p>' + A.esc(brief(r.summary)) + '</p>' +
           '<span class="np-more">اقرأ الخبر</span></div>' +
       '</div>' +
       '<span class="np-cap">صفحة الخبر</span>' +
@@ -563,7 +588,7 @@
             ? '<div class="np-linkbox">' +
                 '<a class="btn btn-primary" href="' + A.esc(link) + '" target="_blank" rel="noopener noreferrer">' +
                   ICON_EXT + A.esc(label) + '</a>' +
-                '<p class="np-note">يُفتح الرابط خارج التطبيق — <span>' + A.esc(hostOf(link)) + '</span></p>' +
+                '<p class="np-note">يُفتح الرابط في المتصفح</p>' +
               '</div>'
             : '') +
         '</div>' +

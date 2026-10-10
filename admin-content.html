@@ -183,6 +183,15 @@
 .adv>summary:focus-visible{outline:none;border-radius:var(--radius-tool);
   box-shadow:0 0 0 3px rgba(0,52,113,.18)}
 .adv-in{display:grid;gap:16px;padding:0 14px 14px}
+
+/* قائمة «نوع الملف»: سهم ظاهر وخط واضح كي تُقرأ قائمةً منسدلة لا حقلاً */
+.kind-sel{position:relative;display:block}
+.kind-sel select.input{-webkit-appearance:none;appearance:none;min-height:48px;cursor:pointer;
+  font-weight:700;color:var(--navy-800);padding-inline-end:46px;background-color:var(--surface)}
+.kind-sel select.input:disabled{cursor:not-allowed;color:var(--text-secondary);background-color:var(--navy-25)}
+.kind-sel svg{position:absolute;inset-inline-end:14px;top:50%;width:20px;height:20px;margin-top:-10px;
+  color:var(--navy-700);pointer-events:none}
+.kind-sel select.input:disabled + svg{opacity:.35}
 </style>
 </head>
 <body>
@@ -2203,14 +2212,20 @@
      صياغته بينهما. القارئ (readFields) واحد لا يتغيّر: كل مُعرّف يظهر مرة. */
   /* نوع البند قائمةٌ منسدلة في الإضافة والتعديل معاً. locked: البند المحفوظ
      يبقى على نوعه — المسار وحماية البند وفتحه في التطبيق مبنيّة عليه */
+  var KIND_CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
   function fldKind(kind, locked) {
     var opts = KIND_ORDER.map(function (v) {
       return '<option value="' + A.esc(v) + '"' + (v === kind ? ' selected' : '') + '>' +
         A.esc(KIND[v].name) + '</option>';
     }).join('');
+    var names = KIND_ORDER.map(function (v) { return KIND[v].name; }).join('، ');
     return '<div class="field"><label for="fKind">نوع الملف</label>' +
-      '<select class="input" id="fKind"' + (locked ? ' disabled' : '') + '>' + opts + '</select>' +
-      (locked ? '<span class="hint">نوع البند لا يتغيّر بعد إضافته.</span>' : '') + '</div>';
+      '<span class="kind-sel"><select class="input" id="fKind"' + (locked ? ' disabled' : '') + '>' +
+        opts + '</select>' + KIND_CHEV + '</span>' +
+      '<span class="hint">' + (locked
+        ? 'نوع البند لا يتغيّر بعد إضافته.'
+        : 'اختر من القائمة: ' + A.esc(names) + '.') + '</span></div>';
   }
   function fldTitle(it) {
     return '<div class="field"><label for="fTitle">العنوان</label>' +

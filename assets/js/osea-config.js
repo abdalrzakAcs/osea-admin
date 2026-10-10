@@ -7,7 +7,7 @@
 window.OSEA_FREE_TRIAL = true;
 
 /* رمز إصدار التطبيق — يُطابق versionCode في build.gradle ويُرفع مع كل إصدار */
-window.OSEA_VERSION_CODE = 29;
+window.OSEA_VERSION_CODE = 30;
 
 /* اسم الإصدار وتاريخه كما يُعرضان للمستخدم في تذييل الرئيسية (طلب النقابة ٥ أيلول).
    هذان الثابتان هما المصدر الوحيد لنص الإصدار الظاهر — لا يُكتب رقم إصدار في أي
@@ -17,8 +17,8 @@ window.OSEA_VERSION_CODE = 29;
    وهو غير OSEA_VERSION_CODE أعلاه: ذاك عدد صحيح تقارنه بوابة التحديث الإجباري،
    وهذا نص للعرض فقط. OSEA_RELEASE_DATE تاريخ بناء حزمة الـAPK المنشورة بصيغة
    YYYY-MM-DD وبأرقام لاتينية كما طلبت النقابة نصاً. */
-window.OSEA_VERSION_NAME = '3.6';
-window.OSEA_RELEASE_DATE = '2026-10-08';
+window.OSEA_VERSION_NAME = '3.7';
+window.OSEA_RELEASE_DATE = '2026-10-10';
 
 /* حدود رفع ملفات المحتوى من لوحة الإدارة (طلب النقابة ١٠ أيلول: ٣٠٠ ميغابايت
    للملف وسعة إجمالية ٢ غيغابايت).
