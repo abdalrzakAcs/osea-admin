@@ -822,8 +822,66 @@
     });
   }
 
+  /* ---------------------------------------------------------------- أحدث نسخة من التطبيق */
+  /* بطاقة رقم آخر إصدار نشط ورابط تنزيله — من check_update نفسها التي تسأل عنها
+     الأجهزة، فما تعرضه اللوحة هو ما يُحال إليه المهندس في شاشة التحديث */
+  var AV_PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/>' +
+    '<path d="M10.5 18.5h3"/></svg>';
+  var AV_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/>' +
+    '<path d="M5 20h14"/></svg>';
+  function appVersionCard(host) {
+    if (!host || !API || !API.checkUpdate) return Promise.resolve(null);
+    host.innerHTML = '<div class="adm-appver"><p class="av-wait">جارٍ قراءة أحدث نسخة…</p></div>';
+    return API.checkUpdate(0).then(function (r) {
+      var url = r && /^https:\/\/[^\s"<>]+$/.test(String(r.download_url || '')) ? r.download_url : '';
+      if (!r) {
+        host.innerHTML = '<div class="adm-appver"><p class="av-wait">لا يوجد إصدار منشور للتطبيق بعد.</p></div>';
+        return null;
+      }
+      var forced = (r.min_supported | 0) >= (r.latest_code | 0);
+      host.innerHTML = '<section class="adm-appver" aria-label="أحدث نسخة من التطبيق">' +
+        '<div class="av-id"><span class="av-ico">' + AV_PHONE + '</span><div>' +
+          '<span class="av-cap">تطبيق المنصة — أحدث نسخة</span>' +
+          '<div class="av-ver"><b dir="ltr">' + esc(r.latest_name) + '</b>' +
+            '<span>بناء ' + toAr(r.latest_code | 0) + '</span>' +
+            (forced ? '<span class="tag tag--gold">تحديث إجباري</span>'
+                    : '<span class="tag">تحديث اختياري</span>') + '</div>' +
+        '</div></div>' +
+        (url
+          ? '<div class="av-acts">' +
+              '<a class="btn btn-primary" href="' + esc(url) + '" rel="noopener">' + AV_DOWN + 'تحميل التطبيق</a>' +
+              '<button type="button" class="btn btn-outline" data-av-copy>نسخ الرابط</button>' +
+            '</div>' +
+            '<p class="av-url" dir="ltr" data-av-url>' + esc(url) + '</p>'
+          : '<p class="av-wait">الإصدار المنشور بلا رابط تنزيل.</p>') +
+      '</section>';
+      var btn = host.querySelector('[data-av-copy]');
+      if (btn) {
+        btn.addEventListener('click', function () {
+          var done = function () { toast('نُسخ رابط التحميل.', 'ok'); };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(done, function () { selectUrl(); });
+          } else { selectUrl(); }
+        });
+      }
+      function selectUrl() {
+        var el = host.querySelector('[data-av-url]');
+        var rg = document.createRange(); rg.selectNodeContents(el);
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(rg);
+        toast('حُدّد الرابط — انسخه يدوياً.', 'ok');
+      }
+      return r;
+    }).catch(function () {
+      host.innerHTML = '<div class="adm-appver"><p class="av-wait">تعذّرت قراءة أحدث نسخة من التطبيق.</p></div>';
+      return null;
+    });
+  }
+
   window.ADMIN = {
     boot: boot,
+    appVersionCard: appVersionCard,
     NAV: NAV,
     ICONS: ICONS,
     toast: toast,

@@ -552,3 +552,27 @@ html[data-role="viewer"] [data-write]{display:none !important}
 @media print{
   .adm-menu-btn,.adm-drawer{display:none !important}
 }
+
+/* ---------------------------------------------------------------- أحدث نسخة من التطبيق */
+.adm-appver{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px 20px;
+  padding:16px 20px;background:var(--surface);border:var(--adm-hair);border-radius:var(--adm-radius);
+  border-inline-start:4px solid var(--gold-400)}
+.adm-appver .av-wait{margin:0;font-size:13.5px;color:var(--text-secondary)}
+.av-id{display:flex;align-items:center;gap:14px;min-width:0}
+.av-ico{width:46px;height:46px;flex:none;display:grid;place-items:center;border-radius:var(--adm-tool);
+  background:var(--gold-100);color:var(--navy-800)}
+.av-ico svg{width:24px;height:24px}
+.av-cap{display:block;font-size:13px;color:var(--text-secondary)}
+.av-ver{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 10px;margin-block-start:2px}
+.av-ver b{font-size:26px;line-height:1.2;font-weight:800;color:var(--navy-800)}
+.av-ver span:not(.tag){font-size:13.5px;color:var(--text-secondary)}
+.av-ver .tag{align-self:center}
+.av-acts{display:flex;gap:8px;flex-wrap:wrap}
+.av-acts .btn{display:inline-flex;align-items:center;gap:8px}
+.av-acts svg{width:18px;height:18px}
+.av-url{grid-column:1 / -1;margin:0;padding-block-start:10px;border-block-start:var(--adm-hair);
+  font-size:12.5px;color:var(--text-secondary);text-align:start;overflow-wrap:anywhere;user-select:all}
+@media (max-width:720px){
+  .adm-appver{grid-template-columns:minmax(0,1fr);padding:14px 16px}
+  .av-acts .btn{flex:1 1 140px;justify-content:center;min-height:44px}
+}

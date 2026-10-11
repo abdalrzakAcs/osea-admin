@@ -82,6 +82,9 @@
 
       <div class="adm-stack" id="wrap">
 
+        <!-- أحدث نسخة من التطبيق ورابط تحميلها (admin.js — appVersionCard) -->
+        <div id="appVer"></div>
+
         <!-- ثماني بطاقات على صفّين — تُبنى كلها من admin_overview، لا رقم في الوسم -->
         <div class="adm-kpis" id="kpis"></div>
 
@@ -216,6 +219,7 @@
     crumb: 'نظرة عامة'
   }).then(function (st) {
     if (!st) return;
+    A.appVersionCard($('appVer'));
     paintDaysBar();
     paintMetricBar();
     paintLinks();

@@ -67,6 +67,9 @@
       <!-- تنبيهات الحالة: تُبنى من البيانات لا نصاً ثابتاً -->
       <div id="alerts"></div>
 
+      <!-- أحدث نسخة ورابط تحميلها: ما تحيل إليه شاشة التحديث في الأجهزة -->
+      <div id="appVer" style="margin-block-end:22px"></div>
+
       <div class="card rel-now" id="nowCard">
         <div>
           <h2 style="font-size:18px;margin:0">الحالة الحالية — منصة أندرويد</h2>
@@ -150,6 +153,7 @@
 
   /* ---------------------------------------------------------------- التحميل */
   function load() {
+    A.appVersionCard($('appVer'));
     tbody.innerHTML = '<tr><td colspan="7"><div class="adm-state"><p>جارٍ التحميل…</p></div></td></tr>';
     API.admin.content().then(function (d) {
       rows = (d.releases || []).slice().sort(function (a, b) {
