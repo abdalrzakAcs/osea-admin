@@ -115,11 +115,12 @@
   var suggestBox = document.getElementById('heroSuggest');
   if (searchForm && searchInput && suggestBox) {
     var INDEX = [
+      { t: 'تحميل التطبيق', d: 'تطبيق أندرويد', href: 'https://syrianengineerssyndicate.sy/osea-platform.apk', k: 'تطبيق تحميل اندرويد apk موبايل' },
       { t: 'اختبار الاعتماد الهندسي', d: 'بوابة الاختبارات', href: 'exams.html', k: 'اختبار امتحان اعتماد رسوم شهادة فيديو استمارة وزارة' },
-      { t: 'نموذج تجريبي من الامتحان', d: 'تجربة مجانية', href: 'exam-demo.html', k: 'نموذج تجريبي تجربة امتحان اسئلة تصحيح' },
-      { t: 'مكتبة الأكواد الهندسية', d: 'كتب مرجعية واستمارات رسمية', href: 'codes.html', k: 'كود اكواد كتب خرسانة زلازل احمال كهرباء حريق مكتبة قراءة' },
-      { t: 'التحقق من الشهادات', d: 'السجل المركزي', href: 'verify.html', k: 'تحقق شهادة كود سجل جهات بلدية موثقة' },
-      { t: 'إنشاء حساب / تسجيل الدخول', d: 'الدخول الموحّد', href: 'login.html', k: 'حساب دخول تسجيل رقم نقابي واتساب رمز كلمة مرور' },
+      { t: 'عن النقابة', d: 'الرسالة ومجلس الإدارة', href: 'about.html', k: 'عن النقابة مجلس نقيب اهداف' },
+      { t: 'العضوية والانتساب', d: 'شروط التسجيل', href: 'membership.html', k: 'عضوية انتساب تسجيل مهندس شروط' },
+      { t: 'التحقق من الشهادات', d: 'السجل المركزي', href: 'verify.html', k: 'تحقق شهادة سجل جهات بلدية موثقة' },
+      { t: 'إنشاء حساب / تسجيل الدخول', d: 'حساب المهندس', href: 'login.html', k: 'حساب دخول تسجيل رقم نقابي واتساب رمز كلمة مرور' },
       { t: 'التحقق من الرقم النقابي', d: 'سجل النقابة', href: 'verify.html?mode=synd', k: 'رقم نقابي تحقق عضوية مهندس سجل' },
       { t: 'الأخبار والقرارات', d: 'آخر المستجدات', href: 'news.html', k: 'اخبار خبر قرار قرارات اعلان فعاليات فعالية نشاط مجلس صندوق اقراض' }
       /* حُذف «دليل الهوية البصرية»: صفحة brand.html وثيقة داخلية تستبعدها
@@ -163,6 +164,120 @@
       })[0];
       window.location.href = hit ? hit.href : 'exams.html';
     });
+  }
+
+  /* زر التحميل بدل الدخول الموحّد في الصفحات التي لم تُحدَّث يدوياً */
+  var APP_APK = 'https://syrianengineerssyndicate.sy/osea-platform.apk';
+  document.querySelectorAll('.masthead-tools a.btn').forEach(function (a) {
+    if ((a.textContent || '').indexOf('الدخول') === -1) return;
+    a.classList.add('js-app-dl');
+    a.setAttribute('href', APP_APK);
+    Array.prototype.forEach.call(a.childNodes, function (n) {
+      if (n.nodeType === 3 && n.textContent.trim()) n.textContent = ' تحميل التطبيق';
+    });
+  });
+  document.querySelectorAll('a[href="codes.html"]').forEach(function (a) {
+    var li = a.closest('li');
+    if (li) li.remove();
+    else a.remove();
+  });
+  var navMenuEl = document.getElementById('navMenu');
+  if (navMenuEl) {
+    var ensure = function (href, label, afterHref) {
+      if (navMenuEl.querySelector('a[href="' + href + '"]')) return;
+      var link = document.createElement('a');
+      link.className = 'nav-item';
+      link.href = href;
+      link.textContent = label;
+      var after = afterHref ? navMenuEl.querySelector('a[href="' + afterHref + '"]') : null;
+      if (after && after.nextSibling) navMenuEl.insertBefore(link, after.nextSibling);
+      else navMenuEl.appendChild(link);
+    };
+    ensure('about.html', 'عن النقابة', 'index.html');
+    ensure('membership.html', 'العضوية', 'about.html');
+    ensure('contact.html', 'اتصل بنا', 'verify.html');
+    var here = (location.pathname.split('/').pop() || 'index.html').split('?')[0];
+    Array.prototype.forEach.call(navMenuEl.querySelectorAll('a.nav-item'), function (a) {
+      var href = (a.getAttribute('href') || '').split('?')[0];
+      a.classList.toggle('active', href === here);
+    });
+  }
+  if (window.OSEA_API && OSEA_API.checkUpdate) {
+    OSEA_API.checkUpdate(0).then(function (row) {
+      var url = row && row.download_url;
+      if (!url || /github\.com|githubusercontent\.com/i.test(url)) return;
+      document.querySelectorAll('.js-app-dl').forEach(function (a) { a.setAttribute('href', url); });
+    }).catch(function () {});
+  }
+
+  /* شريط الإعلانات */
+  var annTrack = document.getElementById('announceTrack');
+  if (annTrack) {
+    var annSlides = Array.prototype.slice.call(annTrack.children);
+    var annIndex = 0;
+    var annDots = document.getElementById('annDots');
+    var place = function (el, x, animate) {
+      el.style.transition = (!animate || reduced) ? 'none' : '';
+      el.style.transform = 'translate3d(' + x + '%,0,0)';
+    };
+    annSlides.forEach(function (s, k) { place(s, k === 0 ? 0 : 100, false); });
+    var annShow = function (n, forward) {
+      var next = (n + annSlides.length) % annSlides.length;
+      if (next === annIndex) return;
+      var goForward = forward !== false;
+      var cur = annSlides[annIndex];
+      var nxt = annSlides[next];
+      place(nxt, goForward ? -100 : 100, false);
+      nxt.offsetWidth;
+      nxt.classList.add('is-on');
+      cur.classList.remove('is-on');
+      place(nxt, 0, true);
+      place(cur, goForward ? 100 : -100, true);
+      annIndex = next;
+      if (annDots) {
+        Array.prototype.forEach.call(annDots.children, function (d, k) {
+          d.classList.toggle('is-on', k === annIndex);
+        });
+      }
+    };
+    annSlides.forEach(function (_, k) {
+      var dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'announce-dot' + (k === 0 ? ' is-on' : '');
+      dot.setAttribute('aria-label', 'الإعلان ' + (k + 1));
+      dot.addEventListener('click', function () { annShow(k, k > annIndex); });
+      annDots.appendChild(dot);
+    });
+    var prev = document.getElementById('annPrev');
+    var next = document.getElementById('annNext');
+    if (prev) prev.addEventListener('click', function () { annShow(annIndex - 1, false); });
+    if (next) next.addEventListener('click', function () { annShow(annIndex + 1, true); });
+    if (!reduced && annSlides.length > 1) {
+      setInterval(function () { annShow(annIndex + 1, true); }, 6500);
+    }
+    var touchX = 0;
+    annTrack.addEventListener('touchstart', function (e) {
+      touchX = e.changedTouches[0].clientX;
+    }, { passive: true });
+    annTrack.addEventListener('touchend', function (e) {
+      var dx = e.changedTouches[0].clientX - touchX;
+      if (dx > 42) annShow(annIndex + 1, true);
+      else if (dx < -42) annShow(annIndex - 1, false);
+    }, { passive: true });
+  }
+
+  var filmRow = document.getElementById('filmRow');
+  if (filmRow) {
+    var filmStep = function (dir) {
+      var card = filmRow.querySelector('.film-card');
+      if (!card) return;
+      var amount = card.getBoundingClientRect().width + 18;
+      filmRow.scrollBy({ left: dir * amount, behavior: 'smooth' });
+    };
+    var filmPrev = document.getElementById('filmPrev');
+    var filmNext = document.getElementById('filmNext');
+    if (filmPrev) filmPrev.addEventListener('click', function () { filmStep(1); });
+    if (filmNext) filmNext.addEventListener('click', function () { filmStep(-1); });
   }
 
   /* شاشة الافتتاح: مرة واحدة لكل جلسة (الرئيسية فقط) */

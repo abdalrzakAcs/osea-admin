@@ -2,6 +2,12 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://kdvhiywnjybdlmzmkjup.supabase.co; media-src 'self' blob: https://kdvhiywnjybdlmzmkjup.supabase.co; font-src 'self' data:; connect-src 'self' https://kdvhiywnjybdlmzmkjup.supabase.co wss://kdvhiywnjybdlmzmkjup.supabase.co; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
+<style id="osea-anti-frame">html{display:none!important}</style>
+<script>if (window.top === window.self) { var oseaAf = document.getElementById('osea-anti-frame'); oseaAf.parentNode.removeChild(oseaAf); } else { try { window.top.location = window.self.location.href; } catch (e) {} }</script>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ملف العضو — لوحة الإدارة | نقابة المهندسين السوريين</title>
 <meta name="theme-color" content="#001f47">
@@ -888,11 +894,23 @@
   function captureLive() {
     var c = P.capture;
     if (!c || c.granted === false) { return null; }
-    var g = c.grant || c;                      /* الترحيلة قد تلفّ الإذن داخل grant */
-    /* السريان يُقاس على الآن لا على وجود الصف: إذنٌ منتهٍ لا يرفع الحماية،
-       وعرضه سارياً يدفع المدير إلى إلغاء ما انتهى وحده */
-    if (!g.expires_at || new Date(g.expires_at) <= new Date()) { return null; }
-    return g;
+    /* admin_account_profile (٠٣٢) تعيد capture مصفوفةَ صفوف capture_grants
+       الأحدث أولاً، لا كائناً واحداً. قراءتها ككائن كانت تُرجع null دائماً:
+       تبقى البطاقة على «الالتقاط محجوب» بعد منحٍ ناجح، ولا يظهر زر الإلغاء،
+       والضغط على «منح الإذن» ثانيةً يستبدل الإذن ويقطع جلسة العضو. */
+    var rows = Array.isArray(c) ? c : [c.grant || c];
+    var now = new Date();
+    for (var i = 0; i < rows.length; i++) {
+      var g = rows[i];
+      if (!g || g.revoked_at) { continue; }
+      /* السريان يُقاس على الآن لا على وجود الصف: إذنٌ منتهٍ لا يرفع الحماية،
+         وعرضه سارياً يدفع المدير إلى إلغاء ما انتهى وحده */
+      if (!g.expires_at || new Date(g.expires_at) <= now) { continue; }
+      /* لا فحص لـstarts_at هنا: المنح يختمه بساعة الخادم ولا يُجدوِل إذناً
+         مستقبلياً، فساعة حاسوبٍ متأخرة ثوانيَ كانت ستُخفي إذناً مُنح للتوّ */
+      return g;
+    }
+    return null;
   }
 
   function capIdleKv() {
@@ -915,7 +933,8 @@
         : (g.granted_by
             ? 'بمعرّف الموظف <span dir="ltr">' + A.esc(String(g.granted_by).slice(0, 8)) + '</span>'
             : '—'),
-         g.granted_at ? 'تاريخ المنح: ' + A.arDateTime(g.granted_at) : null),
+         (g.granted_at || g.starts_at || g.created_at)
+           ? 'تاريخ المنح: ' + A.arDateTime(g.granted_at || g.starts_at || g.created_at) : null),
       kv('ينتهي في', A.arDateTime(g.expires_at), capLeft(g.expires_at)),
       kv('سبب المنح', g.reason
         ? A.esc(g.reason)
@@ -933,7 +952,8 @@
     }
     /* البنود تُخزَّن بمعرّفاتها: تُعرض عناوينها إن أعادتها الترحيلة، وإلا
        فالمعرّفات لاتينيةً — معرّفٌ صريح أصدق من عنوانٍ مُخمَّن */
-    var titles = g.item_titles || [], ids = g.items || [];
+    /* صفّ capture_grants يحمل المعرّفات في item_ids */
+    var titles = g.item_titles || [], ids = g.items || g.item_ids || [];
     if (titles.length) { return A.esc(titles.join('، ')); }
     return ids.length
       ? '<span class="adm-mono" dir="ltr">' + A.esc(ids.join(' · ')) + '</span>'

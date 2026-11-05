@@ -710,10 +710,15 @@
     /* استعادة كلمة المرور: ثلاثة أدلة هوية وكلمة جديدة — القديمة لا تُقرأ لأحد */
     recover: function (syndNo, nationalId, contact, newPass) {
       if (!LIVE) { return Promise.reject(new Error('قاعدة النقابة غير متاحة')); }
+      /* منذ ٠٤٠ الفشل ردٌّ بحالة 400 لا raise (كي يثبت عدّاد القفل)، فيصل
+         خطأً عبر must برسالته. والفحص التالي احتياطٌ لو وصل الرد بحالة 200. */
       return sb.rpc('recover_password', {
         p_synd_no: syndNo, p_national_id: nationalId,
         p_contact: contact, p_new: newPass
-      }).then(must);
+      }).then(must).then(function (r) {
+        if (r && r.ok === false) { throw new Error(r.error || r.message || 'البيانات غير متطابقة'); }
+        return r;
+      });
     },
 
     /* الحالة الحيّة — بها تظهر موافقة الإدارة للعضو داخل التطبيق */
