@@ -221,7 +221,7 @@ textarea.input { padding-block: 10px; line-height: 1.8; min-height: 84px; resize
           <div class="adm-search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             <input class="input" id="bq" type="search" autocomplete="off"
-                   placeholder="بحث برقم الفاتورة أو اسم الحساب أو رقم العضوية">
+                   placeholder="بحث برقم الفاتورة أو اسم الحساب أو معرّف الحساب">
           </div>
           <span class="spacer"></span>
           <button class="btn btn-outline btn-sm" id="bReload">تحديث</button>
@@ -1253,7 +1253,7 @@ textarea.input { padding-block: 10px; line-height: 1.8; min-height: 84px; resize
           ? '<a class="link" href="admin-user-detail.html?id=' + A.esc(b.account_id) + '">' +
               A.esc(b.account_name || 'حساب غير متاح') + '</a>'
           : A.esc(b.account_name || '—')) +
-          (b.member_no ? '<span class="adm-sub">رقم العضوية: ' + A.esc(b.member_no) + '</span>' : '') + '</td>' +
+          (b.member_no ? '<span class="adm-sub">معرّف الحساب: ' + A.esc(b.member_no) + '</span>' : '') + '</td>' +
         '<td class="pay-w">' + svcCell(b.service, b.item_id) + '</td>' +
         '<td class="num"><span class="strong">' + money(b.amount) + '</span> ل.س' +
           (refunded > 0 ? '<span class="adm-sub">مستردّ ' + money(refunded) + '</span>' +
@@ -1644,7 +1644,7 @@ textarea.input { padding-block: 10px; line-height: 1.8; min-height: 84px; resize
           refLine('عملية الاسترداد', r.tran_id) +
           '<span class="adm-sub rf-key">' + A.esc(r.idempotency_key) + '</span></td>' +
         '<td class="pay-w">' + A.esc(r.account_name || '—') +
-          (r.member_no ? '<span class="adm-sub">رقم العضوية: ' + A.esc(r.member_no) + '</span>' : '') + '</td>' +
+          (r.member_no ? '<span class="adm-sub">معرّف الحساب: ' + A.esc(r.member_no) + '</span>' : '') + '</td>' +
         '<td class="num strong">' + money(r.amount) + ' ل.س</td>' +
         '<td class="pay-st"><span class="tag ' + st[1] + '">' + A.esc(st[0]) + '</span>' +
           (stuck ? '<span class="adm-sub adm-danger">عالق منذ أكثر من خمس دقائق</span>' : '') +
@@ -1802,7 +1802,7 @@ textarea.input { padding-block: 10px; line-height: 1.8; min-height: 84px; resize
           (canWrite
             ? '<div class="field"><label for="tQ">إضافة مختبر</label>' +
                 '<input class="input" id="tQ" type="search" autocomplete="off" ' +
-                  'placeholder="بحث بالاسم أو الرقم النقابي أو رقم العضوية">' +
+                  'placeholder="بحث بالاسم أو الرقم النقابي أو معرّف الحساب">' +
                 '<ul class="set-results" id="tResults"></ul></div>'
             : '') +
         '</div>' +
@@ -1870,7 +1870,7 @@ textarea.input { padding-block: 10px; line-height: 1.8; min-height: 84px; resize
             var has = setForm.testers.some(function (t) { return t.id === String(a.id); });
             var bad = a.status === 'rejected';
             return '<li><span class="grow">' + A.esc(a.name || '—') +
-              '<span class="adm-sub" style="margin:0">' + A.esc([a.member_no ? 'رقم العضوية ' + a.member_no : '',
+              '<span class="adm-sub" style="margin:0">' + A.esc([a.member_no ? 'معرّف الحساب ' + a.member_no : '',
                 a.synd_no ? 'النقابي ' + a.synd_no : '', ACC_ST[a.status] || a.status || ''].filter(Boolean).join(' · ')) +
               '</span></span>' +
               (has ? '<span class="tag">مُدرج</span>'
@@ -1907,7 +1907,7 @@ textarea.input { padding-block: 10px; line-height: 1.8; min-height: 84px; resize
     }
     list.innerHTML = setForm.testers.map(function (t) {
       return '<div class="set-tester"><span class="grow"><b>' + A.esc(t.name || t.id) + '</b>' +
-        '<span class="adm-sub" style="margin:0">' + A.esc([t.member_no ? 'رقم العضوية ' + t.member_no : '',
+        '<span class="adm-sub" style="margin:0">' + A.esc([t.member_no ? 'معرّف الحساب ' + t.member_no : '',
           ACC_ST[t.status] || t.status || ''].filter(Boolean).join(' · ')) + '</span></span>' +
         (canWrite ? '<button class="btn btn-outline btn-sm" data-tdel="' + A.esc(t.id) + '" data-write>إزالة</button>' : '') +
         '</div>';

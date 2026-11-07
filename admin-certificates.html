@@ -418,7 +418,7 @@
       return '<tr data-i="' + i + '">' +
         '<td class="num strong adm-mono"><span class="crt-code">' + A.esc(r.code || '—') + '</span></td>' +
         '<td class="wrap crt-name">' + A.esc(r.holder_name || '—') +
-          (r.member_no ? '<span class="adm-sub">رقم العضوية: ' + A.esc(A.toAr(r.member_no)) + '</span>' : '') +
+          (r.member_no ? '<span class="adm-sub">معرّف الحساب: ' + A.esc(A.toAr(r.member_no)) + '</span>' : '') +
         '</td>' +
         '<td class="num">' + (r.synd_no ? '<span class="crt-code">' + A.esc(A.toAr(r.synd_no)) + '</span>' : '—') + '</td>' +
         '<td>' + A.esc(r.branch || '—') + '</td>' +
@@ -522,7 +522,7 @@
     fetchAll().then(function (all) {
       if (!all.length) { A.toast('لا صفوف لتصديرها.', 'bad'); return; }
       A.exportCsv('osea-certificates-registry.csv',
-        ['رقم الشهادة', 'الاسم', 'الرقم النقابي', 'رقم العضوية', 'الفرع', 'النوع', 'الدرجة',
+        ['رقم الشهادة', 'الاسم', 'الرقم النقابي', 'معرّف الحساب', 'الفرع', 'النوع', 'الدرجة',
          'تاريخ الإصدار', 'الحالة', 'تاريخ السحب', 'سبب السحب', 'سجل المعتمدين'],
         all.map(function (r) {
           return [r.code || '', r.holder_name || '', A.toAr(r.synd_no || ''), A.toAr(r.member_no || ''),

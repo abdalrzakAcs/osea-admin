@@ -85,6 +85,28 @@
   /* حالات التحقق العلني من الرقم النقابي (ترحيلة 039) */
   var SYND_STATUSES = ['verified', 'pending', 'not_found', 'invalid', 'limited'];
 
+  /* الاختصاص الهندسي (ترحيلة ٠٤١) — قائمة واحدة للتطبيق واللوحة. الرمز
+     يطابق specialty_valid في القاعدة حرفاً بحرف، والتسمية للعرض وحده.
+     امتحان منظومة تقييم الأضرار لـcivil حصراً (طلب النقابة ٧ ت٢). */
+  var SPECIALTIES = [
+    ['civil',        'هندسة مدنية (إنشائية، مائية، طرق وجسور، بيئية…)', 'مدنية'],
+    ['architecture', 'هندسة معمارية',                'معمارية'],
+    ['mechanical',   'هندسة ميكانيكية',              'ميكانيكية'],
+    ['electrical',   'هندسة كهربائية',               'كهربائية'],
+    ['electronics',  'هندسة إلكترونية واتصالات',     'إلكترونية واتصالات'],
+    ['informatics',  'هندسة معلوماتية وحواسيب',      'معلوماتية'],
+    ['chemical',     'هندسة كيميائية وبترولية',      'كيميائية وبترولية'],
+    ['surveying',    'هندسة طبوغرافية (مساحة)',      'طبوغرافية'],
+    ['other',        'اختصاص هندسي آخر',             'اختصاص آخر']
+  ];
+  /* التسمية القصيرة للجداول والبطاقات؛ الرمز المجهول يُعرض كما هو لا يُخفى */
+  function specialtyLabel(code, long) {
+    for (var i = 0; i < SPECIALTIES.length; i++) {
+      if (SPECIALTIES[i][0] === code) { return SPECIALTIES[i][long ? 1 : 2]; }
+    }
+    return code ? String(code) : '';
+  }
+
   var live = {
     /* التسجيل عبر دالة آمنة تُعيد الحقول العلنية فقط — جدول الحسابات يبقى
        غير مقروء للزائر (الإدراج المباشر مع select يفشل بسياسة الأمان). */
@@ -128,6 +150,12 @@
     setBranch: function (id, branch) {
       if (!LIVE) return Promise.reject(new Error('قاعدة النقابة غير متاحة'));
       return sb.rpc('member_set_branch', { p_account: id, p_branch: branch }).then(must);
+    },
+    /* الاختصاص الهندسي (٠٤١) — العضو يحدّده، ويُقفل متى ثبت على حساب
+       موافَق عليه (القاعدة تفرض ذلك وتردّ برسالة عربية). يعيد {specialty, locked} */
+    setSpecialty: function (id, code) {
+      if (!LIVE) return Promise.reject(new Error('قاعدة النقابة غير متاحة'));
+      return sb.rpc('member_set_specialty', { p_account: id, p_specialty: code }).then(must);
     },
     /* الرقم النقابي يكتبه العضو ولا يصير معتمداً بكتابته: الدالة تضعه
        «قيد المراجعة» حتى تصادق عليه اللوحة، لأنه مفتاح الهوية الرسمي
@@ -1536,6 +1564,8 @@
     resetPassword: function (id, pw) { return rpc('admin_reset_password', { p_id: id, p_new: pw }); },
     /* المرتبة الهندسية قرار الإدارة (ترحيلة ٠٢٦) — null تمسحها */
     setGrade: function (id, grade) { return rpc('admin_set_account_grade', { p_id: id, p_grade: grade || null }); },
+    /* الاختصاص الهندسي (٠٤١) — المدير يضبطه أو يصحّحه، و null يمسحه فيعود للعضو تحديده */
+    setSpecialty: function (id, code) { return rpc('admin_set_account_specialty', { p_id: id, p_specialty: code || null }); },
     /* تدقيق الرقم النقابي الذي أدخله العضو: القبول يثبّته والرفض يعيد الحقل
        قابلاً للتعديل. السبب مكتوب لا اختياري في المعنى — بلا سبب يعيد العضو
        إرسال الرقم نفسه فتدور المراجعة على نفسها بلا نهاية. */
@@ -2141,6 +2171,9 @@
     payments:   LIVE ? live.payments   : function () { return Promise.resolve(null); },
     addPayment: LIVE ? live.addPayment : function () { return Promise.resolve(null); },
     setBranch:  LIVE ? live.setBranch  : offline('تحديث الفرع'),
+    setSpecialty: LIVE ? live.setSpecialty : offline('تحديد الاختصاص'),
+    SPECIALTIES: SPECIALTIES,
+    specialtyLabel: specialtyLabel,
     /* هوية العضو النقابية: كتابةٌ من العضو واعتمادٌ من الإدارة — الوسم
        بـoffline كسائر الكتابات كي يقرأ العضو سبب التعذّر لا صمتاً */
     setSyndNo:  LIVE ? live.setSyndNo  : offline('تحديث الرقم النقابي'),

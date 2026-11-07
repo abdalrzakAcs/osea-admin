@@ -500,6 +500,20 @@
   }
   function gradeAr(g) { return g ? (GRADE_AR[g] || g) : ''; }
 
+  /* الاختصاص (٠٤١): امتحان تقييم الأضرار للمدنيين وحدهم، فالسطر الفرعي
+     يقول أثر القيمة لا القيمة وحدها. قاعدة بلا ٠٤١ (undefined) لا صفّ لها. */
+  function specKv(a) {
+    if (a.specialty === undefined) { return ''; }
+    if (!a.specialty) {
+      return kv('الاختصاص الهندسي', '<span class="adm-sub" style="margin:0">لم يُحدَّد</span>',
+        'محجوب عن امتحان تقييم الأضرار حتى يُحدَّد.');
+    }
+    var label = API.specialtyLabel ? API.specialtyLabel(a.specialty, true) : a.specialty;
+    return a.specialty === 'civil'
+      ? kv('الاختصاص الهندسي', A.esc(label) + ' <span class="tag tag--success">الامتحان متاح</span>')
+      : kv('الاختصاص الهندسي', A.esc(label), 'امتحان تقييم الأضرار غير متاح لهذا الاختصاص.');
+  }
+
   function paintHead() {
     var a = P.account;
     var s = STATUS[a.status] || { label: a.status, cls: '' };
@@ -514,17 +528,21 @@
       '<span class="tag ' + s.cls + '">' + A.esc(s.label) + '</span>' +
       (a.exempt ? '<span class="tag tag--gold">معفى من الرسوم</span>' : '') +
       (a.has_password ? '' : '<span class="tag tag--error">بلا كلمة مرور</span>');
-    /* أول ثماني خانات من المعرّف تكفي للمطابقة مع السجلات بلا سطر طويل */
+    /* معرّف الحساب = member_no، الرقم نفسه الظاهر للعضو في «حسابي» بالتطبيق
+       (طلب النقابة ٧ ت٢: التفعيل يجري به ويجب أن يتطابق). كانت الشارة تعرض
+       أول ثماني خانات من UUID الداخلي بالاسم نفسه فلا تطابق ما عند العضو أبداً. */
     $('pIdTag').innerHTML = 'معرّف الحساب <span dir="ltr">' +
-      A.esc(String(a.id || '').slice(0, 8)) + '</span>';
+      A.esc(a.member_no || '—') + '</span>';
 
     var contact = a.contact_method === 'email' ? a.email : a.phone;
     var parts = [
       /* الحالة إلى جانب القيمة لا في صفٍّ آخر: الرقم بلا حالته يستوي عند
          القارئ المدقَّقُ والمكتوبُ اعتباطاً، وهي المشكلة التي جاءت ٠٢٩ لها */
+      kv('معرّف الحساب', ltr(a.member_no), 'الرقم الظاهر للعضو في شاشة «حسابي» — به يجري التفعيل.'),
       kv('الرقم النقابي', ltr(a.synd_no) + vtag(a.synd_no_status)),
       kv('رقم الهوية الوطنية', ltr(a.national_id)),
       kv('الفرع النقابي', A.esc(a.branch || '—')),
+      specKv(a),
       kv('المرتبة الهندسية', (a.grade
         ? A.esc(gradeAr(a.grade))
         : '<span class="adm-sub" style="margin:0">لم تُحدَّد</span>') + vtag(a.grade_req_status, true),
@@ -720,7 +738,7 @@
     return '<li class="sc-item">' +
       '<div class="sc-main">' +
         '<a href="admin-user-detail.html?id=' + A.esc(m.account_id) + '">' + A.esc(m.name || '—') + '</a>' +
-        '<span class="adm-sub">رقم العضوية <span dir="ltr">' + A.esc(A.toAr(m.member_no || '—')) + '</span>' +
+        '<span class="adm-sub">معرّف الحساب <span dir="ltr">' + A.esc(A.toAr(m.member_no || '—')) + '</span>' +
           (m.branch ? ' · فرع ' + A.esc(m.branch) : '') + '</span>' +
       '</div>' +
       '<div class="sc-tags">' +
@@ -782,7 +800,7 @@
       var first = dup[0];
       return A.confirm({
         title: 'الرقم موثَّق على حساب آخر', danger: true, okLabel: 'توثيق رغم ذلك',
-        text: 'الرقم ' + A.toAr(a.synd_no) + ' موثَّق على حساب «' + (first.name || '—') + '» (رقم العضوية ' +
+        text: 'الرقم ' + A.toAr(a.synd_no) + ' موثَّق على حساب «' + (first.name || '—') + '» (معرّف الحساب ' +
               A.toAr(first.member_no || '—') + ')' +
               (dup.length > 1 ? ' و' + A.count(dup.length - 1, 'حساب آخر', 'حسابين آخرين', 'حسابات أخرى', 'حساباً آخر') : '') +
               '. توثيقه لـ«' + a.name + '» يجعله موثَّقاً على أكثر من حساب، فتأكد من صاحب الرقم قبل المتابعة.',
@@ -1181,6 +1199,20 @@
     if (act_ === 'cap-revoke') { return askCaptureRevoke(); }
   }
 
+  function specField(a) {
+    if (a.specialty === undefined || !API.SPECIALTIES) { return ''; }
+    return '<div class="field"><label for="eSpec">الاختصاص الهندسي</label>' +
+      '<select class="input" id="eSpec">' +
+        '<option value=""' + (a.specialty ? '' : ' selected') + '>لم يُحدَّد</option>' +
+        API.SPECIALTIES.map(function (s) {
+          return '<option value="' + s[0] + '"' + (a.specialty === s[0] ? ' selected' : '') + '>' +
+            A.esc(s[1]) + '</option>';
+        }).join('') +
+      '</select>' +
+      '<span class="hint">امتحان تقييم الأضرار مفتوح للاختصاص المدني وحده. ' +
+        'بعد تفعيل الحساب لا يغيّر العضو اختصاصه إلا من هنا، و«لم يُحدَّد» يعيد له تحديده.</span></div>';
+  }
+
   function openEdit() {
     var a = P.account;
     var list = BRANCHES.slice();
@@ -1202,6 +1234,7 @@
           '<input class="input" id="eNid" dir="ltr" value="' + A.esc(a.national_id || '') + '"></div>' +
         '<div class="field"><label for="eBranch">الفرع النقابي</label>' +
           '<select class="input" id="eBranch">' + branches + '</select></div>' +
+        specField(a) +
         '<div class="field"><label for="eGrade">المرتبة الهندسية</label>' +
           '<select class="input" id="eGrade">' +
             '<option value=""' + (a.grade ? '' : ' selected') + '>لم تُحدَّد</option>' +
@@ -1234,7 +1267,13 @@
         var gradeStep = (!gSel || gNew === (a.grade || null))
           ? Promise.resolve()
           : API.admin.setGrade(id, gNew);
+        /* الاختصاص (٠٤١) بدالته المستقلة كالمرتبة — admin_update_account لا تعرفه */
+        var sSel = host.querySelector('#eSpec');
+        var sNew = sSel ? (sSel.value || null) : null;
         return gradeStep.then(function () {
+          if (!sSel || sNew === (a.specialty || null)) { return null; }
+          return API.admin.setSpecialty(id, sNew);
+        }).then(function () {
           return API.admin.updateAccount(id, {
             name: g('eName'), synd_no: g('eSynd'), national_id: g('eNid'),
             branch: host.querySelector('#eBranch').value,
@@ -1571,14 +1610,18 @@
      في صفحة سجل التدقيق. كل قيمة معزولة الاتجاه (bdi) فلا تتبعثر الأرقام والرموز
      اللاتينية بين العربية، والتغيير [قبل، بعد] سهمٌ بينهما */
   var DETAIL_LBL = {
-    name: 'الاسم', synd_no: 'الرقم النقابي', national_id: 'رقم الهوية', member_no: 'رقم العضوية',
+    name: 'الاسم', synd_no: 'الرقم النقابي', national_id: 'رقم الهوية', member_no: 'معرّف الحساب', specialty: 'الاختصاص',
     branch: 'الفرع', phone: 'الموبايل', email: 'البريد', exempt: 'معفى من الرسوم',
     note: 'الملاحظة', reason: 'السبب', status: 'الحالة', grade: 'المرتبة',
     grade_requested: 'المرتبة المطلوبة', by: 'بواسطة', field: 'الحقل', value: 'القيمة',
     code: 'الرمز', score: 'الدرجة', amount: 'المبلغ', op_no: 'رقم العملية', bill_no: 'رقم الفاتورة',
     service: 'الخدمة', scope: 'النطاق', count: 'العدد', row: 'السجل المحذوف'
   };
-  var DETAIL_VAL = { member: 'العضو', admin: 'الإدارة', auto: 'تلقائي' };
+  var DETAIL_VAL = { member: 'العضو', admin: 'الإدارة', auto: 'تلقائي',
+    /* رموز الاختصاص (٠٤١) في سجل التدقيق — 'other' عمداً خارجها لأنها قيمة عامة */
+    civil: 'مدنية', architecture: 'معمارية', mechanical: 'ميكانيكية', electrical: 'كهربائية',
+    electronics: 'إلكترونية واتصالات', informatics: 'معلوماتية', chemical: 'كيميائية وبترولية',
+    surveying: 'طبوغرافية' };
 
   function detailVal(v) {
     if (v === null || v === undefined || v === '') return '—';
