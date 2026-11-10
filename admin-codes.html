@@ -44,6 +44,16 @@
   font-family:var(--font-display);font-size:30px;font-weight:700;
   letter-spacing:4px;color:var(--gold-400);  /* gold-300 غير معرَّف في identity.css فكان النص داكناً على الكحلي */
 }
+/* إرسال الكوبون المُصدر لأصحابه: صفّ لكل مستهدف بزرّي واتساب وSMS */
+.send-list{display:grid;gap:8px;margin-block-start:14px}
+.send-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;
+  border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.send-row.is-sent{border-color:var(--success-600);background:var(--success-50)}
+.send-who{flex:1;min-width:140px;display:grid;gap:2px;font-size:13.5px}
+.send-who b{color:var(--navy-800)}
+.send-who small{color:var(--text-secondary);font-family:var(--font-display)}
+.send-acts{display:flex;gap:8px;flex-wrap:wrap}
+.send-acts .btn{min-height:40px}
 .tgl-list{font-size:12px;line-height:1.8;color:var(--text-secondary);max-width:280px}
 
 /* الهاتف: زر إزالة المستهدف هدف لمس كامل، والكوبون المُصدر بخط يتّسع لعرض الشاشة،
@@ -467,7 +477,11 @@
           throw new Error(couponText(A.errText(err)));
         }).then(function (r) {
           load();
-          showIssued(r.code);
+          /* المستهدفون ووصف المنحة يُنسخان الآن: اللوحة تُصفّر picked عند فتحها التالي */
+          showIssued(r.code, picked.slice(), {
+            what: grantText(kind, k, bookIds.length, folderIds.length, months),
+            expires: expires
+          });
         });
       }
     });
@@ -475,18 +489,81 @@
     wireIssue(sh.el);
   }
 
-  /* الكوبون يُعرض هنا مرة واحدة فقط — لا يُخزَّن معروضاً في أي مكان آخر */
-  function showIssued(code) {
+  /* وصف ما يمنحه الكوبون بلغة العضو — يدخل نص الرسالة المرسلة إليه */
+  function grantText(kind, k, nBooks, nFolders, months) {
+    var dur = months >= 1 ? (' لمدة ' + months + (months === 1 ? ' شهر' : (months === 2 ? ' شهرين' : (months <= 10 ? ' أشهر' : ' شهراً')))) : '';
+    if (kind === 'exam') { return 'محاولة اختبار اعتماد'; }
+    if (kind === 'library') { return 'اشتراكاً بكامل المكتبة' + dur; }
+    if (kind === 'folder') { return 'اشتراكاً ' + (nFolders > 1 ? 'بـ' + nFolders + ' مجلدات' : 'بمجلد') + (dur || ' دائماً'); }
+    return 'اشتراكاً ' + (nBooks > 1 ? 'بـ' + nBooks + ' بنود' : 'ببند') + ' من المكتبة' + dur;
+  }
+
+  /* رقم واتساب الدولي من رقم القاعدة: السوري محفوظ 09xxxxxxxx (norm_phone)
+     والأجنبي +CC… — wa.me يريد الأرقام وحدها بالمفتاح الدولي بلا صفر ولا + */
+  function waNumber(phone) {
+    var d = String(phone == null ? '' : phone).replace(/[^0-9+]/g, '');
+    if (/^09[0-9]{8}$/.test(d)) { return '963' + d.slice(1); }
+    if (/^\+[0-9]{8,15}$/.test(d)) { return d.slice(1); }
+    if (/^963[0-9]{9}$/.test(d)) { return d; }
+    return '';
+  }
+
+  /* نص الرسالة لكل مستهدَف: الكوبون فريد ومربوط بحسابه، فالرسالة تذكر معرّفه */
+  function couponMessage(code, a, meta) {
+    var NL = String.fromCharCode(10);
+    return [
+      'نقابة المهندسين السوريين — كوبون تطبيق المنصة',
+      'رمز الكوبون: ' + code,
+      'يمنحك: ' + meta.what,
+      'صادر باسم حسابك وحده' + (a.member_no ? ' (معرّف الحساب ' + a.member_no + ')' : '') +
+        (meta.expires ? ' ويصلح حتى ' + meta.expires : '') + '.',
+      'للتفعيل: افتح التطبيق ← الدفع والتفعيل ← كوبون ← أدخل الرمز ثم اضغط «تفعيل الكوبون».'
+    ].join(NL);
+  }
+
+  /* الكوبون يُعرض هنا مرة واحدة فقط — لا يُخزَّن معروضاً في أي مكان آخر.
+     الإرسال (ملاحظة النقابة ٤ — ١٠ ت٢): لكل مستهدَف زرّا واتساب وSMS برسالة
+     جاهزة إلى رقمه المسجّل — يفتحان تطبيق المرسِل نفسه، ولا يمرّ الكوبون
+     بأي خادم وسيط ولا يُحفظ في سجل. الإرسال الفعلي بضغطة الموظف. */
+  function showIssued(code, accts, meta) {
+    accts = accts || [];
+    meta = meta || { what: 'ما حُدّد له' };
+    var rows = accts.map(function (a, i) {
+      var wa = waNumber(a.phone);
+      var tel = String(a.phone == null ? '' : a.phone).replace(/[^0-9+]/g, '');
+      var msg = couponMessage(code, a, meta);
+      return '<div class="send-row">' +
+        '<span class="send-who"><b>' + A.esc(a.name || '—') + '</b><small dir="ltr">' +
+          A.esc(a.member_no || '') + (tel ? ' · ' + A.esc(tel) : '') + '</small></span>' +
+        '<span class="send-acts">' +
+          (wa
+            ? '<a class="btn btn-primary btn-sm" target="_blank" rel="noopener noreferrer" href="https://wa.me/' +
+                wa + '?text=' + encodeURIComponent(msg) + '" data-sent="' + i + '">واتساب</a>'
+            : '') +
+          (tel
+            ? '<a class="btn btn-outline btn-sm" href="sms:' + A.esc(tel) + '?body=' + encodeURIComponent(msg) +
+                '" data-sent="' + i + '">SMS</a>'
+            : '<span class="tag">لا رقم مسجّل — سلّمه يدوياً</span>') +
+        '</span></div>';
+    }).join('');
     A.sheet({
-      title: 'صدر الكوبون — انسخه الآن',
+      title: 'صدر الكوبون — أرسله لصاحبه الآن',
       hideOk: true,
-      closeLabel: 'أغلقت ونسخته',
+      closeLabel: 'أُرسل — إغلاق',
       body:
         '<p style="font-size:13.5px;line-height:1.9;color:var(--text-secondary)">' +
-          'سلّم هذا الكوبون لأصحابه بنفسك (اتصال أو رسالة خاصة). ' +
+          'أرسل الكوبون لصاحبه برسالة جاهزة إلى رقمه المسجّل (واتساب أو SMS)، أو انسخه وسلّمه بنفسك. ' +
           'لن يظهر كاملاً مرة أخرى، ولا يعمل إلا للحسابات المستهدفة.</p>' +
         '<div class="issued-code" dir="ltr"><span id="issuedVal">' + A.esc(code) + '</span></div>' +
+        (rows ? '<div class="send-list">' + rows + '</div>' : '') +
         '<button type="button" class="btn btn-outline btn-block" id="copyCode" style="margin-block-start:14px">نسخ الكوبون</button>'
+    });
+    /* علامة «فُتحت الرسالة» بجانب كل مستهدف — تذكير بمن بقي، لا إثبات إرسال */
+    document.querySelectorAll('.send-list [data-sent]').forEach(function (l) {
+      l.addEventListener('click', function () {
+        var row = l.closest('.send-row');
+        if (row) { row.classList.add('is-sent'); }
+      });
     });
     var btn = document.getElementById('copyCode');
     if (btn) {
