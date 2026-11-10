@@ -888,6 +888,7 @@
     var g = ready ? captureLive() : null;
 
     $('capKv').innerHTML = g ? capLiveKv(g) : capIdleKv();
+    if (g) { paintCapSession(g); }
 
     /* شارة الترويسة تقول حالة الجهاز لا حالة الصف: «إذن سارٍ» تعني أن
        الحماية مرفوعة الآن عن هذا الحساب، وهي الجملة التي يبحث عنها المدير */
@@ -929,6 +930,53 @@
       return g;
     }
     return null;
+  }
+
+  /* حالة جلسة العضو تحت الإذن السارٍ (بلاغ ١٠ ت٢: مُنح الإذن ولم يُصوَّر
+     شيء — لأن الجلسة لم تُبدأ من الهاتف أصلاً، واللوحة لم تكن تقول ذلك).
+     admin_capture_grants تحمل لكل إذن عدد الجلسات الحيّة وآخر فحص وحكمه
+     وشاشته؛ قراءةٌ ثانية لا ترحيلة. فشلها يُسقط السطر وحده لا البطاقة. */
+  function capSessionKv(r) {
+    var how = 'على هاتف العضو: «حسابي» ⟵ بطاقة «وضع التوثيق» ⟵ كلمة مروره ⟵ «بدء وضع التوثيق». '
+      + 'الإذن وحده لا يرفع الحماية.';
+    if (!r) { return kv('جلسة العضو', '<span class="adm-sub" style="margin:0">تعذّرت قراءة حالة الجلسة</span>', how); }
+    var seen = r.last_seen_at ? ago(r.last_seen_at) : '';
+    var where = r.last_screen ? ' على شاشة «' + A.esc(capScreenAr(r.last_screen)) + '»' : '';
+    if (+r.sessions > 0) {
+      var verdict = r.last_allowed === true
+        ? '<span class="tag tag--gold">التصوير مسموح</span>'
+        : (r.last_allowed === false ? '<span class="tag">محجوب على آخر شاشة</span>' : '');
+      return kv('جلسة العضو', '<span class="tag tag--success">جلسة نشطة على هاتفه</span> ' + verdict,
+        seen ? 'آخر فحص من الهاتف ' + seen + where + '.' : 'بدأت الجلسة ولم يصل فحص من الهاتف بعد.');
+    }
+    if (seen) {
+      return kv('جلسة العضو', '<span class="tag">انتهت الجلسة</span>',
+        'آخر فحص ' + seen + where + '. الجلسة ساعتان؛ ' + how);
+    }
+    return kv('جلسة العضو', '<span class="tag tag--gold">لم يبدأ العضو وضع التوثيق بعد</span>', how);
+  }
+
+  function ago(iso) {
+    var m = Math.round((new Date() - new Date(iso)) / 60000);
+    if (!(m >= 1)) { return 'قبل أقل من دقيقة'; }
+    if (m < 60) { return 'قبل ' + count(m, 'دقيقة واحدة', 'دقيقتين', 'دقائق', 'دقيقة'); }
+    return 'في ' + A.arDateTime(iso);
+  }
+
+  function paintCapSession(g) {
+    var kvEl = $('capKv');
+    kvEl.insertAdjacentHTML('beforeend', '<div id="capSess" style="display:contents">' +
+      kv('جلسة العضو', '<span class="adm-sub" style="margin:0">جارٍ قراءة حالة الجلسة…</span>') + '</div>');
+    if (!(API.admin && API.admin.captureGrants)) { $('capSess').remove(); return; }
+    API.admin.captureGrants({ account: id, active: true }).then(function (d) {
+      var rows = (d && d.rows) || [], hit = null;
+      for (var i = 0; i < rows.length; i++) { if (String(rows[i].id) === String(g.id)) { hit = rows[i]; break; } }
+      var el = $('capSess');
+      if (el) { el.innerHTML = capSessionKv(hit || rows[0] || null); }
+    }).catch(function () {
+      var el = $('capSess');
+      if (el) { el.innerHTML = capSessionKv(null); }
+    });
   }
 
   function capIdleKv() {
@@ -1085,7 +1133,8 @@
           reason: reason
         }).then(function () {
           A.toast('مُنح «' + a.name + '» إذن التقاط (' + (CAP_SCOPE[scope] || scope) +
-            ') حتى ' + A.arDateTime(expires) + '.', 'ok', 6000);
+            ') حتى ' + A.arDateTime(expires) + '. الخطوة التالية على هاتفه: «حسابي» ⟵ «وضع التوثيق» ⟵ كلمة المرور.',
+            'ok', 9000);
           load();
         });
       }
