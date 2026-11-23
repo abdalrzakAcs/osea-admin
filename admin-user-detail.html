@@ -559,7 +559,7 @@
         : '<span class="adm-danger">غير مضبوطة</span>',
         a.has_password ? null : 'يتعذّر على العضو الدخول حتى تُعيَّن له كلمة مرور.'),
       kv('الإعفاء من الرسوم', a.exempt ? 'معفى' : 'غير معفى',
-         a.exempt ? 'لا تُحتسب مدفوعاته ضمن الإيرادات.' : null),
+         a.exempt ? 'علامة للمتابعة فقط. احتساب الإيرادات يعتمد على إعفاء كل دفعة بمفردها.' : null),
       kv('قرار الإدارة الأخير',
          a.decided_at ? A.arDateTime(a.decided_at) : 'لا قرار مسجّل بعد',
          a.decided_by ? 'بمعرّف الموظف <span dir="ltr">' + A.esc(String(a.decided_by).slice(0, 8)) + '</span>' : null)

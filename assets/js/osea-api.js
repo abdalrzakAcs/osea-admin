@@ -10,6 +10,9 @@
   var LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase);
   var sb = LIVE ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY) : null;
 
+  // اعمدة جدول الحسابات التي يقراها الطاقم (بلا pass_hash و complete_ticket، الترحيلة 043)
+  var ACC_COLS = 'id, name, synd_no, phone, branch, status, exempt, note, created_at, decided_at, decided_by, national_id, email, contact_method, last_login_at, failed_logins, locked_until, member_no, avatar_url, profile_complete, complete_at, grade, synd_no_status, synd_no_at, synd_no_by, synd_no_note, grade_requested, grade_req_status, grade_req_at, grade_by, specialty, avatar_key';
+
   /* الأرقام لاتينية 1 2 3 … بقرار العميل («أرقام واضحة»). الاسم toAr
      باقٍ لأن الموقع واللوحة والتطبيق يستدعونه في عشرات المواضع، وصار
      ممرّاً واحداً يوحّد شكل الأرقام ويحوّل أي هندي وارد إلى لاتيني. */
@@ -123,11 +126,11 @@
       }).then(must);
     },
     accounts: function () {
-      return sb.from('accounts').select('*').order('created_at', { ascending: false }).then(must);
+      return sb.from('accounts').select(ACC_COLS).order('created_at', { ascending: false }).then(must);
     },
     setStatus: function (id, status, note) {
       return sb.from('accounts').update({ status: status, note: note || null })
-        .eq('id', id).select().single().then(must);
+        .eq('id', id).select(ACC_COLS).single().then(must);
     },
     payments: function () {
       return sb.from('payments')
@@ -259,7 +262,7 @@
     /* ملف المستخدم التفصيلي: خمس قراءات متوازية بمعرّف الحساب */
     accountProfile: function (id) {
       return Promise.all([
-        sb.from('accounts').select('*').eq('id', id).maybeSingle().then(must),
+        sb.from('accounts').select(ACC_COLS).eq('id', id).maybeSingle().then(must),
         sb.from('lesson_progress').select('*').eq('account_id', id)
           .order('completed_at', { ascending: true }).then(must),
         sb.from('attempts').select('*').eq('account_id', id)
@@ -806,17 +809,22 @@
       });
     },
 
-    /* الصورة الشخصية: مسار ثابت <uuid>/avatar.jpg بالكتابة فوقه — ملف
-       واحد لكل حساب (لا استنزاف تخزين). كسر الكاش بملحق ?v بعد التثبيت. */
+    /* الصورة الشخصية (ترحيلة ٠٤٢): المسار يعطيه الخادم — مجلد بمفتاح عشوائي
+       لا صلة له بمعرّف الحساب، واسم ملف فريد لكل رفع. كان المسار
+       <uuid>/avatar.jpg فصار اسم المجلد يكشف هوية العضو لمن يسرد السلة.
+       الرفع بلا upsert عمداً: يكفيه إذن الإدراج، فلا قراءة (= لا سرد) ولا
+       كتابة فوق ملف قائم. الاسم الفريد يغني عن ملحق كسر الكاش. */
     uploadAvatar: function (id, file) {
       if (!LIVE) { return Promise.reject(new Error('قاعدة النقابة غير متاحة')); }
-      var path = id + '/avatar.jpg';
-      return sb.storage.from('osea-avatars').upload(path, file, { upsert: true, contentType: 'image/jpeg' })
-        .then(function (r) {
-          if (r.error) { throw new Error(r.error.message || 'تعذّر رفع الصورة'); }
-          return sb.storage.from('osea-avatars').getPublicUrl(path).data.publicUrl +
-                 '?v=' + (new Date()).getTime();
-        });
+      return sb.rpc('member_avatar_slot', { p_account: id }).then(must).then(function (slot) {
+        var path = slot && slot.path;
+        if (!path) { throw new Error('تعذّر تجهيز مكان الصورة'); }
+        return sb.storage.from('osea-avatars').upload(path, file, { upsert: false, contentType: 'image/jpeg' })
+          .then(function (r) {
+            if (r.error) { throw new Error('تعذّر رفع الصورة — أعد المحاولة'); }
+            return sb.storage.from('osea-avatars').getPublicUrl(path).data.publicUrl;
+          });
+      });
     },
     setAvatar: function (id, url) {
       if (!LIVE) { return Promise.reject(new Error('قاعدة النقابة غير متاحة')); }
@@ -2109,11 +2117,35 @@
     }
   };
 
-  /* بوابة التحديث — الاحتياط في الويب؛ الإنفاذ الحقيقي في الكود الأصلي */
+  /* رابط تنزيل مقبول: https على موقع النقابة أو صفحة متجر رسمي حصراً.
+     القائمة نفسها في ثلاثة مواضع يجب أن تبقى متطابقة: release_url_ok
+     (ترحيلة ٠٤٢) · Config.UPDATE_URL_RE (أندرويد) · هنا. السبب: الرابط يأتي
+     من صف في القاعدة، وحساب إدارة مخترَق كان يوجّه به شاشة «تحديث إجباري»
+     وزر «تنزيل التطبيق» في الموقع إلى أي ملف — أو إلى javascript: في الموقع. */
+  var RELEASE_URL_RE = [
+    /^https:\/\/(www\.)?syrianengineerssyndicate\.sy\/[A-Za-z0-9._~%\/-]*$/,
+    /^https:\/\/play\.google\.com\/store\/apps\/details\?id=[A-Za-z0-9._]+$/,
+    /^https:\/\/apps\.apple\.com\/[A-Za-z0-9._~%\/-]+$/
+  ];
+  function releaseUrlOk(url) {
+    if (typeof url !== 'string' || !url) { return false; }
+    for (var i = 0; i < RELEASE_URL_RE.length; i++) {
+      if (RELEASE_URL_RE[i].test(url)) { return true; }
+    }
+    return false;
+  }
+
+  /* بوابة التحديث — الاحتياط في الويب؛ الإنفاذ الحقيقي في الكود الأصلي.
+     الرابط غير المقبول يُفرَّغ هنا، فكل مستهلك (شاشة التحديث، زر التنزيل في
+     الموقع) يستلم رابطاً سليماً أو لا شيء. */
   function checkUpdate(versionCode) {
     if (!LIVE) return Promise.resolve(null);
     return sb.rpc('check_update', { p_platform: 'android', p_version_code: versionCode })
-      .then(must).then(function (rows) { return (rows && rows[0]) || null; });
+      .then(must).then(function (rows) {
+        var row = (rows && rows[0]) || null;
+        if (row && row.download_url && !releaseUrlOk(row.download_url)) { row.download_url = null; }
+        return row;
+      });
   }
 
   /* ---------- الواجهة الموحّدة ---------- */
@@ -2154,6 +2186,7 @@
     member: member,
     admin: admin,
     checkUpdate: checkUpdate,
+    releaseUrlOk: releaseUrlOk,
     GOVERNORATES: GOVERNORATES,
     /* على الجذر أيضاً لا في accredit وحده: قائمة الفروع في التطبيق وسجل
        اللوحة يحتاجانه بلا سجل اعتمادات، ونسخة ثانية منه تفتح باب اختلافهما */

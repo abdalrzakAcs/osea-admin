@@ -205,7 +205,9 @@
   if (window.OSEA_API && OSEA_API.checkUpdate) {
     OSEA_API.checkUpdate(0).then(function (row) {
       var url = row && row.download_url;
-      if (!url || /github\.com|githubusercontent\.com/i.test(url)) return;
+      /* القيمة تُكتب في href: لا يُقبل إلا رابط النقابة أو متجر رسمي (releaseUrlOk)،
+         وإلا بقي الزر على رابطه الثابت في الصفحة */
+      if (!url || !(OSEA_API.releaseUrlOk && OSEA_API.releaseUrlOk(url))) return;
       document.querySelectorAll('.js-app-dl').forEach(function (a) { a.setAttribute('href', url); });
     }).catch(function () {});
   }

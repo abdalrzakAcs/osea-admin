@@ -1423,7 +1423,9 @@
         if (closed) return;
         try {
           lib.GlobalWorkerOptions.workerSrc = 'assets/vendor/pdf.worker.min.js';
-          task = lib.getDocument({ data: new window.Uint8Array(buf) });
+          /* isEvalSupported=false: الملف هنا لم يُفحص بعد (يرفعه الموظف للتوّ) —
+             لا يُسمح لمحتواه بسلوك مسار new Function في pdf.js (CVE-2024-4367) */
+          task = lib.getDocument({ data: new window.Uint8Array(buf), isEvalSupported: false });
         } catch (e) { done(null); return; }
         task.promise.then(function (doc) {
           var n = doc && doc.numPages;
