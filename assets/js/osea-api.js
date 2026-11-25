@@ -2033,6 +2033,19 @@
     },
 
     /* السجلات */
+    appReports: function (o) {
+      o = o || {};
+      return rpc('admin_app_reports', { p_days: o.days || 7, p_kind: o.kind || null, p_version: o.version || null });
+    },
+    appReportDetail: function (fp) {
+      return rpc('admin_app_report_detail', { p_fingerprint: fp, p_limit: 50 });
+    },
+    appPerf: function (days) {
+      return rpc('admin_app_perf', { p_days: days || 7 });
+    },
+    deleteAppReports: function (fp) {
+      return rpc('admin_delete_app_reports', { p_fingerprint: fp });
+    },
     accessLog: function (o) {
       o = o || {};
       return rpc('admin_access_log', {

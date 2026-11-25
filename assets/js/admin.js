@@ -40,6 +40,7 @@
     { key: 'questions', href: 'admin-questions.html', label: 'بنك الأسئلة' },
     { key: 'releases',  href: 'admin-releases.html',  label: 'إصدارات التطبيق' },
     { key: 'access',    href: 'admin-access.html',    label: 'سجل الوصول' },
+    { key: 'errors',    href: 'admin-errors.html',    label: 'أعطال التطبيق' },
     { key: 'staff',     href: 'admin-staff.html',     label: 'الطاقم' },
     { key: 'audit',     href: 'admin-audit.html',     label: 'سجل التدقيق' }
   ];
